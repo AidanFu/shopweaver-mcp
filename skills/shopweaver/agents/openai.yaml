@@ -1,0 +1,4 @@
+interface:
+  display_name: "ShopWeaver"
+  short_description: "Safely manage Etsy shop drafts and orders"
+  default_prompt: "Use $shopweaver to review my Etsy drafts safely."
