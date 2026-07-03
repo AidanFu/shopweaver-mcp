@@ -70,3 +70,11 @@ export const InventorySchema = z.object({
     offerings: z.array(OfferingSchema)
   }).strip())
 }).strip();
+
+export const ListingImageSchema = z.object({
+  listing_image_id: z.number().int().positive(),
+  rank: z.number().int().nonnegative(),
+  full_width: z.number().int().positive(),
+  full_height: z.number().int().positive(),
+  url_fullxfull: z.string().url().optional()
+}).strip();
