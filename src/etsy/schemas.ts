@@ -23,3 +23,50 @@ export const PageSchema = <T extends z.ZodType>(item: T) => z.object({
   count: z.number().int().nonnegative(),
   results: z.array(item)
 }).strip();
+
+export const ShopSchema = z.object({
+  shop_id: z.number().int().positive(),
+  shop_name: z.string(),
+  title: z.string().nullable().optional(),
+  currency_code: z.string().length(3),
+  active_listing_count: z.number().int().nonnegative()
+}).strip();
+
+export const ListingSchema = z.object({
+  listing_id: z.number().int().positive(),
+  title: z.string(),
+  description: z.string().optional(),
+  state: ListingStateSchema,
+  quantity: z.number().int().nonnegative(),
+  price: MoneySchema,
+  taxonomy_id: z.number().int().positive().optional(),
+  tags: z.array(z.string()).optional(),
+  materials: z.array(z.string()).optional(),
+  url: z.string().url().nullable().optional()
+}).strip();
+
+export const PropertyValueSchema = z.object({
+  property_id: z.number().int().positive(),
+  property_name: z.string().optional(),
+  scale_id: z.number().int().positive().nullable().optional(),
+  scale_name: z.string().nullable().optional(),
+  value_ids: z.array(z.number().int()),
+  values: z.array(z.string())
+}).strip();
+
+export const OfferingSchema = z.object({
+  offering_id: z.number().int().positive().optional(),
+  quantity: z.number().int().nonnegative(),
+  is_enabled: z.boolean(),
+  price: MoneySchema.optional(),
+  readiness_state_id: z.number().int().positive().optional()
+}).strip();
+
+export const InventorySchema = z.object({
+  products: z.array(z.object({
+    product_id: z.number().int().positive().optional(),
+    sku: z.string().nullable().optional(),
+    property_values: z.array(PropertyValueSchema).max(3),
+    offerings: z.array(OfferingSchema)
+  }).strip())
+}).strip();
