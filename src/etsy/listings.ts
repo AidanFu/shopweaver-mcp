@@ -6,6 +6,30 @@ import type { z } from "zod";
 
 export type ListingState = z.infer<typeof ListingStateSchema>;
 
+export function publicInventory(inventory: z.infer<typeof InventorySchema>) {
+  return {
+    products: inventory.products.map(product => ({
+      productId: product.product_id ?? null,
+      sku: product.sku ?? "",
+      propertyValues: product.property_values.map(property => ({
+        propertyId: property.property_id,
+        propertyName: property.property_name ?? "",
+        scaleId: property.scale_id ?? null,
+        scaleName: property.scale_name ?? null,
+        valueIds: property.value_ids,
+        values: property.values
+      })),
+      offerings: product.offerings.map(offering => ({
+        offeringId: offering.offering_id ?? null,
+        quantity: offering.quantity,
+        enabled: offering.is_enabled,
+        price: offering.price ? publicMoney(offering.price) : null,
+        readinessStateId: offering.readiness_state_id ?? null
+      }))
+    }))
+  };
+}
+
 export class ListingService {
   constructor(private readonly client: EtsyClient, private readonly store: CredentialStore) {}
 
@@ -72,26 +96,6 @@ export class ListingService {
 
   async getListingInventory(listingId: number) {
     const inventory = await this.client.request(`/application/listings/${listingId}/inventory?max_variations_supported=3`, {}, InventorySchema);
-    return {
-      products: inventory.products.map(product => ({
-        productId: product.product_id ?? null,
-        sku: product.sku ?? "",
-        propertyValues: product.property_values.map(property => ({
-          propertyId: property.property_id,
-          propertyName: property.property_name ?? "",
-          scaleId: property.scale_id ?? null,
-          scaleName: property.scale_name ?? null,
-          valueIds: property.value_ids,
-          values: property.values
-        })),
-        offerings: product.offerings.map(offering => ({
-          offeringId: offering.offering_id ?? null,
-          quantity: offering.quantity,
-          enabled: offering.is_enabled,
-          price: offering.price ? publicMoney(offering.price) : null,
-          readinessStateId: offering.readiness_state_id ?? null
-        }))
-      }))
-    };
+    return publicInventory(inventory);
   }
 }

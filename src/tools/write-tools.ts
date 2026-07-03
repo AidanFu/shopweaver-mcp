@@ -6,8 +6,8 @@ import { z } from "zod";
 import type { CredentialStore } from "../credentials/types.js";
 import { ShopWeaverError } from "../errors.js";
 import type { EtsyClient } from "../etsy/client.js";
-import type { ListingService } from "../etsy/listings.js";
-import { ListingImageSchema, ListingSchema, publicMoney } from "../etsy/schemas.js";
+import { publicInventory, type ListingService } from "../etsy/listings.js";
+import { InventorySchema, ListingImageSchema, ListingSchema, publicMoney } from "../etsy/schemas.js";
 import type { ConfirmationStore } from "../writes/confirmations.js";
 
 const PriceSchema = z.string().regex(/^\d+(\.\d{1,2})?$/);
@@ -42,6 +42,34 @@ const DraftUpdateFields = {
 
 export type DraftCreateInput = z.infer<z.ZodObject<typeof DraftCreateFields>>;
 export type DraftUpdateInput = z.infer<z.ZodObject<typeof DraftUpdateFields>>;
+
+const InventoryPropertyValueSchema = z.object({
+  propertyId: z.number().int().positive(),
+  propertyName: z.string().optional(),
+  scaleId: z.number().int().positive().optional(),
+  valueIds: z.array(z.number().int()),
+  values: z.array(z.string().min(1)).min(1)
+}).strict();
+
+const InventoryOfferingInputSchema = z.object({
+  quantity: z.number().int().nonnegative(),
+  enabled: z.boolean(),
+  price: PriceSchema,
+  readinessStateId: z.number().int().positive().optional()
+}).strict();
+
+const InventoryInputSchema = z.object({
+  products: z.array(z.object({
+    sku: z.string().trim().min(1),
+    propertyValues: z.array(InventoryPropertyValueSchema).max(3),
+    offerings: z.array(InventoryOfferingInputSchema).min(1)
+  }).strict()).min(1),
+  priceOnProperty: z.array(z.number().int().positive()).default([]),
+  quantityOnProperty: z.array(z.number().int().positive()).default([]),
+  skuOnProperty: z.array(z.number().int().positive()).default([])
+}).strict();
+
+export type InventoryInput = z.input<typeof InventoryInputSchema>;
 
 function encode(fields: Record<string, unknown>): URLSearchParams {
   const body = new URLSearchParams();
@@ -184,6 +212,50 @@ export class DraftWriteService {
       url: uploaded.url_fullxfull ?? null
     };
   }
+
+  async previewInventory(listingId: number, input: InventoryInput) {
+    const changes = InventoryInputSchema.parse(input);
+    const shopId = await this.shopId();
+    if (await this.listings.getListingState(listingId) !== "draft") throw new ShopWeaverError("DRAFT_REQUIRED", "Inventory can be updated only for Etsy drafts.");
+    const current = await this.listings.getListingInventory(listingId);
+    const confirmation = this.confirmations.issue("update_draft_inventory", shopId, changes, listingId);
+    return { operation: "update_draft_inventory" as const, shopId, listingId, current, changes, ...confirmation, warning: "This will replace inventory for an Etsy draft only." };
+  }
+
+  async confirmInventory(listingId: number, input: InventoryInput, confirmationToken: string) {
+    const changes = InventoryInputSchema.parse(input);
+    const shopId = await this.shopId();
+    this.confirmations.consume(confirmationToken, "update_draft_inventory", shopId, changes, listingId);
+    if (await this.listings.getListingState(listingId) !== "draft") throw new ShopWeaverError("DRAFT_REQUIRED", "Inventory can be updated only for Etsy drafts.");
+    const products = changes.products.map(product => ({
+      sku: product.sku,
+      property_values: product.propertyValues.map(property => ({
+        property_id: property.propertyId,
+        property_name: property.propertyName,
+        scale_id: property.scaleId,
+        value_ids: property.valueIds,
+        values: property.values
+      })),
+      offerings: product.offerings.map(offering => ({
+        quantity: offering.quantity,
+        is_enabled: offering.enabled,
+        price: offering.price,
+        readiness_state_id: offering.readinessStateId
+      }))
+    }));
+    const body = encode({
+      products,
+      price_on_property: changes.priceOnProperty,
+      quantity_on_property: changes.quantityOnProperty,
+      sku_on_property: changes.skuOnProperty
+    });
+    const updated = await this.client.request(`/application/listings/${listingId}/inventory?max_variations_supported=3`, {
+      method: "PUT",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body
+    }, InventorySchema);
+    return publicInventory(updated);
+  }
 }
 
 function result(value: unknown) {
@@ -217,4 +289,19 @@ export function registerWriteTools(server: McpServer, writes: DraftWriteService)
   }, async ({ mode, confirmationToken, listingId, imagePath, rank }) => result(mode === "preview"
     ? await writes.previewImage(listingId, imagePath, rank)
     : await writes.confirmImage(listingId, imagePath, rank, confirmationToken ?? "")));
+
+  server.registerTool("etsy_update_draft_inventory", {
+    description: "Preview or confirm complete quantity, SKU, variation, and price inventory for an Etsy draft.",
+    inputSchema: {
+      mode: z.enum(["preview", "confirm"]).default("preview"),
+      confirmationToken: z.string().min(20).optional(),
+      listingId: z.number().int().positive(),
+      products: InventoryInputSchema.shape.products,
+      priceOnProperty: InventoryInputSchema.shape.priceOnProperty.optional(),
+      quantityOnProperty: InventoryInputSchema.shape.quantityOnProperty.optional(),
+      skuOnProperty: InventoryInputSchema.shape.skuOnProperty.optional()
+    }
+  }, async ({ mode, confirmationToken, listingId, ...inventory }) => result(mode === "preview"
+    ? await writes.previewInventory(listingId, inventory)
+    : await writes.confirmInventory(listingId, inventory, confirmationToken ?? "")));
 }
