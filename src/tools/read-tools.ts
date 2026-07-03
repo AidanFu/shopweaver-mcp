@@ -2,6 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import type { CredentialStore } from "../credentials/types.js";
 import type { ListingService } from "../etsy/listings.js";
+import type { OrderService } from "../etsy/orders.js";
 import { ListingStateSchema } from "../etsy/schemas.js";
 
 export async function connectionStatus(store: CredentialStore) {
@@ -19,7 +20,7 @@ function result(value: unknown) {
   return { content: [{ type: "text" as const, text: JSON.stringify(value, null, 2) }], structuredContent };
 }
 
-export function registerReadTools(server: McpServer, store: CredentialStore, listings: ListingService): void {
+export function registerReadTools(server: McpServer, store: CredentialStore, listings: ListingService, orders?: OrderService): void {
   server.registerTool("etsy_connection_status", {
     description: "Report whether ShopWeaver has credentials, authorization, and one connected Etsy shop without revealing secrets.",
     inputSchema: {}
@@ -43,4 +44,14 @@ export function registerReadTools(server: McpServer, store: CredentialStore, lis
     description: "Get operational details for one listing in the connected Etsy shop.",
     inputSchema: { listingId: z.number().int().positive() }
   }, async ({ listingId }) => result(await listings.getListing(listingId)));
+
+  if (orders) server.registerTool("etsy_list_order_summaries", {
+    description: "List minimized order summaries for the connected Etsy shop without buyer contact, address, payment, or message data.",
+    inputSchema: {
+      limit: z.number().int().min(1).max(100).optional(),
+      offset: z.number().int().nonnegative().optional(),
+      minCreated: z.number().int().nonnegative().optional(),
+      maxCreated: z.number().int().nonnegative().optional()
+    }
+  }, async input => result(await orders.listSummaries(input)));
 }

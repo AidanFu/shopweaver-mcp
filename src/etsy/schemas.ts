@@ -78,3 +78,15 @@ export const ListingImageSchema = z.object({
   full_height: z.number().int().positive(),
   url_fullxfull: z.string().url().optional()
 }).strip();
+
+export const ReceiptSchema = z.object({
+  receipt_id: z.number().int().positive(),
+  status: z.string(),
+  created_timestamp: z.number().int().nonnegative(),
+  updated_timestamp: z.number().int().nonnegative(),
+  grandtotal: MoneySchema,
+  transactions: z.array(z.object({
+    title: z.string(),
+    quantity: z.number().int().positive()
+  }).strip())
+}).strip();
