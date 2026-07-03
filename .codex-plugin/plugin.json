@@ -1,0 +1,32 @@
+{
+  "name": "shopweaver-mcp",
+  "version": "0.1.0",
+  "description": "Safely manage one Etsy shop's draft listings from Codex.",
+  "author": {
+    "name": "Aidan Fu",
+    "url": "https://github.com/AidanFu"
+  },
+  "homepage": "https://github.com/AidanFu/shopweaver-mcp",
+  "repository": "https://github.com/AidanFu/shopweaver-mcp",
+  "license": "MIT",
+  "keywords": ["etsy", "seller", "draft-listings", "mcp"],
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "ShopWeaver MCP",
+    "shortDescription": "Safely manage Etsy draft listings",
+    "longDescription": "Read one Etsy shop and create or edit draft listings through preview-first, confirmation-required tools.",
+    "developerName": "Aidan Fu",
+    "category": "Productivity",
+    "capabilities": ["Read", "Write"],
+    "websiteURL": "https://github.com/AidanFu/shopweaver-mcp",
+    "privacyPolicyURL": "https://github.com/AidanFu/shopweaver-mcp/blob/main/PRIVACY.md",
+    "termsOfServiceURL": "https://github.com/AidanFu/shopweaver-mcp/blob/main/TERMS.md",
+    "defaultPrompt": [
+      "Show my Etsy draft listings",
+      "Preview a new Etsy draft listing",
+      "Summarize recent Etsy orders"
+    ],
+    "brandColor": "#315C4C"
+  }
+}

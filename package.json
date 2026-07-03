@@ -1,0 +1,38 @@
+{
+  "name": "shopweaver-mcp",
+  "version": "0.1.0",
+  "description": "Safely manage one Etsy shop's draft listings from Codex.",
+  "type": "module",
+  "bin": {
+    "shopweaver-setup": "dist/setup.js"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx src/index.ts",
+    "setup": "tsx src/setup.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "check:safety": "node scripts/check-forbidden-tools.mjs",
+    "verify": "npm run build && npm test && npm run check:safety"
+  },
+  "keywords": [
+    "etsy",
+    "mcp",
+    "draft-listings"
+  ],
+  "author": "Aidan Fu",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.0",
+    "tsx": "^4.23.0",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.9"
+  }
+}

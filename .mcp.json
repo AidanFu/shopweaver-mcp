@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "shopweaver": {
+      "command": "node",
+      "args": ["dist/index.js"],
+      "cwd": "."
+    }
+  }
+}
