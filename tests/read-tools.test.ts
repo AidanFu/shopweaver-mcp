@@ -27,7 +27,7 @@ describe("read services", () => {
   });
 
   it("lists connected-shop listings with bounded pagination", async () => {
-    const request = vi.fn().mockResolvedValue({ count: 1, results: [{ listing_id: 7, title: "Bowl", state: "draft", quantity: 2, price: { amount: 1250, divisor: 100, currency_code: "USD" } }] });
+    const request = vi.fn().mockResolvedValue({ count: 1, results: [{ shop_id: 42, listing_id: 7, title: "Bowl", state: "draft", quantity: 2, price: { amount: 1250, divisor: 100, currency_code: "USD" } }] });
     const service = new ListingService({ request } as never, await storeWithShop());
     const result = await service.listListings({ state: "draft", limit: 500, offset: 0 });
     expect(result.results[0]).toEqual({ listingId: 7, title: "Bowl", state: "draft", quantity: 2, price: { amount: "12.50", currency: "USD" } });
@@ -44,5 +44,11 @@ describe("read services", () => {
     const inventory = await service.getListingInventory(7);
     expect(inventory.products[0].propertyValues).toHaveLength(3);
     expect(request.mock.calls[0][0]).toContain("max_variations_supported=3");
+  });
+
+  it("rejects a listing outside the connected shop", async () => {
+    const request = vi.fn().mockResolvedValue({ shop_id: 99, listing_id: 7, title: "Other", state: "draft", quantity: 1, price: { amount: 100, divisor: 100, currency_code: "USD" } });
+    const service = new ListingService({ request } as never, await storeWithShop());
+    await expect(service.getListingState(7)).rejects.toMatchObject({ code: "LISTING_NOT_IN_SHOP" });
   });
 });

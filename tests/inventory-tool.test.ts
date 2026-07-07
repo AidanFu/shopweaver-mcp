@@ -39,6 +39,8 @@ describe("draft inventory updates", () => {
     expect(client.request).toHaveBeenCalledOnce();
     expect(client.request.mock.calls[0][0]).toContain("max_variations_supported=3");
     expect(client.request.mock.calls[0][1].method).toBe("PUT");
+    expect(client.request.mock.calls[0][1].headers["content-type"]).toBe("application/json");
+    expect(JSON.parse(client.request.mock.calls[0][1].body)).toMatchObject({ products: expect.any(Array) });
     expect(result.products[0].propertyValues).toHaveLength(3);
   });
 });

@@ -34,6 +34,7 @@ export const ShopSchema = z.object({
 
 export const ListingSchema = z.object({
   listing_id: z.number().int().positive(),
+  shop_id: z.number().int().positive(),
   title: z.string(),
   description: z.string().optional(),
   state: ListingStateSchema,

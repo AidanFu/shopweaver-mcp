@@ -39,6 +39,15 @@ export class ListingService {
     return shop.shopId;
   }
 
+  private async getOwnedListing(listingId: number) {
+    const [shopId, listing] = await Promise.all([
+      this.shopId(),
+      this.client.request(`/application/listings/${listingId}`, {}, ListingSchema)
+    ]);
+    if (listing.shop_id !== shopId) throw new ShopWeaverError("LISTING_NOT_IN_SHOP", "The listing does not belong to the connected Etsy shop.");
+    return listing;
+  }
+
   async getShop() {
     const shopId = await this.shopId();
     const shop = await this.client.request(`/application/shops/${shopId}`, {}, ShopSchema);
@@ -72,7 +81,7 @@ export class ListingService {
   }
 
   async getListing(listingId: number) {
-    const listing = await this.client.request(`/application/listings/${listingId}`, {}, ListingSchema);
+    const listing = await this.getOwnedListing(listingId);
     const inventory = await this.getListingInventory(listingId);
     return {
       listingId: listing.listing_id,
@@ -90,7 +99,7 @@ export class ListingService {
   }
 
   async getListingState(listingId: number): Promise<ListingState> {
-    const listing = await this.client.request(`/application/listings/${listingId}`, {}, ListingSchema);
+    const listing = await this.getOwnedListing(listingId);
     return listing.state;
   }
 

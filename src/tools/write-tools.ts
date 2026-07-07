@@ -40,7 +40,13 @@ const DraftUpdateFields = {
   readinessStateId: z.number().int().positive().optional()
 };
 
-export type DraftCreateInput = z.infer<z.ZodObject<typeof DraftCreateFields>>;
+const DraftCreateSchema = z.object(DraftCreateFields).strict().superRefine((value, context) => {
+  if (value.type === "physical" && value.readinessStateId === undefined) {
+    context.addIssue({ code: "custom", path: ["readinessStateId"], message: "A readiness state is required for physical listings." });
+  }
+});
+
+export type DraftCreateInput = z.input<typeof DraftCreateSchema>;
 export type DraftUpdateInput = z.infer<z.ZodObject<typeof DraftUpdateFields>>;
 
 const InventoryPropertyValueSchema = z.object({
@@ -75,7 +81,7 @@ function encode(fields: Record<string, unknown>): URLSearchParams {
   const body = new URLSearchParams();
   for (const [key, value] of Object.entries(fields)) {
     if (value === undefined) continue;
-    body.set(key, Array.isArray(value) ? JSON.stringify(value) : String(value));
+    body.set(key, Array.isArray(value) ? value.join(",") : String(value));
   }
   return body;
 }
@@ -110,14 +116,14 @@ export class DraftWriteService {
   }
 
   async previewCreate(input: DraftCreateInput) {
-    const changes = z.object(DraftCreateFields).strict().parse(input);
+    const changes = DraftCreateSchema.parse(input);
     const shopId = await this.shopId();
     const confirmation = this.confirmations.issue("create_draft", shopId, changes);
     return { operation: "create_draft" as const, shopId, changes, ...confirmation, warning: "This will create a new Etsy draft. It will not publish the listing." };
   }
 
   async confirmCreate(input: DraftCreateInput, confirmationToken: string) {
-    const changes = z.object(DraftCreateFields).strict().parse(input);
+    const changes = DraftCreateSchema.parse(input);
     const shopId = await this.shopId();
     this.confirmations.consume(confirmationToken, "create_draft", shopId, changes);
     const body = encode({
@@ -169,7 +175,7 @@ export class DraftWriteService {
       materials: changes.materials,
       readiness_state_id: changes.readinessStateId
     });
-    const listing = await this.client.request(`/application/listings/${listingId}`, {
+    const listing = await this.client.request(`/application/shops/${shopId}/listings/${listingId}`, {
       method: "PATCH",
       headers: { "content-type": "application/x-www-form-urlencoded" },
       body
@@ -243,7 +249,7 @@ export class DraftWriteService {
         readiness_state_id: offering.readinessStateId
       }))
     }));
-    const body = encode({
+    const body = JSON.stringify({
       products,
       price_on_property: changes.priceOnProperty,
       quantity_on_property: changes.quantityOnProperty,
@@ -251,7 +257,7 @@ export class DraftWriteService {
     });
     const updated = await this.client.request(`/application/listings/${listingId}/inventory?max_variations_supported=3`, {
       method: "PUT",
-      headers: { "content-type": "application/x-www-form-urlencoded" },
+      headers: { "content-type": "application/json" },
       body
     }, InventorySchema);
     return publicInventory(updated);

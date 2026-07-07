@@ -6,15 +6,20 @@ import type { CredentialKey, CredentialStore, StoredRecords } from "./types.js";
 
 type CommandResult = { code: number; stdout: string };
 
-function runSecurity(args: string[]): Promise<CommandResult> {
+function runSecurity(args: string[], input?: string): Promise<CommandResult> {
   return new Promise((resolve, reject) => {
-    const child = spawn("/usr/bin/security", args, { stdio: ["ignore", "pipe", "pipe"] });
+    const child = spawn("/usr/bin/security", args, { stdio: ["pipe", "pipe", "pipe"] });
     let stdout = "";
+    child.stdin.end(input === undefined ? undefined : `${input}\n`);
     child.stdout.setEncoding("utf8");
     child.stdout.on("data", chunk => { stdout += chunk; });
     child.once("error", error => reject(new ShopWeaverError("KEYCHAIN_UNAVAILABLE", "macOS Keychain is unavailable.", error)));
     child.once("close", code => resolve({ code: code ?? 1, stdout }));
   });
+}
+
+export function keychainWriteArgs(key: CredentialKey): string[] {
+  return ["add-generic-password", "-U", "-s", KEYCHAIN_SERVICE, "-a", key, "-w"];
 }
 
 export class KeychainCredentialStore implements CredentialStore {
@@ -40,7 +45,7 @@ export class KeychainCredentialStore implements CredentialStore {
   async set<K extends CredentialKey>(key: K, value: StoredRecords[K]): Promise<void> {
     const serialized = JSON.stringify(value);
     registerSecret(serialized);
-    const result = await runSecurity(["add-generic-password", "-U", "-s", KEYCHAIN_SERVICE, "-a", key, "-w", serialized]);
+    const result = await runSecurity(keychainWriteArgs(key), serialized);
     if (result.code !== 0) throw new ShopWeaverError("KEYCHAIN_WRITE_FAILED", "Could not store ShopWeaver credentials in macOS Keychain.");
   }
 
