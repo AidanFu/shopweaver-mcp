@@ -3,11 +3,11 @@ import { MemoryCredentialStore } from "../src/credentials/memory.js";
 import { GoogleOAuth } from "../src/google/oauth.js";
 
 describe("GoogleOAuth", () => {
-  it("builds an authorization URL with Drive file scope", () => {
+  it("builds an authorization URL with Drive scope", () => {
     const oauth = new GoogleOAuth(new MemoryCredentialStore(), vi.fn());
     const authorization = oauth.createAuthorization("client-id", "http://localhost:3004/google/redirect");
     expect(authorization.url.origin).toBe("https://accounts.google.com");
-    expect(authorization.url.searchParams.get("scope")).toContain("https://www.googleapis.com/auth/drive.file");
+    expect(authorization.url.searchParams.get("scope")).toBe("https://www.googleapis.com/auth/drive");
     expect(authorization.url.searchParams.get("access_type")).toBe("offline");
     expect(authorization.state.length).toBeGreaterThan(20);
   });
@@ -19,7 +19,7 @@ describe("GoogleOAuth", () => {
       refresh_token: "google-refresh",
       token_type: "Bearer",
       expires_in: 3600,
-      scope: "https://www.googleapis.com/auth/drive.file"
+      scope: "https://www.googleapis.com/auth/drive"
     }), { status: 200 }));
     const oauth = new GoogleOAuth(store, fetchMock, () => 1_000);
     await oauth.exchangeCode({

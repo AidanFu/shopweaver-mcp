@@ -5,5 +5,5 @@ export const ETSY_API_BASE_URL = "https://api.etsy.com/v3";
 export const GOOGLE_OAUTH_BASE_URL = "https://accounts.google.com/o/oauth2/v2/auth";
 export const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
 export const GOOGLE_API_BASE_URL = "https://www.googleapis.com";
-export const GOOGLE_SCOPES = ["https://www.googleapis.com/auth/drive.file"] as const;
+export const GOOGLE_SCOPES = ["https://www.googleapis.com/auth/drive"] as const;
 export const DEFAULT_GOOGLE_REDIRECT_URI = "http://localhost:3004/google/redirect";

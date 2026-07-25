@@ -8,7 +8,7 @@ import { LocalConfigStore } from "../src/local-config.js";
 async function storeWithGoogle() {
   const store = new MemoryCredentialStore();
   await store.set("googleApp", { clientId: "client", clientSecret: "secret", redirectUri: "http://localhost/google" });
-  await store.set("google", { accessToken: "access", refreshToken: "refresh", expiresAt: Date.now() + 120_000, scopes: ["https://www.googleapis.com/auth/drive.file"] });
+  await store.set("google", { accessToken: "access", refreshToken: "refresh", expiresAt: Date.now() + 120_000, scopes: ["https://www.googleapis.com/auth/drive"] });
   return store;
 }
 
