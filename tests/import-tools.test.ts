@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import * as XLSX from "xlsx";
 import { DriveImportService } from "../src/import/drive-import.js";
+import { previewDraftInputFromEnrichedRow } from "../src/tools/import-tools.js";
 
 function workbookBytes() {
   const workbook = XLSX.utils.book_new();
@@ -39,5 +40,28 @@ describe("DriveImportService", () => {
       validationNotes: "Missing English title"
     }])).resolves.toMatchObject({ id: "enriched", name: "Product Information - Etsy Draft.xlsx" });
     expect(drive.uploadFile).toHaveBeenCalledOnce();
+  });
+});
+
+describe("previewDraftInputFromEnrichedRow", () => {
+  it("maps an enriched physical row to Etsy draft input", () => {
+    const preview = previewDraftInputFromEnrichedRow({
+      productName: "产品一",
+      englishTitle: "Handmade Wooden Bowl",
+      englishDescription: "A handmade wooden bowl.",
+      tags: "wood bowl, handmade bowl",
+      materials: "wood",
+      quantity: 1,
+      price: "12.00",
+      taxonomyId: 123,
+      whoMade: "i_did",
+      whenMade: "2020_2026",
+      type: "physical",
+      readinessStateId: 456,
+      imageFolder: "产品一",
+      imageCount: 2
+    });
+    expect(preview.validationErrors).toEqual([]);
+    expect(preview.draftInput).toMatchObject({ title: "Handmade Wooden Bowl", type: "physical", taxonomyId: 123 });
   });
 });
