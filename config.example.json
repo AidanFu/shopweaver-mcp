@@ -1,0 +1,10 @@
+{
+  "googleDrive": {
+    "allowedFolders": [
+      {
+        "id": "your-google-drive-folder-id",
+        "name": "HandMade"
+      }
+    ]
+  }
+}
