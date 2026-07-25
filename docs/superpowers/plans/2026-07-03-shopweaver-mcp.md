@@ -292,7 +292,7 @@ Run:
 ```bash
 npm run build
 npm test -- tests/server.test.ts
-python3 /Users/lf595r/.codex/skills/.system/plugin-creator/scripts/validate_plugin.py .
+python3 "$CODEX_HOME/skills/.system/plugin-creator/scripts/validate_plugin.py" .
 ```
 
 Expected: build passes, one test passes, and the plugin validator reports success.
@@ -1006,7 +1006,7 @@ Run:
 
 ```bash
 npm run verify
-python3 /Users/lf595r/.codex/skills/.system/plugin-creator/scripts/validate_plugin.py .
+python3 "$CODEX_HOME/skills/.system/plugin-creator/scripts/validate_plugin.py" .
 rg -n "Etsy.*trademark|not endorsed or certified" README.md TERMS.md
 rg -n "publish|delete|advert|refund|cancel|shipment|message|email" README.md skills/shopweaver/SKILL.md
 ```

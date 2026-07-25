@@ -34,15 +34,6 @@ npm ci
 npm run verify
 ```
 
-For the current development branch in this workspace:
-
-```bash
-cd /Users/lf595r/shopweaver-mcp/.worktrees/shopweaver-implementation
-npm ci
-npm run build
-npm run verify
-```
-
 The repository root is the Codex plugin root. `.codex-plugin/plugin.json` registers the skill and `.mcp.json` runs `node dist/index.js`. Install the released plugin from its configured Codex marketplace after publication. For source development, configure a local marketplace entry pointing to this repository, then run `codex plugin add shopweaver-mcp@<marketplace-name>`.
 
 ## Create and configure the Etsy app
@@ -67,7 +58,7 @@ Do not paste either value into Codex chat, Git, shell command arguments, `.env` 
 Run setup from the implementation checkout:
 
 ```bash
-cd /Users/lf595r/shopweaver-mcp/.worktrees/shopweaver-implementation
+cd shopweaver-mcp
 npm run setup
 ```
 
@@ -171,7 +162,7 @@ Physical drafts may require Etsy shop-specific readiness, processing, taxonomy, 
 You are in the design/docs workspace. Run setup from the implementation checkout:
 
 ```bash
-cd /Users/lf595r/shopweaver-mcp/.worktrees/shopweaver-implementation
+cd path/to/shopweaver-mcp
 npm run setup
 ```
 
