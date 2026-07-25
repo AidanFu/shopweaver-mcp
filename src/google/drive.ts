@@ -1,0 +1,53 @@
+import { z } from "zod";
+import { ShopWeaverError } from "../errors.js";
+import type { LocalConfigStore } from "../local-config.js";
+import type { GoogleClient } from "./client.js";
+import { parseDriveFolderId } from "./folder-id.js";
+
+const FileSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  mimeType: z.string()
+}).strip();
+
+const FileListSchema = z.object({
+  files: z.array(FileSchema)
+}).strip();
+
+export type DriveFile = z.infer<typeof FileSchema>;
+
+export class GoogleDriveService {
+  constructor(private readonly api: GoogleClient, private readonly config: LocalConfigStore) {}
+
+  async addAllowedFolder(folderUrlOrId: string) {
+    const id = parseDriveFolderId(folderUrlOrId);
+    const file = FileSchema.parse(await this.api.request(`/drive/v3/files/${encodeURIComponent(id)}?fields=id,name,mimeType`));
+    if (file.mimeType !== "application/vnd.google-apps.folder") throw new ShopWeaverError("DRIVE_FOLDER_INVALID", "Google Drive ID must point to a folder.");
+    return this.config.addAllowedDriveFolder({ id: file.id, name: file.name });
+  }
+
+  async listAllowedFolders() {
+    return this.config.listAllowedDriveFolders();
+  }
+
+  async removeAllowedFolder(folderId: string) {
+    await this.config.removeAllowedDriveFolder(folderId);
+  }
+
+  async listFolderChildren(folderId: string): Promise<DriveFile[]> {
+    if (!await this.config.isDriveFolderAllowed(folderId)) throw new ShopWeaverError("DRIVE_FOLDER_NOT_ALLOWED", "Google Drive folder is not in the allowed folder list.");
+    return this.listChildrenByParentId(folderId);
+  }
+
+  async listChildrenByParentId(parentId: string): Promise<DriveFile[]> {
+    const query = encodeURIComponent(`'${parentId}' in parents and trashed=false`);
+    const page = FileListSchema.parse(await this.api.request(`/drive/v3/files?q=${query}&fields=files(id,name,mimeType)`));
+    return page.files;
+  }
+
+  async downloadFile(fileId: string): Promise<Uint8Array> {
+    const data = await this.api.request(`/drive/v3/files/${encodeURIComponent(fileId)}?alt=media`);
+    if (!(data instanceof ArrayBuffer)) throw new ShopWeaverError("DRIVE_DOWNLOAD_FAILED", "Google Drive file download failed.");
+    return new Uint8Array(data);
+  }
+}
