@@ -88,6 +88,47 @@ Credentials and OAuth tokens are stored in macOS Keychain under `com.aidanfu.sho
 
 The requested scopes are `shops_r listings_r listings_w transactions_r`.
 
+## Connect Google Drive
+
+Create a Google OAuth client with this redirect URI:
+
+```text
+http://localhost:3004/google/redirect
+```
+
+Run:
+
+```bash
+npm run google:setup
+```
+
+Google tokens are stored in macOS Keychain. Allowed folder metadata is stored in ignored local config. Use `config.example.json` as the documented shape and keep real folder IDs out of Git.
+
+## Google Drive folder layout
+
+```text
+HandMade/
+├── Product Information.xlsx
+└── Images/
+    └── Product Name/
+        ├── 01-main.jpg
+        ├── 02-detail.jpg
+        └── ...
+```
+
+`Product Information.xlsx` uses column A for product names and column C for product description rows. A non-empty column A starts a new product block. The product name must exactly match its image folder name.
+
+## Drive import workflow
+
+1. Add an allowed folder by URL or ID with `google_drive_add_allowed_folder`.
+2. Review configured folders with `google_drive_list_allowed_folders`.
+3. Import folder records with `shopweaver_import_drive_folder`.
+4. Review matched products, image counts, unmatched products, and unused image folders.
+5. Use Codex to translate and enrich rows.
+6. Confirm writing `Product Information - Etsy Draft.xlsx` with `shopweaver_write_enriched_workbook`.
+7. Preview one Etsy draft with `shopweaver_preview_etsy_draft_from_enriched_row`.
+8. Confirm Etsy draft creation and image uploads separately.
+
 ## macOS Keychain prompts
 
 macOS may show:
@@ -129,6 +170,13 @@ The Codex plugin manifest uses `.mcp.json` to run the built server with stdio tr
 - `etsy_update_draft_listing`
 - `etsy_upload_draft_image`
 - `etsy_update_draft_inventory`
+- `google_drive_connection_status`
+- `google_drive_add_allowed_folder`
+- `google_drive_list_allowed_folders`
+- `google_drive_remove_allowed_folder`
+- `shopweaver_import_drive_folder`
+- `shopweaver_write_enriched_workbook`
+- `shopweaver_preview_etsy_draft_from_enriched_row`
 
 For every write, run preview mode first, inspect the complete normalized payload, then explicitly confirm using the unchanged payload and returned confirmation token.
 
