@@ -5,6 +5,7 @@ import { MemoryCredentialStore } from "../src/credentials/memory.js";
 import { ListingService } from "../src/etsy/listings.js";
 import { OrderService } from "../src/etsy/orders.js";
 import { createServer } from "../src/server.js";
+import { GoogleFolderToolService } from "../src/tools/google-tools.js";
 import { DraftWriteService } from "../src/tools/write-tools.js";
 import { ConfirmationStore } from "../src/writes/confirmations.js";
 
@@ -16,7 +17,8 @@ describe("MCP integration", () => {
     const listings = new ListingService(clientApi, store);
     const orders = new OrderService(clientApi, store);
     const writes = new DraftWriteService(clientApi, listings, store, new ConfirmationStore());
-    const server = createServer({ store, listings, orders, writes });
+    const googleFolders = new GoogleFolderToolService({} as never);
+    const server = createServer({ store, listings, orders, writes, googleFolders });
     const client = new Client({ name: "test", version: "1" });
     const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
     await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
@@ -30,7 +32,11 @@ describe("MCP integration", () => {
       "etsy_list_order_summaries",
       "etsy_update_draft_inventory",
       "etsy_update_draft_listing",
-      "etsy_upload_draft_image"
+      "etsy_upload_draft_image",
+      "google_drive_add_allowed_folder",
+      "google_drive_connection_status",
+      "google_drive_list_allowed_folders",
+      "google_drive_remove_allowed_folder"
     ]);
     await Promise.all([client.close(), server.close()]);
   });
