@@ -59,8 +59,9 @@ export class GoogleDriveService {
 
   async uploadFile(parentFolderId: string, name: string, bytes: Uint8Array, mimeType: string) {
     if (!await this.config.isDriveFolderAllowed(parentFolderId)) throw new ShopWeaverError("DRIVE_FOLDER_NOT_ALLOWED", "Google Drive folder is not in the allowed folder list.");
+    const existing = (await this.listChildrenByParentId(parentFolderId)).find(file => file.name === name);
     const boundary = `shopweaver-${crypto.randomUUID()}`;
-    const metadata = JSON.stringify({ name, parents: [parentFolderId] });
+    const metadata = JSON.stringify(existing ? { name } : { name, parents: [parentFolderId] });
     const fileBytes = new ArrayBuffer(bytes.byteLength);
     new Uint8Array(fileBytes).set(bytes);
     const body = new Blob([
@@ -69,8 +70,8 @@ export class GoogleDriveService {
       fileBytes,
       `\r\n--${boundary}--`
     ]);
-    return this.api.request(`/upload/drive/v3/files?uploadType=multipart&fields=id,name`, {
-      method: "POST",
+    return this.api.request(existing ? `/upload/drive/v3/files/${encodeURIComponent(existing.id)}?uploadType=multipart&fields=id,name` : `/upload/drive/v3/files?uploadType=multipart&fields=id,name`, {
+      method: existing ? "PATCH" : "POST",
       headers: { "content-type": `multipart/related; boundary=${boundary}` },
       body
     });

@@ -60,4 +60,16 @@ describe("GoogleDriveService", () => {
     await expect(service.exportFile("sheet123", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")).resolves.toEqual(new Uint8Array([1, 2, 3]));
     expect(api.request).toHaveBeenCalledWith("/drive/v3/files/sheet123/export?mimeType=application%2Fvnd.openxmlformats-officedocument.spreadsheetml.sheet");
   });
+
+  it("updates an existing file with the same name instead of creating a duplicate", async () => {
+    const api = { request: vi.fn()
+      .mockResolvedValueOnce({ files: [{ id: "existing", name: "Product Information - Etsy Draft.xlsx", mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }] })
+      .mockResolvedValueOnce({ id: "existing", name: "Product Information - Etsy Draft.xlsx" }) };
+    const config = new LocalConfigStore(":memory:");
+    config.isDriveFolderAllowed = vi.fn().mockResolvedValue(true);
+    const service = new GoogleDriveService(api as never, config);
+    await expect(service.uploadFile("folder", "Product Information - Etsy Draft.xlsx", new Uint8Array([1]), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")).resolves.toEqual({ id: "existing", name: "Product Information - Etsy Draft.xlsx" });
+    expect(api.request.mock.calls[1][0]).toBe("/upload/drive/v3/files/existing?uploadType=multipart&fields=id,name");
+    expect(api.request.mock.calls[1][1].method).toBe("PATCH");
+  });
 });
