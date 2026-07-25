@@ -26,6 +26,12 @@ describe("read services", () => {
     expect(request.mock.calls[0][0]).toBe("/application/shops/42");
   });
 
+  it("maps Etsy's live shop active listing count field", async () => {
+    const request = vi.fn().mockResolvedValue({ shop_id: 42, shop_name: "Studio", title: null, currency_code: "USD", listing_active_count: 0 });
+    const service = new ListingService({ request } as never, await storeWithShop());
+    await expect(service.getShop()).resolves.toMatchObject({ activeListingCount: 0 });
+  });
+
   it("lists connected-shop listings with bounded pagination", async () => {
     const request = vi.fn().mockResolvedValue({ count: 1, results: [{ shop_id: 42, listing_id: 7, title: "Bowl", state: "draft", quantity: 2, price: { amount: 1250, divisor: 100, currency_code: "USD" } }] });
     const service = new ListingService({ request } as never, await storeWithShop());

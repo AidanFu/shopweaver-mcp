@@ -60,6 +60,16 @@ describe("OAuth", () => {
     expect(fetchMock.mock.calls[0][1].body.toString()).toContain("code_verifier=verifier");
   });
 
+  it("discovers a single shop object response", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ shop_id: 42 }), { status: 200 }));
+    const oauth = new EtsyOAuth(new MemoryCredentialStore(), fetchMock);
+    await expect(oauth.discoverSingleShop({
+      keystring: "key",
+      sharedSecret: "secret",
+      redirectUri: "http://localhost:3003/oauth/redirect"
+    }, "123.access", 123)).resolves.toBe(42);
+  });
+
   it("rejects a callback whose state does not match", async () => {
     const port = await openPort();
     const callback = waitForOAuthCallback(new URL(`http://127.0.0.1:${port}/oauth/redirect`), "expected", 1_000);

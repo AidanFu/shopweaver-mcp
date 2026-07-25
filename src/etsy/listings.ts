@@ -56,7 +56,7 @@ export class ListingService {
       name: shop.shop_name,
       title: shop.title ?? null,
       currency: shop.currency_code,
-      activeListingCount: shop.active_listing_count
+      activeListingCount: shop.active_listing_count ?? shop.listing_active_count ?? 0
     };
   }
 

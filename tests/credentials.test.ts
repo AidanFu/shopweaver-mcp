@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { MemoryCredentialStore } from "../src/credentials/memory.js";
-import { keychainWriteArgs } from "../src/credentials/keychain.js";
+import { keychainWriteInvocation } from "../src/credentials/keychain.js";
 
 describe("MemoryCredentialStore", () => {
   it("round-trips records through serialization", async () => {
@@ -27,10 +27,11 @@ describe("MemoryCredentialStore", () => {
 });
 
 describe("Keychain command safety", () => {
-  it("prompts for secret input instead of placing it in process arguments", () => {
-    const args = keychainWriteArgs("oauth");
-    expect(args.at(-1)).toBe("-w");
+  it("writes secrets through stdin without using the security prompt mode", () => {
+    const { command, args, input } = keychainWriteInvocation("oauth", "serialized-secret");
+    expect(command).toBe("python3");
+    expect(args).not.toContain("-w");
     expect(args.join(" ")).not.toContain("serialized-secret");
-    expect(args).not.toContain("serialized-secret");
+    expect(input).toContain("serialized-secret");
   });
 });

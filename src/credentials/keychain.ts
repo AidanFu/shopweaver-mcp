@@ -4,11 +4,12 @@ import { ShopWeaverError } from "../errors.js";
 import { registerSecret } from "../redaction.js";
 import type { CredentialKey, CredentialStore, StoredRecords } from "./types.js";
 
+type CommandInvocation = { command: string; args: string[]; input?: string };
 type CommandResult = { code: number; stdout: string };
 
-function runSecurity(args: string[], input?: string): Promise<CommandResult> {
+function runCommand({ command, args, input }: CommandInvocation): Promise<CommandResult> {
   return new Promise((resolve, reject) => {
-    const child = spawn("/usr/bin/security", args, { stdio: ["pipe", "pipe", "pipe"] });
+    const child = spawn(command, args, { stdio: ["pipe", "pipe", "pipe"] });
     let stdout = "";
     child.stdin.end(input === undefined ? undefined : `${input}\n`);
     child.stdout.setEncoding("utf8");
@@ -18,8 +19,40 @@ function runSecurity(args: string[], input?: string): Promise<CommandResult> {
   });
 }
 
-export function keychainWriteArgs(key: CredentialKey): string[] {
-  return ["add-generic-password", "-U", "-s", KEYCHAIN_SERVICE, "-a", key, "-w"];
+function runSecurity(args: string[]): Promise<CommandResult> {
+  return runCommand({ command: "/usr/bin/security", args });
+}
+
+const KEYCHAIN_WRITE_SCRIPT = `
+import ctypes
+import ctypes.util
+import json
+import sys
+
+payload = json.loads(sys.stdin.read())
+service = payload["service"].encode()
+account = payload["account"].encode()
+password = payload["password"].encode()
+security = ctypes.cdll.LoadLibrary(ctypes.util.find_library("Security"))
+core_foundation = ctypes.cdll.LoadLibrary(ctypes.util.find_library("CoreFoundation"))
+item = ctypes.c_void_p()
+status = security.SecKeychainFindGenericPassword(None, len(service), service, len(account), account, None, None, ctypes.byref(item))
+if status == 0:
+    result = security.SecKeychainItemModifyAttributesAndData(item, None, len(password), password)
+    core_foundation.CFRelease(item)
+elif status == -25300:
+    result = security.SecKeychainAddGenericPassword(None, len(service), service, len(account), account, len(password), password, None)
+else:
+    result = status
+sys.exit(0 if result == 0 else 1)
+`.trim();
+
+export function keychainWriteInvocation(key: CredentialKey, password: string): CommandInvocation {
+  return {
+    command: "python3",
+    args: ["-c", KEYCHAIN_WRITE_SCRIPT],
+    input: JSON.stringify({ service: KEYCHAIN_SERVICE, account: key, password })
+  };
 }
 
 export class KeychainCredentialStore implements CredentialStore {
@@ -45,7 +78,7 @@ export class KeychainCredentialStore implements CredentialStore {
   async set<K extends CredentialKey>(key: K, value: StoredRecords[K]): Promise<void> {
     const serialized = JSON.stringify(value);
     registerSecret(serialized);
-    const result = await runSecurity(keychainWriteArgs(key), serialized);
+    const result = await runCommand(keychainWriteInvocation(key, serialized));
     if (result.code !== 0) throw new ShopWeaverError("KEYCHAIN_WRITE_FAILED", "Could not store ShopWeaver credentials in macOS Keychain.");
   }
 

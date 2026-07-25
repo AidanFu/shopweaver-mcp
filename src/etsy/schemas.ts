@@ -29,7 +29,8 @@ export const ShopSchema = z.object({
   shop_name: z.string(),
   title: z.string().nullable().optional(),
   currency_code: z.string().length(3),
-  active_listing_count: z.number().int().nonnegative()
+  active_listing_count: z.number().int().nonnegative().optional(),
+  listing_active_count: z.number().int().nonnegative().optional()
 }).strip();
 
 export const ListingSchema = z.object({

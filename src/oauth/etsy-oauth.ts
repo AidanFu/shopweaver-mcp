@@ -14,7 +14,8 @@ const TokenSchema = z.object({
   expires_in: z.number().int().positive()
 }).strip();
 
-const ShopsSchema = z.object({ results: z.array(z.object({ shop_id: z.number().int().positive() }).strip()) }).strip();
+const ShopIdSchema = z.object({ shop_id: z.number().int().positive() }).strip();
+const ShopsSchema = z.union([z.object({ results: z.array(ShopIdSchema) }).strip(), ShopIdSchema]);
 
 export class EtsyOAuth {
   constructor(
@@ -89,7 +90,8 @@ export class EtsyOAuth {
       headers: { "x-api-key": `${app.keystring}:${app.sharedSecret}`, authorization: `Bearer ${accessToken}` }
     });
     if (!response.ok) throw new ShopWeaverError("SHOP_LOOKUP_FAILED", "Could not find the Etsy shop for this account.");
-    const shops = ShopsSchema.parse(await response.json()).results;
+    const parsed = ShopsSchema.parse(await response.json());
+    const shops = "results" in parsed ? parsed.results : [parsed];
     if (shops.length !== 1) throw new ShopWeaverError("ONE_SHOP_REQUIRED", "ShopWeaver requires an Etsy account with exactly one shop.");
     return shops[0].shop_id;
   }
