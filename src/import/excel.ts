@@ -29,3 +29,74 @@ export function parseProductInformationWorkbook(bytes: Uint8Array): RawProductRe
   if (current) products.push({ productName: current.productName, rawChineseDescription: current.descriptions.join("\n"), rowStart: current.rowStart, rowEnd: current.rowEnd });
   return products;
 }
+
+export interface EnrichedWorkbookRow {
+  productName: string;
+  rawChineseDescription?: string;
+  englishTitle?: string;
+  englishDescription?: string;
+  shortSummary?: string;
+  tags?: string;
+  materials?: string;
+  quantity?: number;
+  price?: string;
+  taxonomyId?: number;
+  taxonomyPath?: string;
+  whoMade?: string;
+  whenMade?: string;
+  type?: string;
+  readinessStateId?: number;
+  imageFolder?: string;
+  imageCount?: number;
+  validationStatus?: string;
+  validationNotes?: string;
+}
+
+const ENRICHED_HEADERS = [
+  "Product Name",
+  "Raw Chinese Description",
+  "English Title",
+  "English Description",
+  "Short Summary",
+  "Tags",
+  "Materials",
+  "Quantity",
+  "Price",
+  "Taxonomy ID",
+  "Taxonomy Path",
+  "Who Made",
+  "When Made",
+  "Type",
+  "Readiness State ID",
+  "Image Folder",
+  "Image Count",
+  "Validation Status",
+  "Validation Notes"
+];
+
+export function writeEnrichedWorkbook(rows: EnrichedWorkbookRow[]): Uint8Array {
+  const workbook = XLSX.utils.book_new();
+  const values = rows.map(row => [
+    row.productName,
+    row.rawChineseDescription ?? "",
+    row.englishTitle ?? "",
+    row.englishDescription ?? "",
+    row.shortSummary ?? "",
+    row.tags ?? "",
+    row.materials ?? "",
+    row.quantity ?? "",
+    row.price ?? "",
+    row.taxonomyId ?? "",
+    row.taxonomyPath ?? "",
+    row.whoMade ?? "",
+    row.whenMade ?? "",
+    row.type ?? "",
+    row.readinessStateId ?? "",
+    row.imageFolder ?? "",
+    row.imageCount ?? "",
+    row.validationStatus ?? "",
+    row.validationNotes ?? ""
+  ]);
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([ENRICHED_HEADERS, ...values]), "Etsy Drafts");
+  return new Uint8Array(XLSX.write(workbook, { type: "array", bookType: "xlsx" }));
+}
