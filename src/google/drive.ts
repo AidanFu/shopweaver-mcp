@@ -51,6 +51,12 @@ export class GoogleDriveService {
     return new Uint8Array(data);
   }
 
+  async exportFile(fileId: string, mimeType: string): Promise<Uint8Array> {
+    const data = await this.api.request(`/drive/v3/files/${encodeURIComponent(fileId)}/export?mimeType=${encodeURIComponent(mimeType)}`);
+    if (!(data instanceof ArrayBuffer)) throw new ShopWeaverError("DRIVE_DOWNLOAD_FAILED", "Google Drive file download failed.");
+    return new Uint8Array(data);
+  }
+
   async uploadFile(parentFolderId: string, name: string, bytes: Uint8Array, mimeType: string) {
     if (!await this.config.isDriveFolderAllowed(parentFolderId)) throw new ShopWeaverError("DRIVE_FOLDER_NOT_ALLOWED", "Google Drive folder is not in the allowed folder list.");
     const boundary = `shopweaver-${crypto.randomUUID()}`;

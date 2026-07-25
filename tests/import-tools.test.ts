@@ -26,6 +26,25 @@ describe("DriveImportService", () => {
     expect(result.products[0]).toMatchObject({ productName: "产品一", imageCount: 1, mainImageName: "01-main.jpg" });
   });
 
+  it("imports Google Sheets product information by exporting it as xlsx", async () => {
+    const drive = {
+      listFolderChildren: vi.fn().mockResolvedValue([
+        { id: "sheet", name: "Product Information", mimeType: "application/vnd.google-apps.spreadsheet" },
+        { id: "images", name: "Images", mimeType: "application/vnd.google-apps.folder" }
+      ]),
+      listChildrenByParentId: vi.fn()
+        .mockResolvedValueOnce([{ id: "p1", name: "产品一", mimeType: "application/vnd.google-apps.folder" }])
+        .mockResolvedValueOnce([{ id: "img1", name: "01-main.jpg", mimeType: "image/jpeg" }]),
+      downloadFile: vi.fn(),
+      exportFile: vi.fn().mockResolvedValue(workbookBytes())
+    };
+    const service = new DriveImportService(drive as never);
+    const result = await service.importFolder("folder");
+    expect(result.products[0]).toMatchObject({ productName: "产品一", imageCount: 1 });
+    expect(drive.exportFile).toHaveBeenCalledWith("sheet", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    expect(drive.downloadFile).not.toHaveBeenCalled();
+  });
+
   it("writes enriched workbook bytes back to Drive", async () => {
     const drive = {
       uploadFile: vi.fn().mockResolvedValue({ id: "enriched", name: "Product Information - Etsy Draft.xlsx" })

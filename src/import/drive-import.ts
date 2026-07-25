@@ -4,17 +4,20 @@ import { parseProductInformationWorkbook, writeEnrichedWorkbook, type EnrichedWo
 import { matchProductsToImages } from "./matcher.js";
 
 const FOLDER_TYPE = "application/vnd.google-apps.folder";
+const GOOGLE_SHEET_TYPE = "application/vnd.google-apps.spreadsheet";
+const XLSX_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
 export class DriveImportService {
   constructor(private readonly drive: GoogleDriveService) {}
 
   async importFolder(folderId: string) {
     const rootChildren = await this.drive.listFolderChildren(folderId);
-    const workbook = rootChildren.find(file => file.name === "Product Information.xlsx");
+    const workbook = rootChildren.find(file => file.name === "Product Information.xlsx" || file.name === "Product Information");
     const imagesFolder = rootChildren.find(file => file.name === "Images" && file.mimeType === FOLDER_TYPE);
-    if (!workbook) throw new ShopWeaverError("DRIVE_WORKBOOK_MISSING", "Allowed Drive folder must contain Product Information.xlsx.");
+    if (!workbook) throw new ShopWeaverError("DRIVE_WORKBOOK_MISSING", "Allowed Drive folder must contain Product Information.xlsx or a Google Sheet named Product Information.");
     if (!imagesFolder) throw new ShopWeaverError("DRIVE_IMAGES_FOLDER_MISSING", "Allowed Drive folder must contain Images folder.");
-    const rawProducts = parseProductInformationWorkbook(await this.drive.downloadFile(workbook.id));
+    const workbookBytes = workbook.mimeType === GOOGLE_SHEET_TYPE ? await this.drive.exportFile(workbook.id, XLSX_TYPE) : await this.drive.downloadFile(workbook.id);
+    const rawProducts = parseProductInformationWorkbook(workbookBytes);
     const imageFolders = await this.drive.listChildrenByParentId(imagesFolder.id);
     const imageFilesByFolderId = new Map();
     for (const folder of imageFolders.filter(file => file.mimeType === FOLDER_TYPE)) {

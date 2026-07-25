@@ -52,4 +52,12 @@ describe("GoogleDriveService", () => {
     await expect(service.listFolderChildren("folder123")).rejects.toMatchObject({ code: "DRIVE_FOLDER_NOT_ALLOWED" });
     expect(api.request).not.toHaveBeenCalled();
   });
+
+  it("exports Google Workspace files as requested MIME types", async () => {
+    const api = { request: vi.fn().mockResolvedValue(new Uint8Array([1, 2, 3]).buffer) };
+    const config = new LocalConfigStore(":memory:");
+    const service = new GoogleDriveService(api as never, config);
+    await expect(service.exportFile("sheet123", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")).resolves.toEqual(new Uint8Array([1, 2, 3]));
+    expect(api.request).toHaveBeenCalledWith("/drive/v3/files/sheet123/export?mimeType=application%2Fvnd.openxmlformats-officedocument.spreadsheetml.sheet");
+  });
 });
