@@ -14,7 +14,7 @@ export function parseProductInformationWorkbook(bytes: Uint8Array): RawProductRe
   const rows = XLSX.utils.sheet_to_json<Array<string>>(workbook.Sheets[firstSheetName], { header: 1, blankrows: false });
   const products: RawProductRecord[] = [];
   let current: { productName: string; descriptions: string[]; rowStart: number; rowEnd: number } | null = null;
-  rows.forEach((row, index) => {
+  for (const [index, row] of rows.entries()) {
     const productName = String(row[0] ?? "").trim();
     const description = String(row[2] ?? "").trim();
     if (productName) {
@@ -25,8 +25,9 @@ export function parseProductInformationWorkbook(bytes: Uint8Array): RawProductRe
       current.descriptions.push(description);
       current.rowEnd = index + 1;
     }
-  });
-  if (current) products.push({ productName: current.productName, rawChineseDescription: current.descriptions.join("\n"), rowStart: current.rowStart, rowEnd: current.rowEnd });
+  }
+  const finalProduct = current;
+  if (finalProduct) products.push({ productName: finalProduct.productName, rawChineseDescription: finalProduct.descriptions.join("\n"), rowStart: finalProduct.rowStart, rowEnd: finalProduct.rowEnd });
   return products;
 }
 

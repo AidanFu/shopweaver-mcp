@@ -55,10 +55,12 @@ export class GoogleDriveService {
     if (!await this.config.isDriveFolderAllowed(parentFolderId)) throw new ShopWeaverError("DRIVE_FOLDER_NOT_ALLOWED", "Google Drive folder is not in the allowed folder list.");
     const boundary = `shopweaver-${crypto.randomUUID()}`;
     const metadata = JSON.stringify({ name, parents: [parentFolderId] });
+    const fileBytes = new ArrayBuffer(bytes.byteLength);
+    new Uint8Array(fileBytes).set(bytes);
     const body = new Blob([
       `--${boundary}\r\ncontent-type: application/json; charset=UTF-8\r\n\r\n${metadata}\r\n`,
       `--${boundary}\r\ncontent-type: ${mimeType}\r\n\r\n`,
-      bytes,
+      fileBytes,
       `\r\n--${boundary}--`
     ]);
     return this.api.request(`/upload/drive/v3/files?uploadType=multipart&fields=id,name`, {
