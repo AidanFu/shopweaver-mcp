@@ -61,7 +61,7 @@ export const OfferingSchema = z.object({
   quantity: z.number().int().nonnegative(),
   is_enabled: z.boolean(),
   price: MoneySchema.optional(),
-  readiness_state_id: z.number().int().positive().optional()
+  readiness_state_id: z.number().int().positive().nullable().optional()
 }).strip();
 
 export const InventorySchema = z.object({

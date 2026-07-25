@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { MemoryCredentialStore } from "../src/credentials/memory.js";
 import { ListingService } from "../src/etsy/listings.js";
+import { InventorySchema } from "../src/etsy/schemas.js";
 import { connectionStatus } from "../src/tools/read-tools.js";
 
 async function storeWithShop() {
@@ -50,6 +51,11 @@ describe("read services", () => {
     const inventory = await service.getListingInventory(7);
     expect(inventory.products[0].propertyValues).toHaveLength(3);
     expect(request.mock.calls[0][0]).toContain("max_variations_supported=3");
+  });
+
+  it("accepts null readiness state in listing inventory", async () => {
+    const inventory = InventorySchema.parse({ products: [{ product_id: 1, sku: "ABC", property_values: [], offerings: [{ quantity: 1, is_enabled: true, readiness_state_id: null }] }] });
+    expect(inventory.products[0].offerings[0].readiness_state_id).toBeNull();
   });
 
   it("rejects a listing outside the connected shop", async () => {
