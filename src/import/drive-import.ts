@@ -1,6 +1,6 @@
 import { ShopWeaverError } from "../errors.js";
 import type { GoogleDriveService } from "../google/drive.js";
-import { parseProductInformationWorkbook } from "./excel.js";
+import { parseProductInformationWorkbook, writeEnrichedWorkbook, type EnrichedWorkbookRow } from "./excel.js";
 import { matchProductsToImages } from "./matcher.js";
 
 const FOLDER_TYPE = "application/vnd.google-apps.folder";
@@ -35,5 +35,10 @@ export class DriveImportService {
       unusedImageFolders: matched.unusedImageFolders,
       unsupportedFiles: matched.unsupportedFiles
     };
+  }
+
+  async writeEnrichedWorkbook(folderId: string, rows: EnrichedWorkbookRow[]) {
+    const bytes = writeEnrichedWorkbook(rows);
+    return this.drive.uploadFile(folderId, "Product Information - Etsy Draft.xlsx", bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
   }
 }

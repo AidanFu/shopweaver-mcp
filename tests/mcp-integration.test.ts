@@ -39,7 +39,8 @@ describe("MCP integration", () => {
       "google_drive_connection_status",
       "google_drive_list_allowed_folders",
       "google_drive_remove_allowed_folder",
-      "shopweaver_import_drive_folder"
+      "shopweaver_import_drive_folder",
+      "shopweaver_write_enriched_workbook"
     ]);
     await Promise.all([client.close(), server.close()]);
   });

@@ -50,4 +50,21 @@ export class GoogleDriveService {
     if (!(data instanceof ArrayBuffer)) throw new ShopWeaverError("DRIVE_DOWNLOAD_FAILED", "Google Drive file download failed.");
     return new Uint8Array(data);
   }
+
+  async uploadFile(parentFolderId: string, name: string, bytes: Uint8Array, mimeType: string) {
+    if (!await this.config.isDriveFolderAllowed(parentFolderId)) throw new ShopWeaverError("DRIVE_FOLDER_NOT_ALLOWED", "Google Drive folder is not in the allowed folder list.");
+    const boundary = `shopweaver-${crypto.randomUUID()}`;
+    const metadata = JSON.stringify({ name, parents: [parentFolderId] });
+    const body = new Blob([
+      `--${boundary}\r\ncontent-type: application/json; charset=UTF-8\r\n\r\n${metadata}\r\n`,
+      `--${boundary}\r\ncontent-type: ${mimeType}\r\n\r\n`,
+      bytes,
+      `\r\n--${boundary}--`
+    ]);
+    return this.api.request(`/upload/drive/v3/files?uploadType=multipart&fields=id,name`, {
+      method: "POST",
+      headers: { "content-type": `multipart/related; boundary=${boundary}` },
+      body
+    });
+  }
 }

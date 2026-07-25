@@ -24,4 +24,20 @@ describe("DriveImportService", () => {
     const result = await service.importFolder("folder");
     expect(result.products[0]).toMatchObject({ productName: "产品一", imageCount: 1, mainImageName: "01-main.jpg" });
   });
+
+  it("writes enriched workbook bytes back to Drive", async () => {
+    const drive = {
+      uploadFile: vi.fn().mockResolvedValue({ id: "enriched", name: "Product Information - Etsy Draft.xlsx" })
+    };
+    const service = new DriveImportService(drive as never);
+    await expect(service.writeEnrichedWorkbook("folder", [{
+      productName: "产品一",
+      rawChineseDescription: "描述",
+      imageFolder: "产品一",
+      imageCount: 1,
+      validationStatus: "needs_enrichment",
+      validationNotes: "Missing English title"
+    }])).resolves.toMatchObject({ id: "enriched", name: "Product Information - Etsy Draft.xlsx" });
+    expect(drive.uploadFile).toHaveBeenCalledOnce();
+  });
 });
