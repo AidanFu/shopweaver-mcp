@@ -143,6 +143,11 @@ export interface AmazonListingWorkbookRow {
   packageDimensions?: string;
   inventory?: string;
   complianceNotes?: string;
+  amazonTitleLength?: number;
+  amazonTitleQualityNotes?: string;
+  listingCopyQualityScore?: number;
+  productNameTranslationNotes?: string;
+  manualReviewPriority?: string;
   validationStatus?: string;
   validationNotes?: string;
 }
@@ -188,6 +193,11 @@ const AMAZON_LISTING_HEADERS = [
   "Package Dimensions",
   "Inventory",
   "Compliance Notes",
+  "Amazon Title Length",
+  "Amazon Title Quality Notes",
+  "Listing Copy Quality Score",
+  "Product Name Translation Notes",
+  "Manual Review Priority",
   "Validation Status",
   "Validation Notes"
 ];
@@ -235,6 +245,11 @@ export function writeAmazonListingWorkbook(rows: AmazonListingWorkbookRow[]): Ui
     row.packageDimensions ?? "",
     row.inventory ?? "",
     row.complianceNotes ?? "",
+    row.amazonTitleLength ?? "",
+    row.amazonTitleQualityNotes ?? "",
+    row.listingCopyQualityScore ?? "",
+    row.productNameTranslationNotes ?? "",
+    row.manualReviewPriority ?? "",
     row.validationStatus ?? "",
     row.validationNotes ?? ""
   ]);

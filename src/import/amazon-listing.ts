@@ -63,6 +63,10 @@ function englishProductName(productName: string): string {
   return ENGLISH_PRODUCT_NAMES.get(productName) ?? "Handmade Mini Figure";
 }
 
+function hasCuratedName(productName: string): boolean {
+  return ENGLISH_PRODUCT_NAMES.has(productName);
+}
+
 function hasOccasion(name: string, keyword: string): boolean {
   return name.toLowerCase().includes(keyword);
 }
@@ -84,11 +88,33 @@ function backendTerms(name: string): string {
   return `${name.toLowerCase()} crochet charm bag charm backpack charm keychain car hanging ornament handmade gift`;
 }
 
+function titleQualityNotes(title: string): string {
+  if (title.length > 75) return "Title exceeds 75 characters.";
+  if (new Set(title.toLowerCase().split(/\s+/)).size < 5) return "Title may be too generic.";
+  return "OK";
+}
+
+function copyQualityScore(row: Pick<AmazonListingWorkbookRow, "amazonTitle" | "bullet1" | "bullet2" | "bullet3" | "bullet4" | "bullet5" | "productDescription" | "backendSearchTerms">, curatedName: boolean): number {
+  let score = 95;
+  if (!curatedName) score -= 20;
+  if ((row.amazonTitle?.length ?? 0) > 75) score -= 15;
+  for (const value of [row.bullet1, row.bullet2, row.bullet3, row.bullet4, row.bullet5, row.productDescription, row.backendSearchTerms]) {
+    if (!value) score -= 10;
+  }
+  return Math.max(score, 0);
+}
+
+function reviewPriority(score: number, titleNotes: string, curatedName: boolean): string {
+  if (!curatedName || titleNotes !== "OK" || score < 80) return "high";
+  return "normal";
+}
+
 export function buildAmazonListingRows(products: ImportedDriveProduct[]): AmazonListingWorkbookRow[] {
   return products.map((product, index) => {
     const mainImageName = product.images[0]?.name;
     const name = englishProductName(product.productName);
-    return {
+    const curatedName = hasCuratedName(product.productName);
+    const row: AmazonListingWorkbookRow = {
       productName: product.productName,
       sourceChineseDescription: product.rawChineseDescription,
       imageFolder: product.imageFolderName ?? "",
@@ -131,6 +157,17 @@ export function buildAmazonListingRows(products: ImportedDriveProduct[]): Amazon
       complianceNotes: "Review Amazon handmade/category eligibility, exact product type, age grading, choking hazard, car-hanging safety language, material claims, and package requirements before submission.",
       validationStatus: "needs_review",
       validationNotes: "User confirmed product family. Validate the exact Amazon product type/category before API submission."
+    };
+    const amazonTitleLength = row.amazonTitle?.length ?? 0;
+    const amazonTitleQualityNotes = titleQualityNotes(row.amazonTitle ?? "");
+    const listingCopyQualityScore = copyQualityScore(row, curatedName);
+    return {
+      ...row,
+      amazonTitleLength,
+      amazonTitleQualityNotes,
+      listingCopyQualityScore,
+      productNameTranslationNotes: curatedName ? `Curated English product name: ${name}.` : "Fallback English product name used; review translation.",
+      manualReviewPriority: reviewPriority(listingCopyQualityScore, amazonTitleQualityNotes, curatedName)
     };
   });
 }

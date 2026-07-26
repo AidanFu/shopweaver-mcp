@@ -80,6 +80,21 @@ describe("buildAmazonListingRows", () => {
     expect(rows[1].amazonTitle).toContain("Mini Christmas Tree Dumpling");
   });
 
+  it("adds review scoring fields for workbook quality triage", () => {
+    const rows = buildAmazonListingRows([{
+      productName: "郁金香兔-紫色",
+      rawChineseDescription: "主体为奶白色坐姿垂耳小兔，头顶紫色大蝴蝶结，怀中抱着一支钩织粉郁金香。",
+      imageFolderName: "郁金香兔-紫色",
+      imageCount: 7,
+      images: []
+    }]);
+    expect(rows[0].amazonTitleLength).toBe(rows[0].amazonTitle!.length);
+    expect(rows[0].amazonTitleQualityNotes).toBe("OK");
+    expect(rows[0].listingCopyQualityScore).toBe(95);
+    expect(rows[0].productNameTranslationNotes).toBe("Curated English product name: Purple Tulip Bunny.");
+    expect(rows[0].manualReviewPriority).toBe("normal");
+  });
+
   it("uses English-only sequential SKUs and fills listing copy fields", () => {
     const rows = buildAmazonListingRows([
       {

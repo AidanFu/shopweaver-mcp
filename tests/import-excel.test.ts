@@ -67,6 +67,11 @@ describe("writeAmazonListingWorkbook", () => {
       packageDimensions: "",
       inventory: "",
       complianceNotes: "Review Amazon product type, choking hazard, and age grading before submission.",
+      amazonTitleLength: 59,
+      amazonTitleQualityNotes: "OK",
+      listingCopyQualityScore: 95,
+      productNameTranslationNotes: "Curated English product name: Crochet Bag Charm.",
+      manualReviewPriority: "normal",
       validationStatus: "needs_review",
       validationNotes: "Review Amazon category/product type before submission."
     }]);
@@ -74,6 +79,9 @@ describe("writeAmazonListingWorkbook", () => {
     const rows = XLSX.utils.sheet_to_json<Record<string, string>>(workbook.Sheets["Amazon Listings"]);
     expect(rows[0]["Product Name"]).toBe("产品一");
     expect(rows[0]["Amazon Product Type"]).toBe("KEYCHAIN");
+    expect(rows[0]["Amazon Title Length"]).toBe(59);
+    expect(rows[0]["Listing Copy Quality Score"]).toBe(95);
+    expect(rows[0]["Manual Review Priority"]).toBe("normal");
     expect(rows[0]["Validation Status"]).toBe("needs_review");
   });
 });
