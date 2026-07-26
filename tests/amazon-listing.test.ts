@@ -83,7 +83,7 @@ describe("buildAmazonListingRows", () => {
   it("adds review scoring fields for workbook quality triage", () => {
     const rows = buildAmazonListingRows([{
       productName: "郁金香兔-紫色",
-      rawChineseDescription: "主体为奶白色坐姿垂耳小兔，头顶紫色大蝴蝶结，怀中抱着一支钩织粉郁金香。",
+      rawChineseDescription: "主体为奶白色坐姿垂耳小兔，头顶紫色大蝴蝶结，怀中抱着一支钩织粉郁金香。高9.5cm宽9cm",
       imageFolderName: "郁金香兔-紫色",
       imageCount: 7,
       images: []
@@ -110,6 +110,21 @@ describe("buildAmazonListingRows", () => {
     expect(rows[0].size).toBe("16 cm H x 10 cm W");
     expect(rows[0].sizeImageNotes).toContain("16 cm H x 10 cm W");
     expect(rows[0].validationNotes).toContain("Package depth uses 2 cm placeholder");
+  });
+
+  it("fills default dimensions when source dimensions are missing", () => {
+    const rows = buildAmazonListingRows([{
+      productName: "圣诞树团子",
+      rawChineseDescription: "圣诞树团子挂件，纯手工牛奶棉钩织。",
+      imageFolderName: "圣诞树团子",
+      imageCount: 5,
+      images: []
+    }]);
+    expect(rows[0].packageDimensions).toBe("10 x 6 x 2 cm");
+    expect(rows[0].size).toBe("10 cm H x 6 cm W");
+    expect(rows[0].sizeImageNotes).toContain("default estimate");
+    expect(rows[0].validationNotes).toContain("Default dimensions used; update with measured size before submission.");
+    expect(rows[0].manualReviewPriority).toBe("high");
   });
 
   it("uses English-only sequential SKUs and fills listing copy fields", () => {
