@@ -143,7 +143,7 @@ describe("Amazon workbook generation flow", () => {
     expect(written).toEqual({ id: "amazon", name: "Product Information - Amazon Listing.xlsx" });
     expect(rows[0]).toMatchObject({
       productName: "龙猫钥匙扣",
-      amazonProductType: "KEYCHAIN",
+      amazonProductType: "HANDMADE_HANGING_MINI_FIGURE",
       validationStatus: "needs_review"
     });
     expect(drive.uploadFile).toHaveBeenCalledOnce();

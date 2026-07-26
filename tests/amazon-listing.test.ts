@@ -18,8 +18,9 @@ describe("buildAmazonListingRows", () => {
       productName: "龙猫钥匙扣",
       imageFolder: "龙猫钥匙扣",
       imageCount: 3,
-      amazonProductType: "KEYCHAIN",
-      categoryConfidence: "medium",
+      amazonProductType: "HANDMADE_HANGING_MINI_FIGURE",
+      amazonCategoryPath: "Handmade Products > Accessories > Bag, Backpack, Keychain & Car Hanging Mini Figures",
+      categoryConfidence: "user_confirmed",
       validationStatus: "needs_review"
     });
     expect(rows[0].amazonTitle).toContain("Crochet");
@@ -28,7 +29,7 @@ describe("buildAmazonListingRows", () => {
     expect(rows[0].suggestedCampaignStructure).toContain("Auto discovery campaign");
   });
 
-  it("keeps uncertain categories review-gated instead of guessing silently", () => {
+  it("uses the user-confirmed hanging mini figure category for every imported product", () => {
     const rows = buildAmazonListingRows([{
       productName: "未知产品",
       rawChineseDescription: "特殊材质新产品",
@@ -37,11 +38,12 @@ describe("buildAmazonListingRows", () => {
       images: []
     }]);
     expect(rows[0]).toMatchObject({
-      amazonProductType: "",
-      amazonCategoryPath: "",
-      categoryConfidence: "low",
+      amazonProductType: "HANDMADE_HANGING_MINI_FIGURE",
+      amazonCategoryPath: "Handmade Products > Accessories > Bag, Backpack, Keychain & Car Hanging Mini Figures",
+      categoryConfidence: "user_confirmed",
       validationStatus: "needs_review"
     });
-    expect(rows[0].validationNotes).toBe("Review Amazon category/product type before submission.");
+    expect(rows[0].useCases).toBe("Hang on bag; hang on backpack; use as keychain; hang in car");
+    expect(rows[0].validationNotes).toBe("User confirmed product family. Validate the exact Amazon product type/category before API submission.");
   });
 });
