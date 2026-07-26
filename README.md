@@ -1,20 +1,26 @@
 # ShopWeaver MCP
 
-ShopWeaver MCP is a personal, noncommercial Codex plugin for managing one Etsy seller account through Etsy Open API v3. It reads shop, listing, and minimized order information and performs preview-first writes to draft listings only.
+ShopWeaver MCP is a personal, noncommercial Codex plugin for seller workflow automation. The implemented Etsy path manages one Etsy seller account through Etsy Open API v3: it reads shop, listing, and minimized order information and performs preview-first writes to draft listings only. The early Amazon path is workbook-only planning from Google Drive product data; it does not call Amazon APIs or write to Amazon.
 
 > The term "Etsy" is a trademark of Etsy, Inc. This Application uses Etsy's API, but is not endorsed or certified by Etsy.
 
 ## Current status
 
-The local MCP server and Codex plugin are implemented. Automated verification covers OAuth, Keychain storage, Etsy response parsing, read tools, draft write confirmations, draft image uploads, draft inventory updates, order-summary minimization, and the safety allowlist.
+The local MCP server and Codex plugin are implemented. Automated verification covers OAuth, Keychain storage, Etsy response parsing, read tools, draft write confirmations, draft image uploads, draft inventory updates, Google Drive product/image import, Amazon workbook generation, order-summary minimization, and the safety allowlist.
 
 Live Etsy verification has confirmed OAuth connection and read-only shop/listing/order-summary access against one shop. Draft creation remains intentionally manual: preview the exact payload first, then confirm only if the draft should be created in Etsy.
+
+Amazon work currently stops at `Product Information - Amazon Listing.xlsx`, a review workbook generated from the approved Google Drive folder workflow. See [docs/amazon-listing-workflow/README.md](docs/amazon-listing-workflow/README.md).
+
+TikTok integration is not included in the current scope.
 
 ## Safety boundary
 
 ShopWeaver can create drafts, edit supported draft fields, upload draft images, and replace draft inventory. Every write defaults to preview mode, requires explicit confirmation with an unchanged payload, and rechecks remote draft state before updating.
 
-ShopWeaver cannot publish, activate, or delete listings. It has no tools for ads, refunds, cancellations, shipments, Etsy Messages, or customer email. Order summaries exclude buyer email, shipping address, payment details, and messages.
+ShopWeaver cannot publish, activate, or delete Etsy listings. It has no Etsy tools for ads, refunds, cancellations, shipments, Etsy Messages, or customer email. Order summaries exclude buyer email, shipping address, payment details, and messages.
+
+The Amazon workflow cannot submit listings, upload images, create A+ Content, create or modify ads, change bids or budgets, or access Amazon order/customer data. It writes a planning workbook only.
 
 ## Requirements
 
@@ -129,6 +135,18 @@ HandMade/
 7. Preview one Etsy draft with `shopweaver_preview_etsy_draft_from_enriched_row`.
 8. Confirm Etsy draft creation and image uploads separately.
 
+## Amazon workbook workflow
+
+The Amazon workflow uses the same approved Google Drive folder import, but writes a separate planning workbook:
+
+```text
+Product Information - Amazon Listing.xlsx
+```
+
+Use `shopweaver_write_amazon_listing_workbook` in preview mode first, then confirm only after reviewing the row count and target folder. The generated workbook includes Amazon title, bullets, description, backend search terms, image notes, A+ Content planning copy, ad seed ideas, category suggestions, compliance notes, and review flags.
+
+This is not an Amazon submission path. Future Amazon API phases should be designed separately with Product Type Definitions validation, local preview, and explicit approval before every write.
+
 ## macOS Keychain prompts
 
 macOS may show:
@@ -177,6 +195,8 @@ The Codex plugin manifest uses `.mcp.json` to run the built server with stdio tr
 - `shopweaver_import_drive_folder`
 - `shopweaver_write_enriched_workbook`
 - `shopweaver_preview_etsy_draft_from_enriched_row`
+- `shopweaver_upload_drive_images_to_etsy_draft`
+- `shopweaver_write_amazon_listing_workbook`
 
 For every write, run preview mode first, inspect the complete normalized payload, then explicitly confirm using the unchanged payload and returned confirmation token.
 
