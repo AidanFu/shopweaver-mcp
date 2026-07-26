@@ -44,6 +44,7 @@ describe("MCP integration", () => {
       "shopweaver_import_drive_folder",
       "shopweaver_preview_etsy_draft_from_enriched_row",
       "shopweaver_upload_drive_images_to_etsy_draft",
+      "shopweaver_write_amazon_listing_workbook",
       "shopweaver_write_enriched_workbook"
     ]);
     await Promise.all([client.close(), server.close()]);

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import * as XLSX from "xlsx";
 import { DriveImportService } from "../src/import/drive-import.js";
-import { previewDraftInputFromEnrichedRow } from "../src/tools/import-tools.js";
+import { previewAmazonListingWorkbookWrite, previewDraftInputFromEnrichedRow } from "../src/tools/import-tools.js";
 
 function workbookBytes() {
   const workbook = XLSX.utils.book_new();
@@ -104,5 +104,17 @@ describe("previewDraftInputFromEnrichedRow", () => {
     });
     expect(preview.validationErrors).toEqual([]);
     expect(preview.draftInput).toMatchObject({ title: "Handmade Wooden Bowl", type: "physical", taxonomyId: 123 });
+  });
+});
+
+describe("previewAmazonListingWorkbookWrite", () => {
+  it("previews Amazon workbook generation without writing", () => {
+    expect(previewAmazonListingWorkbookWrite("folder", 38)).toEqual({
+      operation: "write_amazon_listing_workbook",
+      folderId: "folder",
+      rowCount: 38,
+      filename: "Product Information - Amazon Listing.xlsx",
+      warning: "This writes an Amazon planning workbook only. It does not call Amazon APIs, submit listings, upload images, create A+ Content, or change ads."
+    });
   });
 });

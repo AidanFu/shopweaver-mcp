@@ -1,5 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
+import { buildAmazonListingRows } from "../import/amazon-listing.js";
 import type { DriveImportService } from "../import/drive-import.js";
 import { EnrichedDraftRowSchema, validateEnrichedDraftRow } from "../import/enriched.js";
 
@@ -29,6 +30,16 @@ export function previewDraftInputFromEnrichedRow(rowInput: unknown) {
   };
 }
 
+export function previewAmazonListingWorkbookWrite(folderId: string, rowCount: number) {
+  return {
+    operation: "write_amazon_listing_workbook" as const,
+    folderId,
+    rowCount,
+    filename: "Product Information - Amazon Listing.xlsx",
+    warning: "This writes an Amazon planning workbook only. It does not call Amazon APIs, submit listings, upload images, create A+ Content, or change ads."
+  };
+}
+
 export function registerImportTools(server: McpServer, imports: DriveImportService): void {
   server.registerTool("shopweaver_import_drive_folder", {
     description: "Import Product Information.xlsx and matched product images from one explicitly allowed Google Drive folder.",
@@ -45,6 +56,27 @@ export function registerImportTools(server: McpServer, imports: DriveImportServi
   }, async ({ mode, folderId, rows }) => {
     if (mode === "preview") return result({ operation: "write_enriched_workbook", folderId, rowCount: rows.length, warning: "This will write Product Information - Etsy Draft.xlsx to Google Drive only after confirm mode." });
     return result(await imports.writeEnrichedWorkbook(folderId, rows as never));
+  });
+
+  server.registerTool("shopweaver_write_amazon_listing_workbook", {
+    description: "Create or update Product Information - Amazon Listing.xlsx in an allowed Google Drive folder. This is a workbook-only planning step and does not call Amazon APIs.",
+    inputSchema: {
+      mode: z.enum(["preview", "confirm"]).default("preview"),
+      folderId: z.string().min(1)
+    }
+  }, async ({ mode, folderId }) => {
+    const imported = await imports.importFolder(folderId);
+    if (mode === "preview") return result(previewAmazonListingWorkbookWrite(folderId, imported.products.length));
+    const rows = buildAmazonListingRows(imported.products);
+    const written = await imports.writeAmazonListingWorkbook(folderId, rows);
+    return result({
+      operation: "write_amazon_listing_workbook",
+      folderId,
+      rowCount: rows.length,
+      filename: "Product Information - Amazon Listing.xlsx",
+      file: written,
+      warning: "Workbook written only. No Amazon API, image, A+ Content, advertising, order, shipment, refund, or buyer-data action was performed."
+    });
   });
 
   server.registerTool("shopweaver_preview_etsy_draft_from_enriched_row", {
