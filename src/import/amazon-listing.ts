@@ -88,6 +88,13 @@ function backendTerms(name: string): string {
   return `${name.toLowerCase()} crochet charm bag charm backpack charm keychain car hanging ornament handmade gift`;
 }
 
+function extractDimensions(description: string) {
+  const compact = description.replace(/\s+/g, "");
+  const match = compact.match(/高(\d+(?:\.\d+)?)cm宽(\d+(?:\.\d+)?)cm/i);
+  if (!match) return null;
+  return { heightCm: match[1], widthCm: match[2], depthCm: "2" };
+}
+
 function titleQualityNotes(title: string): string {
   if (title.length > 75) return "Title exceeds 75 characters.";
   if (new Set(title.toLowerCase().split(/\s+/)).size < 5) return "Title may be too generic.";
@@ -114,6 +121,13 @@ export function buildAmazonListingRows(products: ImportedDriveProduct[]): Amazon
     const mainImageName = product.images[0]?.name;
     const name = englishProductName(product.productName);
     const curatedName = hasCuratedName(product.productName);
+    const dimensions = extractDimensions(product.rawChineseDescription);
+    const size = dimensions ? `${dimensions.heightCm} cm H x ${dimensions.widthCm} cm W` : "";
+    const validationNotes = [
+      "User confirmed product family.",
+      dimensions ? "Package depth uses 2 cm placeholder; verify before API submission." : "Add product dimensions before API submission.",
+      "Validate the exact Amazon product type/category before API submission."
+    ].join(" ");
     const row: AmazonListingWorkbookRow = {
       productName: product.productName,
       sourceChineseDescription: product.rawChineseDescription,
@@ -126,7 +140,7 @@ export function buildAmazonListingRows(products: ImportedDriveProduct[]): Amazon
       parentSku: "",
       variationTheme: "",
       color: "",
-      size: "",
+      size,
       amazonTitle: optimizedTitle(name),
       bullet1: `Handmade crochet ${name} mini figure designed for bags, backpacks, keys, or car display.`,
       bullet2: "Lightweight hanging charm adds personality without making bags or keys feel bulky.",
@@ -140,7 +154,7 @@ export function buildAmazonListingRows(products: ImportedDriveProduct[]): Amazon
       mainImageNotes: mainImageName ? `Review ${mainImageName} as the main image candidate; create a clean product-focused image if needed.` : "Add a clear product-focused main image before Amazon submission.",
       lifestyleImageNotes: "Show the mini figure hanging on a bag, backpack, keychain, and inside a car.",
       infographicImageNotes: "Create callouts for handmade crochet texture, hanging use, lightweight size, giftability, care, and product details.",
-      sizeImageNotes: "Add a size reference or dimensions graphic before Amazon submission.",
+      sizeImageNotes: dimensions ? `Add a size reference graphic showing ${size}.` : "Add a size reference or dimensions graphic before Amazon submission.",
       aplusModule1Headline: "Handmade Mini Figure Charm",
       aplusModule1Body: "Use this module to explain the crochet texture, character detail, and small hanging format.",
       aplusModule2Headline: "For Bags, Backpacks, Keys, And Cars",
@@ -150,13 +164,13 @@ export function buildAmazonListingRows(products: ImportedDriveProduct[]): Amazon
       adKeywordSeeds: "crochet bag charm, backpack charm, handmade keychain, car hanging ornament, mini figure charm, crochet gift",
       negativeKeywordSeeds: "digital, pattern, tutorial, wholesale, free",
       suggestedCampaignStructure: "Auto discovery campaign; Manual exact campaign for high-intent terms; Manual phrase campaign for discovery terms; Product targeting campaign after ASIN/category research",
-      suggestedPrice: "",
-      packageWeight: "",
-      packageDimensions: "",
-      inventory: "",
+      suggestedPrice: "49.99",
+      packageWeight: "6 oz",
+      packageDimensions: dimensions ? `${dimensions.heightCm} x ${dimensions.widthCm} x ${dimensions.depthCm} cm` : "",
+      inventory: 5,
       complianceNotes: "Review Amazon handmade/category eligibility, exact product type, age grading, choking hazard, car-hanging safety language, material claims, and package requirements before submission.",
       validationStatus: "needs_review",
-      validationNotes: "User confirmed product family. Validate the exact Amazon product type/category before API submission."
+      validationNotes
     };
     const amazonTitleLength = row.amazonTitle?.length ?? 0;
     const amazonTitleQualityNotes = titleQualityNotes(row.amazonTitle ?? "");

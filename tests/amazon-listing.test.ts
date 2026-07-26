@@ -95,6 +95,23 @@ describe("buildAmazonListingRows", () => {
     expect(rows[0].manualReviewPriority).toBe("normal");
   });
 
+  it("extracts dimensions and fills price, weight, and inventory defaults", () => {
+    const rows = buildAmazonListingRows([{
+      productName: "波利狗-绿色",
+      rawChineseDescription: "材质：优质牛奶棉毛线，触感柔软不易起球。高16cm宽10cm",
+      imageFolderName: "波利狗-绿色",
+      imageCount: 7,
+      images: []
+    }]);
+    expect(rows[0].suggestedPrice).toBe("49.99");
+    expect(rows[0].packageWeight).toBe("6 oz");
+    expect(rows[0].packageDimensions).toBe("16 x 10 x 2 cm");
+    expect(rows[0].inventory).toBe(5);
+    expect(rows[0].size).toBe("16 cm H x 10 cm W");
+    expect(rows[0].sizeImageNotes).toContain("16 cm H x 10 cm W");
+    expect(rows[0].validationNotes).toContain("Package depth uses 2 cm placeholder");
+  });
+
   it("uses English-only sequential SKUs and fills listing copy fields", () => {
     const rows = buildAmazonListingRows([
       {
@@ -140,6 +157,7 @@ describe("buildAmazonListingRows", () => {
       validationStatus: "needs_review"
     });
     expect(rows[0].useCases).toBe("Hang on bag; hang on backpack; use as keychain; hang in car");
-    expect(rows[0].validationNotes).toBe("User confirmed product family. Validate the exact Amazon product type/category before API submission.");
+    expect(rows[0].validationNotes).toContain("User confirmed product family.");
+    expect(rows[0].validationNotes).toContain("Validate the exact Amazon product type/category before API submission.");
   });
 });

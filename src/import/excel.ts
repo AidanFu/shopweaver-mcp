@@ -141,7 +141,7 @@ export interface AmazonListingWorkbookRow {
   suggestedPrice?: string;
   packageWeight?: string;
   packageDimensions?: string;
-  inventory?: string;
+  inventory?: string | number;
   complianceNotes?: string;
   amazonTitleLength?: number;
   amazonTitleQualityNotes?: string;
