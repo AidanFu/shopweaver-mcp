@@ -13,6 +13,8 @@ import type { ConfirmationStore } from "../writes/confirmations.js";
 const PriceSchema = z.string().regex(/^\d+(\.\d{1,2})?$/);
 const WhoMadeSchema = z.enum(["i_did", "collective", "someone_else"]);
 const TypeSchema = z.enum(["physical", "download"]);
+const WeightUnitSchema = z.enum(["oz", "lb", "g", "kg"]);
+const DimensionsUnitSchema = z.enum(["in", "ft", "mm", "cm", "m"]);
 
 const DraftCreateFields = {
   title: z.string().trim().min(1).max(140),
@@ -26,6 +28,12 @@ const DraftCreateFields = {
   tags: z.array(z.string().trim().min(1)).max(13).optional(),
   materials: z.array(z.string().trim().min(1)).optional(),
   shippingProfileId: z.number().int().positive().optional(),
+  itemWeight: z.number().positive().optional(),
+  itemWeightUnit: WeightUnitSchema.optional(),
+  itemLength: z.number().positive().optional(),
+  itemWidth: z.number().positive().optional(),
+  itemHeight: z.number().positive().optional(),
+  itemDimensionsUnit: DimensionsUnitSchema.optional(),
   readinessStateId: z.number().int().positive().optional()
 };
 
@@ -139,6 +147,12 @@ export class DraftWriteService {
       tags: changes.tags,
       materials: changes.materials,
       shipping_profile_id: changes.shippingProfileId,
+      item_weight: changes.itemWeight,
+      item_weight_unit: changes.itemWeightUnit,
+      item_length: changes.itemLength,
+      item_width: changes.itemWidth,
+      item_height: changes.itemHeight,
+      item_dimensions_unit: changes.itemDimensionsUnit,
       readiness_state_id: changes.readinessStateId
     });
     try {

@@ -13,7 +13,13 @@ const draft: DraftCreateInput = {
   taxonomyId: 123,
   type: "physical",
   readinessStateId: 456,
-  shippingProfileId: 789
+  shippingProfileId: 789,
+  itemWeight: 4,
+  itemWeightUnit: "oz",
+  itemLength: 4,
+  itemWidth: 3,
+  itemHeight: 3,
+  itemDimensionsUnit: "in"
 };
 
 async function dependencies(state = "draft") {
@@ -50,6 +56,8 @@ describe("draft write service", () => {
     expect(client.request.mock.calls[0][1].body.toString()).not.toContain("active");
     expect(client.request.mock.calls[0][1].body.get("tags")).toBe("wood,bowl");
     expect(client.request.mock.calls[0][1].body.get("shipping_profile_id")).toBe("789");
+    expect(client.request.mock.calls[0][1].body.get("item_weight")).toBe("4");
+    expect(client.request.mock.calls[0][1].body.get("item_dimensions_unit")).toBe("in");
   });
 
   it("rejects updates when the remote state is not draft", async () => {
