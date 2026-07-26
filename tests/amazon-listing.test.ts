@@ -52,6 +52,11 @@ describe("buildAmazonListingRows", () => {
     expect(rows[1].amazonTitle!.length).toBeLessThanOrEqual(75);
     expect(rows[0].bullet1).toContain("Purple Tulip Bunny");
     expect(rows[1].bullet1).toContain("Graduation Girl with Pigtails");
+    expect(rows[0].bullet1).toContain("personal");
+    expect(rows[0].bullet2).toContain("easy to recognize");
+    expect(rows[0].bullet3).toContain("small gift");
+    expect(rows[0].bullet4).toContain("worry");
+    expect(rows[0].bullet5).toContain("After purchase");
     expect(rows[0].productDescription).toContain("Purple Tulip Bunny");
     expect(rows[1].productDescription).toContain("graduation");
     expect(rows[0].backendSearchTerms).toContain("purple tulip bunny");
@@ -187,9 +192,9 @@ describe("buildAmazonListingRows", () => {
     expect(rows[0].amazonTitle).toContain("Handmade Mini Figure");
     expect(rows[0].bullet1).toContain("bag");
     expect(rows[0].bullet2).toContain("Lightweight");
-    expect(rows[0].bullet3).toContain("car ornament");
-    expect(rows[0].bullet4).toContain("Gift-ready");
-    expect(rows[0].bullet5).toContain("handmade variations");
+    expect(rows[0].bullet3).toContain("small gift");
+    expect(rows[0].bullet4).toContain("worry");
+    expect(rows[0].bullet5).toContain("After purchase");
     expect(rows[0].productDescription).toContain("bags, backpacks, keychains, or cars");
     expect(rows[0].backendSearchTerms).toContain("car hanging ornament");
   });
