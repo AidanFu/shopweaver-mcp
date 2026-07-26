@@ -148,6 +148,12 @@ export interface AmazonListingWorkbookRow {
   listingCopyQualityScore?: number;
   productNameTranslationNotes?: string;
   manualReviewPriority?: string;
+  customerQuestionTargets?: string;
+  aiShoppingAnswerSummary?: string;
+  rufusAlexaReadinessScore?: number;
+  missingBuyerFacts?: string;
+  giftabilityNotes?: string;
+  useCaseCoverage?: string;
   validationStatus?: string;
   validationNotes?: string;
 }
@@ -198,6 +204,12 @@ const AMAZON_LISTING_HEADERS = [
   "Listing Copy Quality Score",
   "Product Name Translation Notes",
   "Manual Review Priority",
+  "Customer Question Targets",
+  "AI Shopping Answer Summary",
+  "Rufus/Alexa Readiness Score",
+  "Missing Buyer Facts",
+  "Giftability Notes",
+  "Use Case Coverage",
   "Validation Status",
   "Validation Notes"
 ];
@@ -250,6 +262,12 @@ export function writeAmazonListingWorkbook(rows: AmazonListingWorkbookRow[]): Ui
     row.listingCopyQualityScore ?? "",
     row.productNameTranslationNotes ?? "",
     row.manualReviewPriority ?? "",
+    row.customerQuestionTargets ?? "",
+    row.aiShoppingAnswerSummary ?? "",
+    row.rufusAlexaReadinessScore ?? "",
+    row.missingBuyerFacts ?? "",
+    row.giftabilityNotes ?? "",
+    row.useCaseCoverage ?? "",
     row.validationStatus ?? "",
     row.validationNotes ?? ""
   ]);

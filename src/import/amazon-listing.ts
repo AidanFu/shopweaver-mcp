@@ -118,6 +118,27 @@ function reviewPriority(score: number, titleNotes: string, curatedName: boolean)
   return "normal";
 }
 
+const CUSTOMER_QUESTIONS = [
+  "Can I hang it in my car?",
+  "Can I use it as a bag charm or backpack charm?",
+  "Is it lightweight for keys?",
+  "Is it handmade?",
+  "What size is it?",
+  "Is it a good small gift?"
+].join(" | ");
+
+function missingBuyerFacts(extractedDimensions: boolean): string {
+  const missing = ["Exact Amazon product type"];
+  if (!extractedDimensions) missing.push("Measured dimensions");
+  return missing.join("; ");
+}
+
+function aiReadinessScore(copyScore: number, extractedDimensions: boolean): number {
+  let score = copyScore;
+  if (!extractedDimensions) score -= 15;
+  return Math.max(score, 0);
+}
+
 export function buildAmazonListingRows(products: ImportedDriveProduct[]): AmazonListingWorkbookRow[] {
   return products.map((product, index) => {
     const mainImageName = product.images[0]?.name;
@@ -184,7 +205,13 @@ export function buildAmazonListingRows(products: ImportedDriveProduct[]): Amazon
       amazonTitleQualityNotes,
       listingCopyQualityScore,
       productNameTranslationNotes: curatedName ? `Curated English product name: ${name}.` : "Fallback English product name used; review translation.",
-      manualReviewPriority: extractedDimensions ? reviewPriority(listingCopyQualityScore, amazonTitleQualityNotes, curatedName) : "high"
+      manualReviewPriority: extractedDimensions ? reviewPriority(listingCopyQualityScore, amazonTitleQualityNotes, curatedName) : "high",
+      customerQuestionTargets: CUSTOMER_QUESTIONS,
+      aiShoppingAnswerSummary: `${name} is a handmade crochet mini figure charm for bag, backpack, keychain, or car hanging use. It is lightweight, giftable, and designed for customers looking for a small handmade accessory.`,
+      rufusAlexaReadinessScore: aiReadinessScore(listingCopyQualityScore, Boolean(extractedDimensions)),
+      missingBuyerFacts: missingBuyerFacts(Boolean(extractedDimensions)),
+      giftabilityNotes: `Position for ${occasionPhrase(name)}.`,
+      useCaseCoverage: "bag; backpack; keychain; car; gift"
     };
   });
 }

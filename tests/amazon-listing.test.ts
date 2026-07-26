@@ -127,6 +127,23 @@ describe("buildAmazonListingRows", () => {
     expect(rows[0].manualReviewPriority).toBe("high");
   });
 
+  it("adds Alexa and Rufus readiness fields for conversational shopping", () => {
+    const rows = buildAmazonListingRows([{
+      productName: "冬日小雪人",
+      rawChineseDescription: "冬日小雪人挂件，适合圣诞节送礼。",
+      imageFolderName: "冬日小雪人",
+      imageCount: 5,
+      images: []
+    }]);
+    expect(rows[0].customerQuestionTargets).toContain("Can I hang it in my car?");
+    expect(rows[0].aiShoppingAnswerSummary).toContain("Winter Snowman");
+    expect(rows[0].aiShoppingAnswerSummary).toContain("bag, backpack, keychain, or car");
+    expect(rows[0].rufusAlexaReadinessScore).toBe(80);
+    expect(rows[0].missingBuyerFacts).toContain("Measured dimensions");
+    expect(rows[0].giftabilityNotes).toContain("holiday gifting");
+    expect(rows[0].useCaseCoverage).toBe("bag; backpack; keychain; car; gift");
+  });
+
   it("uses English-only sequential SKUs and fills listing copy fields", () => {
     const rows = buildAmazonListingRows([
       {

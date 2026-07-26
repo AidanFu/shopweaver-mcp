@@ -72,6 +72,12 @@ describe("writeAmazonListingWorkbook", () => {
       listingCopyQualityScore: 95,
       productNameTranslationNotes: "Curated English product name: Crochet Bag Charm.",
       manualReviewPriority: "normal",
+      customerQuestionTargets: "Can I hang it in my car?",
+      aiShoppingAnswerSummary: "Small handmade crochet charm for bag, keychain, or car use.",
+      rufusAlexaReadinessScore: 95,
+      missingBuyerFacts: "None",
+      giftabilityNotes: "Useful as a small gift.",
+      useCaseCoverage: "bag; backpack; keychain; car; gift",
       validationStatus: "needs_review",
       validationNotes: "Review Amazon category/product type before submission."
     }]);
@@ -82,6 +88,8 @@ describe("writeAmazonListingWorkbook", () => {
     expect(rows[0]["Amazon Title Length"]).toBe(59);
     expect(rows[0]["Listing Copy Quality Score"]).toBe(95);
     expect(rows[0]["Manual Review Priority"]).toBe("normal");
+    expect(rows[0]["Rufus/Alexa Readiness Score"]).toBe(95);
+    expect(rows[0]["Use Case Coverage"]).toBe("bag; backpack; keychain; car; gift");
     expect(rows[0]["Validation Status"]).toBe("needs_review");
   });
 });
