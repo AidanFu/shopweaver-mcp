@@ -12,7 +12,8 @@ const draft: DraftCreateInput = {
   whenMade: "2020_2026",
   taxonomyId: 123,
   type: "physical",
-  readinessStateId: 456
+  readinessStateId: 456,
+  shippingProfileId: 789
 };
 
 async function dependencies(state = "draft") {
@@ -48,6 +49,7 @@ describe("draft write service", () => {
     expect(client.request.mock.calls[0][1].method).toBe("POST");
     expect(client.request.mock.calls[0][1].body.toString()).not.toContain("active");
     expect(client.request.mock.calls[0][1].body.get("tags")).toBe("wood,bowl");
+    expect(client.request.mock.calls[0][1].body.get("shipping_profile_id")).toBe("789");
   });
 
   it("rejects updates when the remote state is not draft", async () => {

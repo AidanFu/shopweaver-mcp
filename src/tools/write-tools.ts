@@ -25,6 +25,7 @@ const DraftCreateFields = {
   type: TypeSchema,
   tags: z.array(z.string().trim().min(1)).max(13).optional(),
   materials: z.array(z.string().trim().min(1)).optional(),
+  shippingProfileId: z.number().int().positive().optional(),
   readinessStateId: z.number().int().positive().optional()
 };
 
@@ -137,6 +138,7 @@ export class DraftWriteService {
       type: changes.type,
       tags: changes.tags,
       materials: changes.materials,
+      shipping_profile_id: changes.shippingProfileId,
       readiness_state_id: changes.readinessStateId
     });
     try {
