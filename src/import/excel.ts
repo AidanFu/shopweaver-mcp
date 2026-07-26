@@ -101,3 +101,143 @@ export function writeEnrichedWorkbook(rows: EnrichedWorkbookRow[]): Uint8Array {
   XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([ENRICHED_HEADERS, ...values]), "Etsy Drafts");
   return new Uint8Array(XLSX.write(workbook, { type: "array", bookType: "xlsx" }));
 }
+
+export interface AmazonListingWorkbookRow {
+  productName: string;
+  sourceChineseDescription?: string;
+  imageFolder?: string;
+  imageCount?: number;
+  amazonProductType?: string;
+  amazonCategoryPath?: string;
+  categoryConfidence?: string;
+  sku?: string;
+  parentSku?: string;
+  variationTheme?: string;
+  color?: string;
+  size?: string;
+  amazonTitle?: string;
+  bullet1?: string;
+  bullet2?: string;
+  bullet3?: string;
+  bullet4?: string;
+  bullet5?: string;
+  productDescription?: string;
+  backendSearchTerms?: string;
+  targetCustomer?: string;
+  useCases?: string;
+  mainImageNotes?: string;
+  lifestyleImageNotes?: string;
+  infographicImageNotes?: string;
+  sizeImageNotes?: string;
+  aplusModule1Headline?: string;
+  aplusModule1Body?: string;
+  aplusModule2Headline?: string;
+  aplusModule2Body?: string;
+  aplusModule3Headline?: string;
+  aplusModule3Body?: string;
+  adKeywordSeeds?: string;
+  negativeKeywordSeeds?: string;
+  suggestedCampaignStructure?: string;
+  suggestedPrice?: string;
+  packageWeight?: string;
+  packageDimensions?: string;
+  inventory?: string;
+  complianceNotes?: string;
+  validationStatus?: string;
+  validationNotes?: string;
+}
+
+const AMAZON_LISTING_HEADERS = [
+  "Product Name",
+  "Source Chinese Description",
+  "Image Folder",
+  "Image Count",
+  "Amazon Product Type",
+  "Amazon Category Path",
+  "Category Confidence",
+  "SKU",
+  "Parent SKU",
+  "Variation Theme",
+  "Color",
+  "Size",
+  "Amazon Title",
+  "Bullet 1",
+  "Bullet 2",
+  "Bullet 3",
+  "Bullet 4",
+  "Bullet 5",
+  "Product Description",
+  "Backend Search Terms",
+  "Target Customer",
+  "Use Cases",
+  "Main Image Notes",
+  "Lifestyle Image Notes",
+  "Infographic Image Notes",
+  "Size Image Notes",
+  "A+ Module 1 Headline",
+  "A+ Module 1 Body",
+  "A+ Module 2 Headline",
+  "A+ Module 2 Body",
+  "A+ Module 3 Headline",
+  "A+ Module 3 Body",
+  "Ad Keyword Seeds",
+  "Negative Keyword Seeds",
+  "Suggested Campaign Structure",
+  "Suggested Price",
+  "Package Weight",
+  "Package Dimensions",
+  "Inventory",
+  "Compliance Notes",
+  "Validation Status",
+  "Validation Notes"
+];
+
+export function writeAmazonListingWorkbook(rows: AmazonListingWorkbookRow[]): Uint8Array {
+  const workbook = XLSX.utils.book_new();
+  const values = rows.map(row => [
+    row.productName,
+    row.sourceChineseDescription ?? "",
+    row.imageFolder ?? "",
+    row.imageCount ?? "",
+    row.amazonProductType ?? "",
+    row.amazonCategoryPath ?? "",
+    row.categoryConfidence ?? "",
+    row.sku ?? "",
+    row.parentSku ?? "",
+    row.variationTheme ?? "",
+    row.color ?? "",
+    row.size ?? "",
+    row.amazonTitle ?? "",
+    row.bullet1 ?? "",
+    row.bullet2 ?? "",
+    row.bullet3 ?? "",
+    row.bullet4 ?? "",
+    row.bullet5 ?? "",
+    row.productDescription ?? "",
+    row.backendSearchTerms ?? "",
+    row.targetCustomer ?? "",
+    row.useCases ?? "",
+    row.mainImageNotes ?? "",
+    row.lifestyleImageNotes ?? "",
+    row.infographicImageNotes ?? "",
+    row.sizeImageNotes ?? "",
+    row.aplusModule1Headline ?? "",
+    row.aplusModule1Body ?? "",
+    row.aplusModule2Headline ?? "",
+    row.aplusModule2Body ?? "",
+    row.aplusModule3Headline ?? "",
+    row.aplusModule3Body ?? "",
+    row.adKeywordSeeds ?? "",
+    row.negativeKeywordSeeds ?? "",
+    row.suggestedCampaignStructure ?? "",
+    row.suggestedPrice ?? "",
+    row.packageWeight ?? "",
+    row.packageDimensions ?? "",
+    row.inventory ?? "",
+    row.complianceNotes ?? "",
+    row.validationStatus ?? "",
+    row.validationNotes ?? ""
+  ]);
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([AMAZON_LISTING_HEADERS, ...values]), "Amazon Listings");
+  return new Uint8Array(XLSX.write(workbook, { type: "array", bookType: "xlsx" }));
+}
