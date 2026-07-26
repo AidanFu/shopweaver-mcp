@@ -60,6 +60,28 @@ describe("DriveImportService", () => {
     }])).resolves.toMatchObject({ id: "enriched", name: "Product Information - Etsy Draft.xlsx" });
     expect(drive.uploadFile).toHaveBeenCalledOnce();
   });
+
+  it("writes Amazon listing workbook bytes back to Drive", async () => {
+    const drive = {
+      uploadFile: vi.fn().mockResolvedValue({ id: "amazon", name: "Product Information - Amazon Listing.xlsx" })
+    };
+    const service = new DriveImportService(drive as never);
+    await expect(service.writeAmazonListingWorkbook("folder", [{
+      productName: "产品一",
+      sourceChineseDescription: "描述",
+      imageFolder: "产品一",
+      imageCount: 1,
+      amazonProductType: "KEYCHAIN",
+      validationStatus: "needs_review",
+      validationNotes: "Review Amazon category/product type before submission."
+    }])).resolves.toMatchObject({ id: "amazon", name: "Product Information - Amazon Listing.xlsx" });
+    expect(drive.uploadFile).toHaveBeenCalledWith(
+      "folder",
+      "Product Information - Amazon Listing.xlsx",
+      expect.any(Uint8Array),
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+  });
 });
 
 describe("previewDraftInputFromEnrichedRow", () => {
