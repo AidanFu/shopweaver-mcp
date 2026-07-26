@@ -12,15 +12,82 @@ function skuFor(index: number): string {
   return `AMZ-HMF-${String(index + 1).padStart(4, "0")}`;
 }
 
+const ENGLISH_PRODUCT_NAMES = new Map([
+  ["郁金香兔-紫色", "Purple Tulip Bunny"],
+  ["郁金香兔-蓝色", "Blue Tulip Bunny"],
+  ["郁金香兔-黄色", "Yellow Tulip Bunny"],
+  ["郁金香兔-粉色", "Pink Tulip Bunny"],
+  ["波利狗-绿色", "Green Tree Polly Dog"],
+  ["樱桃小粉熊", "Pink Cherry Bear"],
+  ["新郎新娘兔", "Bride and Groom Bunny Set"],
+  ["爱心猪", "Heart Pig Dumpling"],
+  ["兔耳朵挂件", "Bunny Ear Gourd"],
+  ["小糖葫芦", "Candied Hawthorn Dumpling"],
+  ["双胞胎樱桃", "Twin Cherry Dumpling"],
+  ["垂耳小兔", "Lop Bunny with Knit Hood"],
+  ["垂耳小兔粉红色", "Pink Hood Lop Bunny"],
+  ["垂耳小兔紫色", "Purple Hood Lop Bunny"],
+  ["垂耳小兔橙色", "Orange Hood Lop Bunny"],
+  ["中国红小兔", "Red China Sport Bunny"],
+  ["中国绿小兔", "Green China Sport Bunny"],
+  ["胡萝卜耳朵兔子", "Carrot Ear Bunny"],
+  ["圣诞树团子", "Christmas Tree Dumpling"],
+  ["双层圣诞团子", "Double Christmas Santa Dumpling"],
+  ["冬日小雪人", "Winter Snowman"],
+  ["樱桃小白熊", "White Cherry Bear"],
+  ["圣诞树摆件", "Mini Christmas Tree"],
+  ["圣诞老人挂件", "Santa Claus Charm"],
+  ["圣诞老人摆件", "Santa Claus Figure"],
+  ["粉色草莓小猪摆件", "Pink Strawberry Pig"],
+  ["红草莓小猪摆件", "Red Strawberry Pig"],
+  ["白衣藏青裤小兔", "Navy School Uniform Bunny"],
+  ["小圣诞老人挂件", "Mini Santa Claus Charm"],
+  ["白衣蓝裤小兔", "Blue School Uniform Bunny"],
+  ["软萌圣诞树团子", "Red Christmas Tree Dumpling"],
+  ["圣诞小树团子手工钩织钥匙扣", "Mini Christmas Tree Dumpling"],
+  ["圆润奶白团子", "Cream Dumpling with Candy"],
+  ["米白色牛奶棉钩织小兔", "Purple Dress Bunny"],
+  ["米白渐变浅粉垂耳小兔", "Gradient Pink Lop Bunny"],
+  ["双马尾毕业女孩钩织挂件", "Graduation Girl with Pigtails"],
+  ["眼镜毕业女孩钩织挂件", "Graduation Girl with Glasses"],
+  ["卷毛男孩毕业钩织挂件", "Graduation Boy with Curls"]
+]);
+
 const HANGING_MINI_FIGURE_CATEGORY = {
   amazonProductType: "HANDMADE_HANGING_MINI_FIGURE",
   amazonCategoryPath: "Handmade Products > Accessories > Bag, Backpack, Keychain & Car Hanging Mini Figures",
   categoryConfidence: "user_confirmed"
 };
 
+function englishProductName(productName: string): string {
+  return ENGLISH_PRODUCT_NAMES.get(productName) ?? "Handmade Mini Figure";
+}
+
+function hasOccasion(name: string, keyword: string): boolean {
+  return name.toLowerCase().includes(keyword);
+}
+
+function occasionPhrase(name: string): string {
+  if (hasOccasion(name, "christmas") || hasOccasion(name, "snowman") || hasOccasion(name, "santa")) return "holiday gifting, stocking stuffers, and festive bag decor";
+  if (hasOccasion(name, "graduation")) return "graduation gifts, school celebrations, and backpack decor";
+  if (hasOccasion(name, "bride") || hasOccasion(name, "groom")) return "wedding gifts, couple keepsakes, and celebration favors";
+  if (hasOccasion(name, "bunny") || hasOccasion(name, "bear") || hasOccasion(name, "pig") || hasOccasion(name, "dog")) return "birthdays, party favors, and everyday cute accessory gifts";
+  return "birthdays, holidays, party favors, and small thank-you gifts";
+}
+
+function optimizedTitle(name: string): string {
+  const title = `${name} Crochet Charm for Bag, Keychain or Car`;
+  return title.length <= 75 ? title : `${name} Crochet Bag Charm`;
+}
+
+function backendTerms(name: string): string {
+  return `${name.toLowerCase()} crochet charm bag charm backpack charm keychain car hanging ornament handmade gift`;
+}
+
 export function buildAmazonListingRows(products: ImportedDriveProduct[]): AmazonListingWorkbookRow[] {
   return products.map((product, index) => {
     const mainImageName = product.images[0]?.name;
+    const name = englishProductName(product.productName);
     return {
       productName: product.productName,
       sourceChineseDescription: product.rawChineseDescription,
@@ -34,14 +101,14 @@ export function buildAmazonListingRows(products: ImportedDriveProduct[]): Amazon
       variationTheme: "",
       color: "",
       size: "",
-      amazonTitle: "Handmade Crochet Mini Figure Charm for Bag, Backpack, Keychain or Car Hanging Decor",
-      bullet1: "Handmade crochet mini figure designed to hang from a bag, backpack, keychain, or car mirror.",
-      bullet2: "Small lightweight charm adds a soft handmade accent without adding bulky weight.",
-      bullet3: "Flexible hanging design works as a cute everyday accessory, car ornament, or gift add-on.",
-      bullet4: "Gift-ready option for birthdays, holidays, party favors, stocking stuffers, and small thank-you gifts.",
+      amazonTitle: optimizedTitle(name),
+      bullet1: `Handmade crochet ${name} mini figure designed for bags, backpacks, keys, or car display.`,
+      bullet2: "Lightweight hanging charm adds personality without making bags or keys feel bulky.",
+      bullet3: "Soft crochet texture works as a bag accent, keychain detail, or car ornament.",
+      bullet4: `Gift-ready choice for ${occasionPhrase(name)}.`,
       bullet5: "Each piece may have small handmade variations in shape, color placement, and detail.",
-      productDescription: "Amazon-ready draft copy for a handmade crochet mini figure charm. Position the product as a small hanging accessory for bags, backpacks, keychains, or cars, and finalize dimensions, materials, package details, and compliance notes before submission.",
-      backendSearchTerms: "crochet mini figure bag charm backpack charm keychain car hanging ornament handmade gift",
+      productDescription: `The ${name} is a handmade crochet mini figure charm for customers who want a small accessory with character. It is designed for bags, backpacks, keychains, or cars, making it useful for ${occasionPhrase(name)}. Review final dimensions, materials, package details, and compliance notes before Amazon submission.`,
+      backendSearchTerms: backendTerms(name),
       targetCustomer: "Gift buyers, bag and backpack accessory shoppers, keychain shoppers, and car hanging decor shoppers",
       useCases: "Hang on bag; hang on backpack; use as keychain; hang in car",
       mainImageNotes: mainImageName ? `Review ${mainImageName} as the main image candidate; create a clean product-focused image if needed.` : "Add a clear product-focused main image before Amazon submission.",

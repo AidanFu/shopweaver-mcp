@@ -29,6 +29,57 @@ describe("buildAmazonListingRows", () => {
     expect(rows[0].suggestedCampaignStructure).toContain("Auto discovery campaign");
   });
 
+  it("creates product-specific titles, bullets, descriptions, and search terms", () => {
+    const rows = buildAmazonListingRows([
+      {
+        productName: "郁金香兔-紫色",
+        rawChineseDescription: "主体为奶白色坐姿垂耳小兔，头顶紫色大蝴蝶结，怀中抱着一支钩织粉郁金香。",
+        imageFolderName: "郁金香兔-紫色",
+        imageCount: 7,
+        images: []
+      },
+      {
+        productName: "双马尾毕业女孩钩织挂件",
+        rawChineseDescription: "双马尾毕业女孩钩织挂件，头戴黑色学士帽，适合毕业礼物。",
+        imageFolderName: "双马尾毕业女孩钩织挂件",
+        imageCount: 6,
+        images: []
+      }
+    ]);
+    expect(rows[0].amazonTitle).toBe("Purple Tulip Bunny Crochet Charm for Bag, Keychain or Car");
+    expect(rows[1].amazonTitle).toBe("Graduation Girl with Pigtails Crochet Charm for Bag, Keychain or Car");
+    expect(rows[0].amazonTitle!.length).toBeLessThanOrEqual(75);
+    expect(rows[1].amazonTitle!.length).toBeLessThanOrEqual(75);
+    expect(rows[0].bullet1).toContain("Purple Tulip Bunny");
+    expect(rows[1].bullet1).toContain("Graduation Girl with Pigtails");
+    expect(rows[0].productDescription).toContain("Purple Tulip Bunny");
+    expect(rows[1].productDescription).toContain("graduation");
+    expect(rows[0].backendSearchTerms).toContain("purple tulip bunny");
+    expect(rows[1].backendSearchTerms).toContain("graduation girl with pigtails");
+  });
+
+  it("keeps similar Christmas tree products distinguishable", () => {
+    const rows = buildAmazonListingRows([
+      {
+        productName: "圣诞树团子",
+        rawChineseDescription: "圣诞树团子挂件",
+        imageFolderName: "圣诞树团子",
+        imageCount: 1,
+        images: []
+      },
+      {
+        productName: "圣诞小树团子手工钩织钥匙扣",
+        rawChineseDescription: "圣诞小树团子手工钩织钥匙扣",
+        imageFolderName: "圣诞小树团子手工钩织钥匙扣",
+        imageCount: 1,
+        images: []
+      }
+    ]);
+    expect(rows[0].amazonTitle).not.toBe(rows[1].amazonTitle);
+    expect(rows[0].amazonTitle).toContain("Christmas Tree Dumpling");
+    expect(rows[1].amazonTitle).toContain("Mini Christmas Tree Dumpling");
+  });
+
   it("uses English-only sequential SKUs and fills listing copy fields", () => {
     const rows = buildAmazonListingRows([
       {
@@ -49,9 +100,9 @@ describe("buildAmazonListingRows", () => {
     expect(rows[0].sku).toBe("AMZ-HMF-0001");
     expect(rows[1].sku).toBe("AMZ-HMF-0002");
     expect(rows[0].sku).toMatch(/^[A-Z0-9-]+$/);
-    expect(rows[0].amazonTitle).toContain("Handmade Crochet Mini Figure");
+    expect(rows[0].amazonTitle).toContain("Handmade Mini Figure");
     expect(rows[0].bullet1).toContain("bag");
-    expect(rows[0].bullet2).toContain("lightweight");
+    expect(rows[0].bullet2).toContain("Lightweight");
     expect(rows[0].bullet3).toContain("car ornament");
     expect(rows[0].bullet4).toContain("Gift-ready");
     expect(rows[0].bullet5).toContain("handmade variations");
