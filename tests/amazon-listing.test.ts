@@ -144,6 +144,26 @@ describe("buildAmazonListingRows", () => {
     expect(rows[0].useCaseCoverage).toBe("bag; backpack; keychain; car; gift");
   });
 
+  it("adds category intelligence fields for evolving category experiments", () => {
+    const rows = buildAmazonListingRows([{
+      productName: "樱桃小粉熊",
+      rawChineseDescription: "手工钩樱桃小粉熊钥匙扣/包挂，搭配金属龙虾扣+钥匙圆环。高8cm 宽6cm",
+      imageFolderName: "樱桃小粉熊",
+      imageCount: 5,
+      images: []
+    }]);
+    expect(rows[0].primaryCategoryHypothesis).toBe("Handmade bag charm / keychain accessory");
+    expect(rows[0].alternativeCategoryHypotheses).toContain("hanging ornament");
+    expect(rows[0].categoryDecisionEvidence).toContain("bag");
+    expect(rows[0].similarBestsellerSearchQueries).toContain("crochet bear bag charm");
+    expect(rows[0].competitorCategoryNotes).toContain("Research best sellers");
+    expect(rows[0].competitionLevel).toBe("medium");
+    expect(rows[0].adCostRisk).toBe("medium");
+    expect(rows[0].expectedConversionFit).toBe("high");
+    expect(rows[0].categoryExperimentPlan).toContain("Start with bag charm/keychain positioning");
+    expect(rows[0].categoryLearningStatus).toBe("hypothesis_ready");
+  });
+
   it("uses English-only sequential SKUs and fills listing copy fields", () => {
     const rows = buildAmazonListingRows([
       {

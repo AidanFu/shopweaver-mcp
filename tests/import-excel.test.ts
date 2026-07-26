@@ -78,6 +78,16 @@ describe("writeAmazonListingWorkbook", () => {
       missingBuyerFacts: "None",
       giftabilityNotes: "Useful as a small gift.",
       useCaseCoverage: "bag; backpack; keychain; car; gift",
+      primaryCategoryHypothesis: "Handmade bag charm / keychain accessory",
+      alternativeCategoryHypotheses: "hanging ornament; car hanging ornament",
+      categoryDecisionEvidence: "Has key ring and bag charm use case.",
+      similarBestsellerSearchQueries: "crochet bear bag charm; handmade keychain",
+      competitorCategoryNotes: "Research best sellers before launch.",
+      competitionLevel: "medium",
+      adCostRisk: "medium",
+      expectedConversionFit: "high",
+      categoryExperimentPlan: "Start with bag charm/keychain positioning.",
+      categoryLearningStatus: "hypothesis_ready",
       validationStatus: "needs_review",
       validationNotes: "Review Amazon category/product type before submission."
     }]);
@@ -90,6 +100,8 @@ describe("writeAmazonListingWorkbook", () => {
     expect(rows[0]["Manual Review Priority"]).toBe("normal");
     expect(rows[0]["Rufus/Alexa Readiness Score"]).toBe(95);
     expect(rows[0]["Use Case Coverage"]).toBe("bag; backpack; keychain; car; gift");
+    expect(rows[0]["Primary Category Hypothesis"]).toBe("Handmade bag charm / keychain accessory");
+    expect(rows[0]["Category Learning Status"]).toBe("hypothesis_ready");
     expect(rows[0]["Validation Status"]).toBe("needs_review");
   });
 });

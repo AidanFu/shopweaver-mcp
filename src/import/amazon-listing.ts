@@ -139,6 +139,19 @@ function aiReadinessScore(copyScore: number, extractedDimensions: boolean): numb
   return Math.max(score, 0);
 }
 
+function similarSearchQueries(name: string): string {
+  const normalizedName = name.toLowerCase();
+  const theme = normalizedName.includes("bear") ? "crochet bear bag charm" : `${normalizedName} crochet charm`;
+  return [...new Set([
+    `${normalizedName} crochet charm`,
+    theme,
+    "crochet bag charm",
+    "handmade keychain",
+    "car hanging ornament",
+    "backpack charm"
+  ])].join("; ");
+}
+
 export function buildAmazonListingRows(products: ImportedDriveProduct[]): AmazonListingWorkbookRow[] {
   return products.map((product, index) => {
     const mainImageName = product.images[0]?.name;
@@ -211,7 +224,17 @@ export function buildAmazonListingRows(products: ImportedDriveProduct[]): Amazon
       rufusAlexaReadinessScore: aiReadinessScore(listingCopyQualityScore, Boolean(extractedDimensions)),
       missingBuyerFacts: missingBuyerFacts(Boolean(extractedDimensions)),
       giftabilityNotes: `Position for ${occasionPhrase(name)}.`,
-      useCaseCoverage: "bag; backpack; keychain; car; gift"
+      useCaseCoverage: "bag; backpack; keychain; car; gift",
+      primaryCategoryHypothesis: "Handmade bag charm / keychain accessory",
+      alternativeCategoryHypotheses: "hanging ornament; car hanging ornament; plush mini figure; handmade accessory",
+      categoryDecisionEvidence: "Product copy and images indicate a small handmade crochet figure with bag, backpack, keychain, and car hanging use cases.",
+      similarBestsellerSearchQueries: similarSearchQueries(name),
+      competitorCategoryNotes: "Research best sellers in bag charm, handmade keychain, hanging ornament, and car hanging ornament results before launch.",
+      competitionLevel: "medium",
+      adCostRisk: "medium",
+      expectedConversionFit: "high",
+      categoryExperimentPlan: "Start with bag charm/keychain positioning; compare discovery terms for hanging ornament and car hanging ornament before changing category.",
+      categoryLearningStatus: "hypothesis_ready"
     };
   });
 }

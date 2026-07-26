@@ -154,6 +154,16 @@ export interface AmazonListingWorkbookRow {
   missingBuyerFacts?: string;
   giftabilityNotes?: string;
   useCaseCoverage?: string;
+  primaryCategoryHypothesis?: string;
+  alternativeCategoryHypotheses?: string;
+  categoryDecisionEvidence?: string;
+  similarBestsellerSearchQueries?: string;
+  competitorCategoryNotes?: string;
+  competitionLevel?: string;
+  adCostRisk?: string;
+  expectedConversionFit?: string;
+  categoryExperimentPlan?: string;
+  categoryLearningStatus?: string;
   validationStatus?: string;
   validationNotes?: string;
 }
@@ -210,6 +220,16 @@ const AMAZON_LISTING_HEADERS = [
   "Missing Buyer Facts",
   "Giftability Notes",
   "Use Case Coverage",
+  "Primary Category Hypothesis",
+  "Alternative Category Hypotheses",
+  "Category Decision Evidence",
+  "Similar Bestseller Search Queries",
+  "Competitor Category Notes",
+  "Competition Level",
+  "Ad Cost Risk",
+  "Expected Conversion Fit",
+  "Category Experiment Plan",
+  "Category Learning Status",
   "Validation Status",
   "Validation Notes"
 ];
@@ -268,6 +288,16 @@ export function writeAmazonListingWorkbook(rows: AmazonListingWorkbookRow[]): Ui
     row.missingBuyerFacts ?? "",
     row.giftabilityNotes ?? "",
     row.useCaseCoverage ?? "",
+    row.primaryCategoryHypothesis ?? "",
+    row.alternativeCategoryHypotheses ?? "",
+    row.categoryDecisionEvidence ?? "",
+    row.similarBestsellerSearchQueries ?? "",
+    row.competitorCategoryNotes ?? "",
+    row.competitionLevel ?? "",
+    row.adCostRisk ?? "",
+    row.expectedConversionFit ?? "",
+    row.categoryExperimentPlan ?? "",
+    row.categoryLearningStatus ?? "",
     row.validationStatus ?? "",
     row.validationNotes ?? ""
   ]);
