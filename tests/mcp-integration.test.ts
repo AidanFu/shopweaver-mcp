@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { MemoryCredentialStore } from "../src/credentials/memory.js";
 import { ListingService } from "../src/etsy/listings.js";
 import { OrderService } from "../src/etsy/orders.js";
+import { DriveImageUploadService } from "../src/import/drive-image-upload.js";
 import { DriveImportService } from "../src/import/drive-import.js";
 import { createServer } from "../src/server.js";
 import { GoogleFolderToolService } from "../src/tools/google-tools.js";
@@ -20,7 +21,8 @@ describe("MCP integration", () => {
     const writes = new DraftWriteService(clientApi, listings, store, new ConfirmationStore());
     const googleFolders = new GoogleFolderToolService({} as never);
     const driveImports = new DriveImportService({} as never);
-    const server = createServer({ store, listings, orders, writes, googleFolders, driveImports });
+    const driveImageUploads = new DriveImageUploadService(clientApi, listings, {} as never, store, new ConfirmationStore());
+    const server = createServer({ store, listings, orders, writes, googleFolders, driveImports, driveImageUploads });
     const client = new Client({ name: "test", version: "1" });
     const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
     await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
@@ -41,6 +43,7 @@ describe("MCP integration", () => {
       "google_drive_remove_allowed_folder",
       "shopweaver_import_drive_folder",
       "shopweaver_preview_etsy_draft_from_enriched_row",
+      "shopweaver_upload_drive_images_to_etsy_draft",
       "shopweaver_write_enriched_workbook"
     ]);
     await Promise.all([client.close(), server.close()]);

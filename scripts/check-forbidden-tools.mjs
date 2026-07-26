@@ -16,10 +16,11 @@ const allowed = [
   "google_drive_remove_allowed_folder",
   "shopweaver_import_drive_folder",
   "shopweaver_preview_etsy_draft_from_enriched_row",
+  "shopweaver_upload_drive_images_to_etsy_draft",
   "shopweaver_write_enriched_workbook"
 ].sort();
 
-const files = ["src/tools/read-tools.ts", "src/tools/write-tools.ts", "src/tools/google-tools.ts", "src/tools/import-tools.ts"];
+const files = ["src/tools/read-tools.ts", "src/tools/write-tools.ts", "src/tools/google-tools.ts", "src/tools/import-tools.ts", "src/tools/drive-image-tools.ts"];
 const found = [];
 for (const file of files) {
   const source = await readFile(new URL(`../${file}`, import.meta.url), "utf8");
