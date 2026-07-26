@@ -29,6 +29,36 @@ describe("buildAmazonListingRows", () => {
     expect(rows[0].suggestedCampaignStructure).toContain("Auto discovery campaign");
   });
 
+  it("uses English-only sequential SKUs and fills listing copy fields", () => {
+    const rows = buildAmazonListingRows([
+      {
+        productName: "龙猫钥匙扣",
+        rawChineseDescription: "手工钩织钥匙扣，适合挂包和送礼",
+        imageFolderName: "龙猫钥匙扣",
+        imageCount: 1,
+        images: []
+      },
+      {
+        productName: "小狗挂件",
+        rawChineseDescription: "可以挂车里",
+        imageFolderName: "小狗挂件",
+        imageCount: 1,
+        images: []
+      }
+    ]);
+    expect(rows[0].sku).toBe("AMZ-HMF-0001");
+    expect(rows[1].sku).toBe("AMZ-HMF-0002");
+    expect(rows[0].sku).toMatch(/^[A-Z0-9-]+$/);
+    expect(rows[0].amazonTitle).toContain("Handmade Crochet Mini Figure");
+    expect(rows[0].bullet1).toContain("bag");
+    expect(rows[0].bullet2).toContain("lightweight");
+    expect(rows[0].bullet3).toContain("car ornament");
+    expect(rows[0].bullet4).toContain("Gift-ready");
+    expect(rows[0].bullet5).toContain("handmade variations");
+    expect(rows[0].productDescription).toContain("bags, backpacks, keychains, or cars");
+    expect(rows[0].backendSearchTerms).toContain("car hanging ornament");
+  });
+
   it("uses the user-confirmed hanging mini figure category for every imported product", () => {
     const rows = buildAmazonListingRows([{
       productName: "未知产品",

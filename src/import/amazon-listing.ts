@@ -8,10 +8,8 @@ type ImportedDriveProduct = {
   images: Array<{ id: string; name: string; mimeType: string }>;
 };
 
-function slugSku(productName: string): string {
-  const normalized = productName.normalize("NFKD").replace(/[^\p{Letter}\p{Number}]+/gu, "-").replace(/^-|-$/g, "");
-  const base = normalized || "PRODUCT";
-  return `AMZ-${base.slice(0, 32).toUpperCase()}`;
+function skuFor(index: number): string {
+  return `AMZ-HMF-${String(index + 1).padStart(4, "0")}`;
 }
 
 const HANGING_MINI_FIGURE_CATEGORY = {
@@ -21,7 +19,7 @@ const HANGING_MINI_FIGURE_CATEGORY = {
 };
 
 export function buildAmazonListingRows(products: ImportedDriveProduct[]): AmazonListingWorkbookRow[] {
-  return products.map(product => {
+  return products.map((product, index) => {
     const mainImageName = product.images[0]?.name;
     return {
       productName: product.productName,
@@ -31,7 +29,7 @@ export function buildAmazonListingRows(products: ImportedDriveProduct[]): Amazon
       amazonProductType: HANGING_MINI_FIGURE_CATEGORY.amazonProductType,
       amazonCategoryPath: HANGING_MINI_FIGURE_CATEGORY.amazonCategoryPath,
       categoryConfidence: HANGING_MINI_FIGURE_CATEGORY.categoryConfidence,
-      sku: slugSku(product.productName),
+      sku: skuFor(index),
       parentSku: "",
       variationTheme: "",
       color: "",
