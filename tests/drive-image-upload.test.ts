@@ -11,13 +11,15 @@ async function dependencies(listingState = "draft") {
       { id: "sheet", name: "Product Information", mimeType: "application/vnd.google-apps.spreadsheet" },
       { id: "images-root", name: "Images", mimeType: "application/vnd.google-apps.folder" }
     ]),
-    listChildrenByParentId: vi.fn()
-      .mockResolvedValueOnce([{ id: "product-folder", name: "产品一", mimeType: "application/vnd.google-apps.folder" }])
-      .mockResolvedValueOnce([
+    listChildrenByParentId: vi.fn(async (parentId: string) => {
+      if (parentId === "images-root") return [{ id: "product-folder", name: "产品一", mimeType: "application/vnd.google-apps.folder" }];
+      if (parentId === "product-folder") return [
         { id: "img-b", name: "02-side.jpg", mimeType: "image/jpeg" },
         { id: "notes", name: "notes.txt", mimeType: "text/plain" },
         { id: "img-a", name: "01-main.jpg", mimeType: "image/jpeg" }
-      ]),
+      ];
+      return [];
+    }),
     downloadFile: vi.fn()
   };
   const listings = { getListingState: vi.fn().mockResolvedValue(listingState) };
@@ -56,5 +58,34 @@ describe("DriveImageUploadService", () => {
       productName: "产品一"
     })).rejects.toMatchObject({ code: "DRAFT_REQUIRED" });
     expect(drive.listFolderChildren).not.toHaveBeenCalled();
+  });
+
+  it("uploads sorted Drive images to Etsy only after matching confirmation", async () => {
+    const jpeg = new Uint8Array([0xff, 0xd8, 0xff, 0x00]);
+    const { service, drive, client } = await dependencies();
+    drive.downloadFile.mockResolvedValue(jpeg);
+    client.request
+      .mockResolvedValueOnce({ listing_image_id: 101, rank: 1, full_width: 1000, full_height: 1000, url_fullxfull: "https://img/1.jpg" })
+      .mockResolvedValueOnce({ listing_image_id: 102, rank: 2, full_width: 900, full_height: 900, url_fullxfull: "https://img/2.jpg" });
+    const input = { listingId: 9, folderId: "root", productName: "产品一" };
+    const preview = await service.previewUpload(input);
+    const result = await service.confirmUpload(input, preview.confirmationToken);
+    expect(result.uploadedCount).toBe(2);
+    expect(result.uploaded.map(image => image.listingImageId)).toEqual([101, 102]);
+    expect(drive.downloadFile).toHaveBeenCalledWith("img-a");
+    expect(drive.downloadFile).toHaveBeenCalledWith("img-b");
+    expect(client.request.mock.calls[0][0]).toBe("/application/shops/42/listings/9/images");
+    expect(client.request.mock.calls[0][1].method).toBe("POST");
+  });
+
+  it("rejects confirmation when maxImages changes after preview", async () => {
+    const { service, client } = await dependencies();
+    const preview = await service.previewUpload({ listingId: 9, folderId: "root", productName: "产品一", maxImages: 1 });
+    await expect(service.confirmUpload({
+      listingId: 9,
+      folderId: "root",
+      productName: "产品一"
+    }, preview.confirmationToken)).rejects.toMatchObject({ code: "PREVIEW_MISMATCH" });
+    expect(client.request).not.toHaveBeenCalled();
   });
 });

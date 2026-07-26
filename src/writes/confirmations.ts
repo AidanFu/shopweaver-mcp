@@ -2,7 +2,7 @@ import { randomBytes } from "node:crypto";
 import { ShopWeaverError } from "../errors.js";
 import { canonicalHash } from "./canonical.js";
 
-export type WriteAction = "create_draft" | "update_draft" | "upload_draft_image" | "update_draft_inventory";
+export type WriteAction = "create_draft" | "update_draft" | "upload_draft_image" | "upload_drive_images" | "update_draft_inventory";
 
 type PreviewRecord = {
   action: WriteAction;
