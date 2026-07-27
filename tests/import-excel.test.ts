@@ -103,10 +103,12 @@ describe("writeAmazonListingWorkbook", () => {
     expect(workbook.SheetNames).toContain("Daily Optimization Inputs");
     expect(workbook.SheetNames).toContain("Weekly Optimization Review");
     expect(workbook.SheetNames).toContain("Optimization Recommendations");
+    expect(workbook.SheetNames).toContain("Optimization Guide");
     const rows = XLSX.utils.sheet_to_json<Record<string, string>>(workbook.Sheets["Amazon Listings"]);
     const dailyRows = XLSX.utils.sheet_to_json<Record<string, string>>(workbook.Sheets["Daily Optimization Inputs"]);
     const weeklyRows = XLSX.utils.sheet_to_json<Record<string, string>>(workbook.Sheets["Weekly Optimization Review"]);
     const recommendationRows = XLSX.utils.sheet_to_json<Record<string, string>>(workbook.Sheets["Optimization Recommendations"]);
+    const guideRows = XLSX.utils.sheet_to_json<Record<string, string>>(workbook.Sheets["Optimization Guide"]);
     expect(rows[0]["Product Name"]).toBe("产品一");
     expect(rows[0]["Amazon Product Type"]).toBe("KEYCHAIN");
     expect(rows[0]["Amazon Title Length"]).toBe(59);
@@ -132,6 +134,11 @@ describe("writeAmazonListingWorkbook", () => {
     expect(weeklyRows[0]["ACOS"]).toBe("");
     expect(weeklyRows[0]["AI Weekly Recommendation"]).toContain("Review only");
     expect(recommendationRows).toEqual([]);
+    expect(guideRows[0]["Section"]).toBe("Daily metrics");
+    expect(guideRows[0]["Details"]).toContain("CTR");
+    expect(guideRows[1]["Section"]).toBe("Weekly metrics");
+    expect(guideRows[1]["Details"]).toContain("ACOS");
+    expect(guideRows[2]["Details"]).toContain("Seller approval is required");
   });
 });
 

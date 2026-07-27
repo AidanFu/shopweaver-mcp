@@ -295,6 +295,14 @@ const AMAZON_OPTIMIZATION_RECOMMENDATION_HEADERS = [
   "Seller Approval Required"
 ];
 
+const AMAZON_OPTIMIZATION_GUIDE_ROWS = [
+  ["Section", "Details"],
+  ["Daily metrics", "Paste Date, Sessions, CTR, CPC, Spend, Orders, Sales, Conversion Rate, Search Terms, and Listing Issues into Daily Optimization Inputs."],
+  ["Weekly metrics", "Paste Week Start, ACOS, TACOS, Total Spend, Total Sales, Keyword Winners, Negative Keyword Candidates, and Category Conversion Notes into Weekly Optimization Review."],
+  ["Approval boundary", "Seller approval is required before applying any recommendation. Refreshing recommendations does not change Amazon listings, categories, bids, budgets, keywords, or ads."],
+  ["Recommendation refresh", "Run shopweaver_refresh_amazon_optimization_recommendations after metrics are pasted. Blank template rows are ignored."]
+];
+
 export function writeAmazonListingWorkbook(rows: AmazonListingWorkbookRow[]): Uint8Array {
   const workbook = XLSX.utils.book_new();
   const values = rows.map(row => [
@@ -429,6 +437,7 @@ export function writeAmazonListingWorkbook(rows: AmazonListingWorkbookRow[]): Ui
   XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([
     AMAZON_OPTIMIZATION_RECOMMENDATION_HEADERS
   ]), "Optimization Recommendations");
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(AMAZON_OPTIMIZATION_GUIDE_ROWS), "Optimization Guide");
   return new Uint8Array(XLSX.write(workbook, { type: "array", bookType: "xlsx" }));
 }
 
