@@ -35,4 +35,25 @@ describe("AmazonSpApiClient", () => {
     const client = new AmazonSpApiClient(new MemoryCredentialStore(), vi.fn());
     await expect(client.getMarketplaceParticipations()).rejects.toMatchObject({ code: "AMAZON_SP_API_AUTH_REQUIRED" });
   });
+
+  it("gets an existing listing item by SKU with optimization-relevant included data", async () => {
+    const store = new MemoryCredentialStore();
+    await store.set("amazonSpApiApp", { clientId: "client", clientSecret: "secret" });
+    await store.set("amazonSpApiAuth", {
+      refreshToken: "refresh",
+      accessToken: "access",
+      expiresAt: Date.now() + 120_000,
+      sellingPartnerId: "A1SELLER",
+      region: "na",
+      marketplaceIds: ["ATVPDKIKX0DER"]
+    });
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ sku: "AMZ-HMF-0001" }), {
+      status: 200,
+      headers: { "content-type": "application/json" }
+    }));
+    const client = new AmazonSpApiClient(store, fetchMock);
+
+    await expect(client.getListingItem("AMZ-HMF-0001")).resolves.toEqual({ sku: "AMZ-HMF-0001" });
+    expect(fetchMock.mock.calls[0][0]).toBe("https://sellingpartnerapi-na.amazon.com/listings/2021-08-01/items/A1SELLER/AMZ-HMF-0001?marketplaceIds=ATVPDKIKX0DER&includedData=summaries%2Cattributes%2Cissues%2Coffers%2CfulfillmentAvailability");
+  });
 });

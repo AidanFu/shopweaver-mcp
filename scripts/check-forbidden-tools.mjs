@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 
 const allowed = [
   "amazon_connection_status",
+  "amazon_get_listing_item",
   "amazon_get_marketplace_participations",
   "etsy_connection_status",
   "etsy_create_draft_listing",

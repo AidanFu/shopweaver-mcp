@@ -21,14 +21,23 @@ export class AmazonSpApiClient {
     return this.request("/sellers/v1/marketplaceParticipations");
   }
 
-  private async request(path: string): Promise<unknown> {
+  async getListingItem(sku: string) {
+    const auth = await this.store.get("amazonSpApiAuth");
+    if (!auth) throw new ShopWeaverError("AMAZON_SP_API_AUTH_REQUIRED", "Connect Amazon SP-API before using Amazon seller tools.");
+    return this.request(`/listings/2021-08-01/items/${encodeURIComponent(auth.sellingPartnerId)}/${encodeURIComponent(sku)}`, {
+      marketplaceIds: auth.marketplaceIds.join(","),
+      includedData: "summaries,attributes,issues,offers,fulfillmentAvailability"
+    });
+  }
+
+  private async request(path: string, query?: Record<string, string>): Promise<unknown> {
     const auth = await this.store.get("amazonSpApiAuth");
     if (!auth) throw new ShopWeaverError("AMAZON_SP_API_AUTH_REQUIRED", "Connect Amazon SP-API before using Amazon seller tools.");
     const accessToken = auth.accessToken && auth.expiresAt && auth.expiresAt > Date.now() + 60_000
       ? auth.accessToken
       : (await this.oauth.refreshAccessToken()).accessToken;
     const endpoint = REGION_ENDPOINTS[auth.region];
-    const url = `${endpoint}${path}`;
+    const url = query ? `${endpoint}${path}?${new URLSearchParams(query).toString()}` : `${endpoint}${path}`;
     const host = new URL(endpoint).host;
     const response = await this.fetchImpl(url, {
       method: "GET",

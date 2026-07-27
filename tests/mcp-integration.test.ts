@@ -31,6 +31,7 @@ describe("MCP integration", () => {
     const tools = await client.listTools();
     expect(tools.tools.map(tool => tool.name).sort()).toEqual([
       "amazon_connection_status",
+      "amazon_get_listing_item",
       "amazon_get_marketplace_participations",
       "etsy_connection_status",
       "etsy_create_draft_listing",
