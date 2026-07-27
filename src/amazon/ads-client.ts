@@ -41,6 +41,16 @@ export class AmazonAdsClient {
     });
   }
 
+  async listSponsoredProductsKeywords(profileId: string, body: Record<string, unknown> = {}) {
+    return this.request("/sp/keywords/list", {
+      method: "POST",
+      profileId,
+      accept: "application/vnd.spKeyword.v3+json",
+      contentType: "application/vnd.spKeyword.v3+json",
+      body
+    });
+  }
+
   private async request(path: string, options: {
     method?: "GET" | "POST";
     profileId?: string;

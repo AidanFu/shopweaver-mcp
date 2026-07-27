@@ -111,5 +111,34 @@ export function registerAmazonTools(server: McpServer, store: CredentialStore, a
       ...(maxResults ? { maxResults } : {}),
       ...(nextToken ? { nextToken } : {})
     })));
+
+    server.registerTool("amazon_ads_list_sp_keywords", {
+      description: "Read Sponsored Products keywords for one Amazon Ads profile. This is read-only and does not change campaigns, ad groups, bids, keywords, negatives, or ads.",
+      inputSchema: {
+        profileId: z.string().min(1),
+        campaignIds: z.array(z.string().min(1)).optional(),
+        adGroupIds: z.array(z.string().min(1)).optional(),
+        keywordIds: z.array(z.string().min(1)).optional(),
+        keywordTexts: z.array(z.string().min(1)).optional(),
+        keywordTextMatchType: z.enum(["BROAD_MATCH", "EXACT_MATCH"]).optional(),
+        matchTypes: z.array(z.enum(["BROAD", "PHRASE", "EXACT"])).optional(),
+        stateFilter: z.array(z.enum(["ARCHIVED", "ENABLED", "ENABLING", "OTHER", "PAUSED", "PROPOSED", "USER_DELETED"])).optional(),
+        locale: z.string().min(1).optional(),
+        includeExtendedDataFields: z.boolean().optional(),
+        maxResults: z.number().int().min(1).max(100).optional(),
+        nextToken: z.string().min(1).optional()
+      }
+    }, async ({ profileId, campaignIds, adGroupIds, keywordIds, keywordTexts, keywordTextMatchType, matchTypes, stateFilter, locale, includeExtendedDataFields, maxResults, nextToken }) => result(await amazonAds.listSponsoredProductsKeywords(profileId, {
+      ...(campaignIds ? { campaignIdFilter: { include: campaignIds } } : {}),
+      ...(adGroupIds ? { adGroupIdFilter: { include: adGroupIds } } : {}),
+      ...(keywordIds ? { keywordIdFilter: { include: keywordIds } } : {}),
+      ...(keywordTexts || keywordTextMatchType ? { keywordTextFilter: { ...(keywordTexts ? { include: keywordTexts } : {}), ...(keywordTextMatchType ? { queryTermMatchType: keywordTextMatchType } : {}) } } : {}),
+      ...(matchTypes ? { matchTypeFilter: matchTypes } : {}),
+      ...(stateFilter ? { stateFilter: { include: stateFilter } } : {}),
+      ...(locale ? { locale } : {}),
+      ...(includeExtendedDataFields === undefined ? {} : { includeExtendedDataFields }),
+      ...(maxResults ? { maxResults } : {}),
+      ...(nextToken ? { nextToken } : {})
+    })));
   }
 }
