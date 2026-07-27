@@ -248,9 +248,11 @@ describe("writeAmazonOptimizationRecommendationsWorkbook", () => {
     const rows = XLSX.utils.sheet_to_json<Record<string, string>>(workbook.Sheets["Optimization Recommendations"]);
     expect(rows[0]["Cadence"]).toBe("daily");
     expect(rows[0]["Status"]).toBe("needs_listing_review");
+    expect(rows[0]["Priority"]).toBe("high");
     expect(rows[0]["Recommendation"]).toContain("Do not increase bids");
     expect(rows[1]["Cadence"]).toBe("weekly");
     expect(rows[1]["Status"]).toBe("review_category_and_campaign");
+    expect(rows[1]["Priority"]).toBe("high");
     expect(rows[1]["Recommendation"]).toContain("category fit");
     expect(rows[1]["Seller Approval Required"]).toBe("yes");
   });
@@ -279,8 +281,10 @@ describe("refreshAmazonOptimizationRecommendations", () => {
     expect(recommendationRows).toHaveLength(2);
     expect(recommendationRows[0]["SKU"]).toBe("AMZ-HMF-0001");
     expect(recommendationRows[0]["Status"]).toBe("needs_listing_review");
+    expect(recommendationRows[0]["Priority"]).toBe("high");
     expect(recommendationRows[1]["Cadence"]).toBe("weekly");
     expect(recommendationRows[1]["Status"]).toBe("review_category_and_campaign");
+    expect(recommendationRows[1]["Priority"]).toBe("high");
     expect(summarizeAmazonOptimizationRefresh(refreshed)).toEqual({
       dailyInputCount: 1,
       weeklyInputCount: 1,

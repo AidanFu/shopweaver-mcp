@@ -291,6 +291,7 @@ const AMAZON_OPTIMIZATION_RECOMMENDATION_HEADERS = [
   "SKU",
   "Product Name",
   "Status",
+  "Priority",
   "Recommendation",
   "Seller Approval Required"
 ];
@@ -611,6 +612,7 @@ function optimizationRecommendationRows(input: {
       row.sku,
       row.productName,
       row.status,
+      row.priority,
       row.recommendation,
       "yes"
     ]),
@@ -620,6 +622,7 @@ function optimizationRecommendationRows(input: {
       row.sku,
       row.productName,
       row.status,
+      row.priority,
       row.recommendation,
       "yes"
     ])
