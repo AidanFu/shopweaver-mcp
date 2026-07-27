@@ -297,11 +297,23 @@ const AMAZON_OPTIMIZATION_RECOMMENDATION_HEADERS = [
   "Seller Approval Required"
 ];
 
+const AMAZON_OPTIMIZATION_DECISION_LOG_HEADERS = [
+  "Decision Date",
+  "SKU",
+  "Product Name",
+  "Action Type",
+  "Seller Decision",
+  "Decision Notes",
+  "Follow-up Date",
+  "Outcome Notes"
+];
+
 const AMAZON_OPTIMIZATION_GUIDE_ROWS = [
   ["Section", "Details"],
   ["Daily metrics", "Paste Date, Sessions, CTR, CPC, Spend, Orders, Sales, Conversion Rate, Search Terms, and Listing Issues into Daily Optimization Inputs."],
   ["Weekly metrics", "Paste Week Start, ACOS, TACOS, Total Spend, Total Sales, Keyword Winners, Negative Keyword Candidates, and Category Conversion Notes into Weekly Optimization Review."],
   ["Approval boundary", "Seller approval is required before applying any recommendation. Refreshing recommendations does not change Amazon listings, categories, bids, budgets, keywords, or ads."],
+  ["Decision log", "Record accepted, rejected, or deferred recommendations in Optimization Decision Log with follow-up dates and outcome notes for future learning."],
   ["Recommendation refresh", "Run shopweaver_refresh_amazon_optimization_recommendations after metrics are pasted. Blank template rows are ignored."],
   ["Status: needs_listing_review", "Traffic and spend exist but orders are weak or missing. Review title, main image, price, bullets, and size facts before increasing bids."],
   ["Status: harvest_winners", "Search terms or campaigns are converting efficiently. Review moving winners into manual exact or phrase campaigns before seller-approved bid changes."],
@@ -445,6 +457,9 @@ export function writeAmazonListingWorkbook(rows: AmazonListingWorkbookRow[]): Ui
   XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([
     AMAZON_OPTIMIZATION_RECOMMENDATION_HEADERS
   ]), "Optimization Recommendations");
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([
+    AMAZON_OPTIMIZATION_DECISION_LOG_HEADERS
+  ]), "Optimization Decision Log");
   XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(AMAZON_OPTIMIZATION_GUIDE_ROWS), "Optimization Guide");
   return new Uint8Array(XLSX.write(workbook, { type: "array", bookType: "xlsx" }));
 }
