@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import * as XLSX from "xlsx";
-import { parseAmazonDailyOptimizationInputs, parseAmazonWeeklyOptimizationInputs, parseProductInformationWorkbook, writeAmazonListingWorkbook } from "../src/import/excel.js";
+import { parseAmazonDailyOptimizationInputs, parseAmazonWeeklyOptimizationInputs, parseProductInformationWorkbook, writeAmazonListingWorkbook, writeAmazonOptimizationRecommendationsWorkbook } from "../src/import/excel.js";
 
 function workbookBytes(rows: Array<Array<string>>) {
   const workbook = XLSX.utils.book_new();
@@ -102,9 +102,11 @@ describe("writeAmazonListingWorkbook", () => {
     const workbook = XLSX.read(bytes, { type: "array" });
     expect(workbook.SheetNames).toContain("Daily Optimization Inputs");
     expect(workbook.SheetNames).toContain("Weekly Optimization Review");
+    expect(workbook.SheetNames).toContain("Optimization Recommendations");
     const rows = XLSX.utils.sheet_to_json<Record<string, string>>(workbook.Sheets["Amazon Listings"]);
     const dailyRows = XLSX.utils.sheet_to_json<Record<string, string>>(workbook.Sheets["Daily Optimization Inputs"]);
     const weeklyRows = XLSX.utils.sheet_to_json<Record<string, string>>(workbook.Sheets["Weekly Optimization Review"]);
+    const recommendationRows = XLSX.utils.sheet_to_json<Record<string, string>>(workbook.Sheets["Optimization Recommendations"]);
     expect(rows[0]["Product Name"]).toBe("产品一");
     expect(rows[0]["Amazon Product Type"]).toBe("KEYCHAIN");
     expect(rows[0]["Amazon Title Length"]).toBe(59);
@@ -129,6 +131,10 @@ describe("writeAmazonListingWorkbook", () => {
     expect(weeklyRows[0]["SKU"]).toBe("AMZ-CHAN-PIN-YI");
     expect(weeklyRows[0]["ACOS"]).toBe("");
     expect(weeklyRows[0]["AI Weekly Recommendation"]).toContain("Review only");
+    expect(recommendationRows[0]["SKU"]).toBe("AMZ-CHAN-PIN-YI");
+    expect(recommendationRows[0]["Cadence"]).toBe("daily");
+    expect(recommendationRows[0]["Status"]).toBe("collect_more_data");
+    expect(recommendationRows[0]["Seller Approval Required"]).toBe("yes");
   });
 });
 
@@ -177,5 +183,47 @@ describe("parseAmazonWeeklyOptimizationInputs", () => {
       negativeKeywordCandidates: "free; pattern",
       categoryConversionNotes: "0.8% category conversion"
     }]);
+  });
+});
+
+describe("writeAmazonOptimizationRecommendationsWorkbook", () => {
+  it("writes review-only recommendations from parsed daily and weekly metrics", () => {
+    const bytes = writeAmazonOptimizationRecommendationsWorkbook({
+      daily: [{
+        date: "2026-07-27",
+        sku: "AMZ-HMF-0001",
+        productName: "Purple Tulip Bunny",
+        sessions: 120,
+        ctr: 0.9,
+        cpc: 0.62,
+        spend: 42,
+        orders: 0,
+        sales: 0,
+        conversionRate: 0,
+        searchTerms: "crochet bag charm",
+        listingIssues: "main image weak"
+      }],
+      weekly: [{
+        weekStart: "2026-07-20",
+        sku: "AMZ-HMF-0001",
+        productName: "Purple Tulip Bunny",
+        acos: 72,
+        tacos: 30,
+        totalSpend: 180,
+        totalSales: 250,
+        keywordWinners: "",
+        negativeKeywordCandidates: "free; pattern",
+        categoryConversionNotes: "0.8% category conversion"
+      }]
+    });
+    const workbook = XLSX.read(bytes, { type: "array" });
+    const rows = XLSX.utils.sheet_to_json<Record<string, string>>(workbook.Sheets["Optimization Recommendations"]);
+    expect(rows[0]["Cadence"]).toBe("daily");
+    expect(rows[0]["Status"]).toBe("needs_listing_review");
+    expect(rows[0]["Recommendation"]).toContain("Do not increase bids");
+    expect(rows[1]["Cadence"]).toBe("weekly");
+    expect(rows[1]["Status"]).toBe("review_category_and_campaign");
+    expect(rows[1]["Recommendation"]).toContain("category fit");
+    expect(rows[1]["Seller Approval Required"]).toBe("yes");
   });
 });

@@ -1,5 +1,5 @@
 import * as XLSX from "xlsx";
-import { analyzeAmazonDailyOptimization, analyzeAmazonWeeklyOptimization } from "./amazon-optimization.js";
+import { analyzeAmazonDailyOptimization, analyzeAmazonOptimizationWorkbookInputs, analyzeAmazonWeeklyOptimization } from "./amazon-optimization.js";
 
 export interface RawProductRecord {
   productName: string;
@@ -285,6 +285,16 @@ const AMAZON_WEEKLY_OPTIMIZATION_HEADERS = [
   "Seller Approval"
 ];
 
+const AMAZON_OPTIMIZATION_RECOMMENDATION_HEADERS = [
+  "Cadence",
+  "Date/Week",
+  "SKU",
+  "Product Name",
+  "Status",
+  "Recommendation",
+  "Seller Approval Required"
+];
+
 export function writeAmazonListingWorkbook(rows: AmazonListingWorkbookRow[]): Uint8Array {
   const workbook = XLSX.utils.book_new();
   const values = rows.map(row => [
@@ -416,6 +426,26 @@ export function writeAmazonListingWorkbook(rows: AmazonListingWorkbookRow[]): Ui
       ""
     ])
   ]), "Weekly Optimization Review");
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([
+    AMAZON_OPTIMIZATION_RECOMMENDATION_HEADERS,
+    ...optimizationRecommendationRows({
+      daily: rows.map(row => ({
+        date: "",
+        sku: row.sku ?? "",
+        productName: row.productName,
+        sessions: 0,
+        ctr: 0,
+        cpc: 0,
+        spend: 0,
+        orders: 0,
+        sales: 0,
+        conversionRate: 0,
+        searchTerms: "",
+        listingIssues: ""
+      })),
+      weekly: []
+    })
+  ]), "Optimization Recommendations");
   return new Uint8Array(XLSX.write(workbook, { type: "array", bookType: "xlsx" }));
 }
 
@@ -494,4 +524,43 @@ export function parseAmazonWeeklyOptimizationInputs(bytes: Uint8Array): AmazonWe
     negativeKeywordCandidates: textValue(row["Negative Keyword Candidates"]),
     categoryConversionNotes: textValue(row["Category Conversion Notes"])
   }));
+}
+
+export function writeAmazonOptimizationRecommendationsWorkbook(input: {
+  daily: AmazonDailyOptimizationWorkbookInput[];
+  weekly: AmazonWeeklyOptimizationWorkbookInput[];
+}): Uint8Array {
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([
+    AMAZON_OPTIMIZATION_RECOMMENDATION_HEADERS,
+    ...optimizationRecommendationRows(input)
+  ]), "Optimization Recommendations");
+  return new Uint8Array(XLSX.write(workbook, { type: "array", bookType: "xlsx" }));
+}
+
+function optimizationRecommendationRows(input: {
+  daily: AmazonDailyOptimizationWorkbookInput[];
+  weekly: AmazonWeeklyOptimizationWorkbookInput[];
+}) {
+  const analyzed = analyzeAmazonOptimizationWorkbookInputs({ daily: input.daily, weekly: input.weekly });
+  return [
+    ...analyzed.daily.map(row => [
+      "daily",
+      row.date,
+      row.sku,
+      row.productName,
+      row.status,
+      row.recommendation,
+      "yes"
+    ]),
+    ...analyzed.weekly.map(row => [
+      "weekly",
+      row.weekStart,
+      row.sku,
+      row.productName,
+      row.status,
+      row.recommendation,
+      "yes"
+    ])
+  ];
 }
