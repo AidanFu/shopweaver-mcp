@@ -24,6 +24,16 @@ export interface AmazonOptimizationResult {
   recommendation: string;
 }
 
+export interface AmazonOptimizationWorkbookInput {
+  daily: Array<AmazonDailyOptimizationInput & { sku: string; productName: string; date: string; listingIssues: string }>;
+  weekly: Array<Omit<AmazonWeeklyOptimizationInput, "categoryConversionRate"> & { sku: string; productName: string; weekStart: string; categoryConversionNotes: string; categoryConversionRate?: number }>;
+}
+
+export interface AmazonOptimizationWorkbookResult {
+  daily: Array<AmazonOptimizationResult & { sku: string; productName: string; date: string }>;
+  weekly: Array<AmazonOptimizationResult & { sku: string; productName: string; weekStart: string }>;
+}
+
 export function analyzeAmazonDailyOptimization(input: AmazonDailyOptimizationInput): AmazonOptimizationResult {
   if (input.sessions >= 50 && input.orders === 0 && input.spend > 0) {
     return {
@@ -41,6 +51,31 @@ export function analyzeAmazonDailyOptimization(input: AmazonDailyOptimizationInp
     status: "collect_more_data",
     recommendation: "Review only: collect more daily traffic, click, conversion, and search-term data before changing listing copy, category, bids, budgets, keywords, or negatives."
   };
+}
+
+export function analyzeAmazonOptimizationWorkbookInputs(input: AmazonOptimizationWorkbookInput): AmazonOptimizationWorkbookResult {
+  return {
+    daily: input.daily.map(row => ({
+      sku: row.sku,
+      productName: row.productName,
+      date: row.date,
+      ...analyzeAmazonDailyOptimization(row)
+    })),
+    weekly: input.weekly.map(row => ({
+      sku: row.sku,
+      productName: row.productName,
+      weekStart: row.weekStart,
+      ...analyzeAmazonWeeklyOptimization({
+        ...row,
+        categoryConversionRate: Number.isFinite(row.categoryConversionRate) ? row.categoryConversionRate ?? 0 : conversionRateFromNotes(row.categoryConversionNotes)
+      })
+    }))
+  };
+}
+
+function conversionRateFromNotes(notes: string): number {
+  const match = notes.match(/(\d+(?:\.\d+)?)\s*%/);
+  return match ? Number(match[1]) : 0;
 }
 
 export function analyzeAmazonWeeklyOptimization(input: AmazonWeeklyOptimizationInput): AmazonOptimizationResult {

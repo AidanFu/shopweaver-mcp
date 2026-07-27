@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { analyzeAmazonDailyOptimization, analyzeAmazonWeeklyOptimization } from "../src/import/amazon-optimization.js";
+import { analyzeAmazonDailyOptimization, analyzeAmazonOptimizationWorkbookInputs, analyzeAmazonWeeklyOptimization } from "../src/import/amazon-optimization.js";
 
 describe("analyzeAmazonDailyOptimization", () => {
   it("recommends listing review when traffic clicks but does not convert", () => {
@@ -63,5 +63,46 @@ describe("analyzeAmazonWeeklyOptimization", () => {
     expect(result.status).toBe("review_category_and_campaign");
     expect(result.recommendation).toContain("category fit");
     expect(result.recommendation).toContain("pause or negate wasteful terms");
+  });
+});
+
+describe("analyzeAmazonOptimizationWorkbookInputs", () => {
+  it("returns daily and weekly recommendations keyed by SKU", () => {
+    const result = analyzeAmazonOptimizationWorkbookInputs({
+      daily: [{
+        date: "2026-07-27",
+        sku: "AMZ-HMF-0001",
+        productName: "Purple Tulip Bunny",
+        sessions: 120,
+        ctr: 0.9,
+        cpc: 0.62,
+        spend: 42,
+        orders: 0,
+        sales: 0,
+        conversionRate: 0,
+        searchTerms: "crochet bag charm",
+        listingIssues: "main image weak"
+      }],
+      weekly: [{
+        weekStart: "2026-07-20",
+        sku: "AMZ-HMF-0001",
+        productName: "Purple Tulip Bunny",
+        acos: 72,
+        tacos: 30,
+        totalSpend: 180,
+        totalSales: 250,
+        keywordWinners: "",
+        negativeKeywordCandidates: "free; pattern",
+        categoryConversionNotes: "0.8% category conversion"
+      }]
+    });
+    expect(result.daily[0]).toMatchObject({
+      sku: "AMZ-HMF-0001",
+      status: "needs_listing_review"
+    });
+    expect(result.weekly[0]).toMatchObject({
+      sku: "AMZ-HMF-0001",
+      status: "review_category_and_campaign"
+    });
   });
 });

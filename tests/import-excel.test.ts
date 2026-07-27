@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import * as XLSX from "xlsx";
-import { parseProductInformationWorkbook, writeAmazonListingWorkbook } from "../src/import/excel.js";
+import { parseAmazonDailyOptimizationInputs, parseAmazonWeeklyOptimizationInputs, parseProductInformationWorkbook, writeAmazonListingWorkbook } from "../src/import/excel.js";
 
 function workbookBytes(rows: Array<Array<string>>) {
   const workbook = XLSX.utils.book_new();
@@ -129,5 +129,53 @@ describe("writeAmazonListingWorkbook", () => {
     expect(weeklyRows[0]["SKU"]).toBe("AMZ-CHAN-PIN-YI");
     expect(weeklyRows[0]["ACOS"]).toBe("");
     expect(weeklyRows[0]["AI Weekly Recommendation"]).toContain("Review only");
+  });
+});
+
+describe("parseAmazonDailyOptimizationInputs", () => {
+  it("reads daily optimization metric rows from the Amazon workbook", () => {
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([
+      ["Date", "SKU", "Product Name", "Sessions", "CTR", "CPC", "Spend", "Orders", "Sales", "Conversion Rate", "Search Terms", "Listing Issues"],
+      ["2026-07-27", "AMZ-HMF-0001", "Purple Tulip Bunny", "120", "0.9", "0.62", "42", "0", "0", "0", "crochet bag charm", "main image weak"]
+    ]), "Daily Optimization Inputs");
+    const bytes = new Uint8Array(XLSX.write(workbook, { type: "array", bookType: "xlsx" }));
+    expect(parseAmazonDailyOptimizationInputs(bytes)).toEqual([{
+      date: "2026-07-27",
+      sku: "AMZ-HMF-0001",
+      productName: "Purple Tulip Bunny",
+      sessions: 120,
+      ctr: 0.9,
+      cpc: 0.62,
+      spend: 42,
+      orders: 0,
+      sales: 0,
+      conversionRate: 0,
+      searchTerms: "crochet bag charm",
+      listingIssues: "main image weak"
+    }]);
+  });
+});
+
+describe("parseAmazonWeeklyOptimizationInputs", () => {
+  it("reads weekly optimization metric rows from the Amazon workbook", () => {
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([
+      ["Week Start", "SKU", "Product Name", "ACOS", "TACOS", "Total Spend", "Total Sales", "Keyword Winners", "Negative Keyword Candidates", "Category Conversion Notes"],
+      ["2026-07-20", "AMZ-HMF-0001", "Purple Tulip Bunny", "72", "30", "180", "250", "", "free; pattern", "0.8% category conversion"]
+    ]), "Weekly Optimization Review");
+    const bytes = new Uint8Array(XLSX.write(workbook, { type: "array", bookType: "xlsx" }));
+    expect(parseAmazonWeeklyOptimizationInputs(bytes)).toEqual([{
+      weekStart: "2026-07-20",
+      sku: "AMZ-HMF-0001",
+      productName: "Purple Tulip Bunny",
+      acos: 72,
+      tacos: 30,
+      totalSpend: 180,
+      totalSales: 250,
+      keywordWinners: "",
+      negativeKeywordCandidates: "free; pattern",
+      categoryConversionNotes: "0.8% category conversion"
+    }]);
   });
 });

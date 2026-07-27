@@ -418,3 +418,80 @@ export function writeAmazonListingWorkbook(rows: AmazonListingWorkbookRow[]): Ui
   ]), "Weekly Optimization Review");
   return new Uint8Array(XLSX.write(workbook, { type: "array", bookType: "xlsx" }));
 }
+
+export interface AmazonDailyOptimizationWorkbookInput {
+  date: string;
+  sku: string;
+  productName: string;
+  sessions: number;
+  ctr: number;
+  cpc: number;
+  spend: number;
+  orders: number;
+  sales: number;
+  conversionRate: number;
+  searchTerms: string;
+  listingIssues: string;
+}
+
+export interface AmazonWeeklyOptimizationWorkbookInput {
+  weekStart: string;
+  sku: string;
+  productName: string;
+  acos: number;
+  tacos: number;
+  totalSpend: number;
+  totalSales: number;
+  keywordWinners: string;
+  negativeKeywordCandidates: string;
+  categoryConversionNotes: string;
+}
+
+function textValue(value: unknown): string {
+  return String(value ?? "").trim();
+}
+
+function numberValue(value: unknown): number {
+  const parsed = Number(textValue(value));
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+export function parseAmazonDailyOptimizationInputs(bytes: Uint8Array): AmazonDailyOptimizationWorkbookInput[] {
+  const workbook = XLSX.read(bytes, { type: "array" });
+  const sheet = workbook.Sheets["Daily Optimization Inputs"];
+  if (!sheet) return [];
+  const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: "" });
+  return rows.map(row => ({
+    date: textValue(row["Date"]),
+    sku: textValue(row["SKU"]),
+    productName: textValue(row["Product Name"]),
+    sessions: numberValue(row["Sessions"]),
+    ctr: numberValue(row["CTR"]),
+    cpc: numberValue(row["CPC"]),
+    spend: numberValue(row["Spend"]),
+    orders: numberValue(row["Orders"]),
+    sales: numberValue(row["Sales"]),
+    conversionRate: numberValue(row["Conversion Rate"]),
+    searchTerms: textValue(row["Search Terms"]),
+    listingIssues: textValue(row["Listing Issues"])
+  }));
+}
+
+export function parseAmazonWeeklyOptimizationInputs(bytes: Uint8Array): AmazonWeeklyOptimizationWorkbookInput[] {
+  const workbook = XLSX.read(bytes, { type: "array" });
+  const sheet = workbook.Sheets["Weekly Optimization Review"];
+  if (!sheet) return [];
+  const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: "" });
+  return rows.map(row => ({
+    weekStart: textValue(row["Week Start"]),
+    sku: textValue(row["SKU"]),
+    productName: textValue(row["Product Name"]),
+    acos: numberValue(row["ACOS"]),
+    tacos: numberValue(row["TACOS"]),
+    totalSpend: numberValue(row["Total Spend"]),
+    totalSales: numberValue(row["Total Sales"]),
+    keywordWinners: textValue(row["Keyword Winners"]),
+    negativeKeywordCandidates: textValue(row["Negative Keyword Candidates"]),
+    categoryConversionNotes: textValue(row["Category Conversion Notes"])
+  }));
+}
