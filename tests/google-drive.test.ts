@@ -26,6 +26,24 @@ describe("GoogleClient", () => {
     await expect(client.request("/drive/v3/files/folder")).rejects.toMatchObject({ code: "GOOGLE_REQUEST_FAILED" });
     await expect(client.request("/drive/v3/files/folder")).rejects.not.toThrow("access");
   });
+
+  it("aborts Google requests that do not complete", async () => {
+    vi.useFakeTimers();
+    let signal: AbortSignal | undefined;
+    const fetchMock = vi.fn((_input: string | URL | Request, init?: RequestInit) => {
+      signal = init?.signal ?? undefined;
+      return new Promise<Response>((_resolve, reject) => {
+        signal?.addEventListener("abort", () => reject(new Error("aborted")));
+      });
+    });
+    const client = new GoogleClient(await storeWithGoogle(), fetchMock, undefined, 10);
+    const request = client.request("/drive/v3/files/folder");
+    const expectation = expect(request).rejects.toMatchObject({ code: "GOOGLE_REQUEST_FAILED" });
+    await vi.advanceTimersByTimeAsync(10);
+    await expectation;
+    expect(signal?.aborted).toBe(true);
+    vi.useRealTimers();
+  });
 });
 
 describe("parseDriveFolderId", () => {

@@ -9,7 +9,8 @@ export class GoogleClient {
   constructor(
     private readonly store: CredentialStore,
     private readonly fetchImpl: FetchLike = fetch,
-    private readonly oauth = new GoogleOAuth(store, fetchImpl)
+    private readonly oauth = new GoogleOAuth(store, fetchImpl),
+    private readonly requestTimeoutMs = 30_000
   ) {}
 
   async request(path: string, init: RequestInit = {}): Promise<unknown> {
@@ -18,7 +19,16 @@ export class GoogleClient {
     if (!app || !google) throw new ShopWeaverError("GOOGLE_AUTH_REQUIRED", "Connect Google Drive before using this tool.");
     if (google.expiresAt <= Date.now() + 60_000) google = await this.oauth.refresh(app, google);
     const headers = { ...(init.headers as Record<string, string> | undefined), authorization: `Bearer ${google.accessToken}` };
-    const response = await this.fetchImpl(`${GOOGLE_API_BASE_URL}${path}`, { ...init, headers });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), this.requestTimeoutMs);
+    let response: Response;
+    try {
+      response = await this.fetchImpl(`${GOOGLE_API_BASE_URL}${path}`, { ...init, headers, signal: controller.signal });
+    } catch {
+      throw new ShopWeaverError("GOOGLE_REQUEST_FAILED", "Google Drive request failed.");
+    } finally {
+      clearTimeout(timeout);
+    }
     if (!response.ok) throw new ShopWeaverError("GOOGLE_REQUEST_FAILED", "Google Drive request failed.");
     if (response.status === 204) return null;
     const contentType = response.headers.get("content-type") ?? "";
