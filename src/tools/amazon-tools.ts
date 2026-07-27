@@ -2,6 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { analyzeAmazonCampaignMetrics } from "../amazon/campaign-optimization.js";
 import { analyzeAmazonExistingListing } from "../amazon/listing-optimization.js";
+import type { AmazonAdsClient } from "../amazon/ads-client.js";
 import type { AmazonSpApiClient } from "../amazon/sp-api-client.js";
 import type { CredentialStore } from "../credentials/types.js";
 
@@ -20,11 +21,25 @@ export async function amazonConnectionStatus(store: CredentialStore) {
   };
 }
 
-export function registerAmazonTools(server: McpServer, store: CredentialStore, amazon: AmazonSpApiClient): void {
+export async function amazonAdsConnectionStatus(store: CredentialStore) {
+  const [app, auth] = await Promise.all([store.get("amazonAdsApp"), store.get("amazonAdsAuth")]);
+  return {
+    credentialsAvailable: app !== null,
+    authorized: auth !== null,
+    region: auth?.region ?? null
+  };
+}
+
+export function registerAmazonTools(server: McpServer, store: CredentialStore, amazon: AmazonSpApiClient, amazonAds?: AmazonAdsClient): void {
   server.registerTool("amazon_connection_status", {
     description: "Report whether ShopWeaver has Amazon SP-API credentials and seller authorization without revealing secrets.",
     inputSchema: {}
   }, async () => result(await amazonConnectionStatus(store)));
+
+  server.registerTool("amazon_ads_connection_status", {
+    description: "Report whether ShopWeaver has Amazon Ads API credentials and advertiser authorization without revealing secrets.",
+    inputSchema: {}
+  }, async () => result(await amazonAdsConnectionStatus(store)));
 
   server.registerTool("amazon_get_marketplace_participations", {
     description: "Read the connected Amazon seller marketplace participations through SP-API. This is read-only and does not change listings, ads, bids, budgets, or orders.",
@@ -54,4 +69,11 @@ export function registerAmazonTools(server: McpServer, store: CredentialStore, a
       searchTerms: z.string()
     }
   }, async (metrics) => result(analyzeAmazonCampaignMetrics(metrics)));
+
+  if (amazonAds) {
+    server.registerTool("amazon_ads_list_profiles", {
+      description: "Read Amazon Ads advertiser profiles through the Ads API. This is read-only and does not change campaigns, bids, budgets, keywords, negatives, or ads.",
+      inputSchema: {}
+    }, async () => result(await amazonAds.listProfiles()));
+  }
 }

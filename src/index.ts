@@ -1,4 +1,5 @@
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { AmazonAdsClient } from "./amazon/ads-client.js";
 import { AmazonSpApiClient } from "./amazon/sp-api-client.js";
 import { KeychainCredentialStore } from "./credentials/keychain.js";
 import { EtsyClient } from "./etsy/client.js";
@@ -25,6 +26,7 @@ const googleDrive = new GoogleDriveService(googleClient, localConfig);
 const googleFolders = new GoogleFolderToolService(googleDrive);
 const driveImports = new DriveImportService(googleDrive);
 const driveImageUploads = new DriveImageUploadService(client, listings, googleDrive, store, new ConfirmationStore());
+const amazonAds = new AmazonAdsClient(store);
 const amazonSpApi = new AmazonSpApiClient(store);
-const server = createServer({ store, listings, orders, writes, googleFolders, driveImports, driveImageUploads, amazonSpApi });
+const server = createServer({ store, listings, orders, writes, googleFolders, driveImports, driveImageUploads, amazonAds, amazonSpApi });
 await server.connect(new StdioServerTransport());

@@ -1,4 +1,4 @@
-export type CredentialKey = "app" | "oauth" | "shop" | "googleApp" | "google" | "amazonSpApiApp" | "amazonSpApiAuth";
+export type CredentialKey = "app" | "oauth" | "shop" | "googleApp" | "google" | "amazonSpApiApp" | "amazonSpApiAuth" | "amazonAdsApp" | "amazonAdsAuth";
 
 export type StoredRecords = {
   app: { keystring: string; sharedSecret: string; redirectUri: string };
@@ -8,6 +8,8 @@ export type StoredRecords = {
   google: { accessToken: string; refreshToken: string; expiresAt: number; scopes: string[] };
   amazonSpApiApp: { clientId: string; clientSecret: string };
   amazonSpApiAuth: { refreshToken: string; sellingPartnerId: string; region: "na" | "eu" | "fe"; marketplaceIds: string[]; accessToken?: string; expiresAt?: number };
+  amazonAdsApp: { clientId: string; clientSecret: string };
+  amazonAdsAuth: { refreshToken: string; region: "na" | "eu" | "fe"; accessToken?: string; expiresAt?: number };
 };
 
 export interface CredentialStore {
