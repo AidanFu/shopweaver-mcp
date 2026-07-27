@@ -100,7 +100,11 @@ describe("writeAmazonListingWorkbook", () => {
       validationNotes: "Review Amazon category/product type before submission."
     }]);
     const workbook = XLSX.read(bytes, { type: "array" });
+    expect(workbook.SheetNames).toContain("Daily Optimization Inputs");
+    expect(workbook.SheetNames).toContain("Weekly Optimization Review");
     const rows = XLSX.utils.sheet_to_json<Record<string, string>>(workbook.Sheets["Amazon Listings"]);
+    const dailyRows = XLSX.utils.sheet_to_json<Record<string, string>>(workbook.Sheets["Daily Optimization Inputs"]);
+    const weeklyRows = XLSX.utils.sheet_to_json<Record<string, string>>(workbook.Sheets["Weekly Optimization Review"]);
     expect(rows[0]["Product Name"]).toBe("产品一");
     expect(rows[0]["Amazon Product Type"]).toBe("KEYCHAIN");
     expect(rows[0]["Amazon Title Length"]).toBe(59);
@@ -119,5 +123,11 @@ describe("writeAmazonListingWorkbook", () => {
     expect(rows[0]["Weekly Analysis Inputs"]).toContain("category conversion");
     expect(rows[0]["Optimization Next Action"]).toContain("competitor category evidence");
     expect(rows[0]["Validation Status"]).toBe("needs_review");
+    expect(dailyRows[0]["SKU"]).toBe("AMZ-CHAN-PIN-YI");
+    expect(dailyRows[0]["CTR"]).toBe("");
+    expect(dailyRows[0]["AI Daily Recommendation"]).toContain("Review only");
+    expect(weeklyRows[0]["SKU"]).toBe("AMZ-CHAN-PIN-YI");
+    expect(weeklyRows[0]["ACOS"]).toBe("");
+    expect(weeklyRows[0]["AI Weekly Recommendation"]).toContain("Review only");
   });
 });

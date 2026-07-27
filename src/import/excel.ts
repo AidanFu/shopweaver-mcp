@@ -250,6 +250,40 @@ const AMAZON_LISTING_HEADERS = [
   "Validation Notes"
 ];
 
+const AMAZON_DAILY_OPTIMIZATION_HEADERS = [
+  "Date",
+  "SKU",
+  "Product Name",
+  "Sessions",
+  "CTR",
+  "CPC",
+  "Spend",
+  "Orders",
+  "Sales",
+  "Conversion Rate",
+  "Search Terms",
+  "Listing Issues",
+  "AI Daily Recommendation",
+  "Seller Approval"
+];
+
+const AMAZON_WEEKLY_OPTIMIZATION_HEADERS = [
+  "Week Start",
+  "SKU",
+  "Product Name",
+  "ACOS",
+  "TACOS",
+  "Total Spend",
+  "Total Sales",
+  "Keyword Winners",
+  "Negative Keyword Candidates",
+  "Category Conversion Notes",
+  "Category Decision",
+  "Budget Recommendation",
+  "AI Weekly Recommendation",
+  "Seller Approval"
+];
+
 export function writeAmazonListingWorkbook(rows: AmazonListingWorkbookRow[]): Uint8Array {
   const workbook = XLSX.utils.book_new();
   const values = rows.map(row => [
@@ -326,5 +360,43 @@ export function writeAmazonListingWorkbook(rows: AmazonListingWorkbookRow[]): Ui
     row.validationNotes ?? ""
   ]);
   XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([AMAZON_LISTING_HEADERS, ...values]), "Amazon Listings");
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([
+    AMAZON_DAILY_OPTIMIZATION_HEADERS,
+    ...rows.map(row => [
+      "",
+      row.sku ?? "",
+      row.productName,
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "Review only: paste daily metrics before changing listing copy, category, bids, budgets, keywords, or negatives.",
+      ""
+    ])
+  ]), "Daily Optimization Inputs");
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([
+    AMAZON_WEEKLY_OPTIMIZATION_HEADERS,
+    ...rows.map(row => [
+      "",
+      row.sku ?? "",
+      row.productName,
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "Review only: compare weekly listing, category, campaign, ACOS/TACOS, and conversion signals before seller-approved changes.",
+      ""
+    ])
+  ]), "Weekly Optimization Review");
   return new Uint8Array(XLSX.write(workbook, { type: "array", bookType: "xlsx" }));
 }
