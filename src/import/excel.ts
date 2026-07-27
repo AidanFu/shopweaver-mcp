@@ -164,6 +164,7 @@ export interface AmazonListingWorkbookRow {
   expectedConversionFit?: string;
   categoryExperimentPlan?: string;
   categoryLearningStatus?: string;
+  aiOptimizationBrief?: string;
   validationStatus?: string;
   validationNotes?: string;
 }
@@ -230,6 +231,7 @@ const AMAZON_LISTING_HEADERS = [
   "Expected Conversion Fit",
   "Category Experiment Plan",
   "Category Learning Status",
+  "AI Optimization Brief",
   "Validation Status",
   "Validation Notes"
 ];
@@ -298,6 +300,7 @@ export function writeAmazonListingWorkbook(rows: AmazonListingWorkbookRow[]): Ui
     row.expectedConversionFit ?? "",
     row.categoryExperimentPlan ?? "",
     row.categoryLearningStatus ?? "",
+    row.aiOptimizationBrief ?? "",
     row.validationStatus ?? "",
     row.validationNotes ?? ""
   ]);

@@ -152,6 +152,16 @@ function similarSearchQueries(name: string): string {
   ])].join("; ");
 }
 
+function aiOptimizationBrief(name: string, extractedDimensions: boolean): string {
+  const dimensionNote = extractedDimensions ? "dimensions are available for size/image review" : "default dimensions need seller confirmation";
+  return [
+    `Review ${name} for Amazon-ready, benefit-led bullets using the 3 benefits, 1 worry reducer, and 1 after-purchase surprise structure.`,
+    `Check Rufus/Alexa readiness by making sure buyer questions about bag, backpack, keychain, car use, size, giftability, and handmade detail are answerable.`,
+    `Compare category evidence against similar bestseller search results before submission; keep category changes tied to campaign learning, ad cost, and conversion fit.`,
+    `Current measurement state: ${dimensionNote}.`
+  ].join(" ");
+}
+
 export function buildAmazonListingRows(products: ImportedDriveProduct[]): AmazonListingWorkbookRow[] {
   return products.map((product, index) => {
     const mainImageName = product.images[0]?.name;
@@ -234,7 +244,8 @@ export function buildAmazonListingRows(products: ImportedDriveProduct[]): Amazon
       adCostRisk: "medium",
       expectedConversionFit: "high",
       categoryExperimentPlan: "Start with bag charm/keychain positioning; compare discovery terms for hanging ornament and car hanging ornament before changing category.",
-      categoryLearningStatus: "hypothesis_ready"
+      categoryLearningStatus: "hypothesis_ready",
+      aiOptimizationBrief: aiOptimizationBrief(name, Boolean(extractedDimensions))
     };
   });
 }

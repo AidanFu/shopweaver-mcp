@@ -169,6 +169,21 @@ describe("buildAmazonListingRows", () => {
     expect(rows[0].categoryLearningStatus).toBe("hypothesis_ready");
   });
 
+  it("adds an AI optimization brief for review and future agent workflows", () => {
+    const rows = buildAmazonListingRows([{
+      productName: "双马尾毕业女孩钩织挂件",
+      rawChineseDescription: "双马尾毕业女孩钩织挂件，头戴黑色学士帽，适合毕业礼物。高16cm宽10cm",
+      imageFolderName: "双马尾毕业女孩钩织挂件",
+      imageCount: 6,
+      images: []
+    }]);
+    expect(rows[0].aiOptimizationBrief).toContain("Graduation Girl with Pigtails");
+    expect(rows[0].aiOptimizationBrief).toContain("benefit-led bullets");
+    expect(rows[0].aiOptimizationBrief).toContain("Rufus/Alexa");
+    expect(rows[0].aiOptimizationBrief).toContain("category evidence");
+    expect(rows[0].aiOptimizationBrief).toContain("campaign learning");
+  });
+
   it("uses English-only sequential SKUs and fills listing copy fields", () => {
     const rows = buildAmazonListingRows([
       {
