@@ -102,7 +102,12 @@ describe("DriveImportService", () => {
       uploadFile: vi.fn().mockResolvedValue({ id: "amazon-file", name: "Product Information - Amazon Listing.xlsx" })
     };
     const service = new DriveImportService(drive as never);
-    await expect(service.refreshAmazonOptimizationRecommendations("folder")).resolves.toEqual({ id: "amazon-file", name: "Product Information - Amazon Listing.xlsx" });
+    await expect(service.refreshAmazonOptimizationRecommendations("folder")).resolves.toEqual({
+      file: { id: "amazon-file", name: "Product Information - Amazon Listing.xlsx" },
+      dailyInputCount: 1,
+      weeklyInputCount: 1,
+      recommendationCount: 2
+    });
     expect(drive.downloadFile).toHaveBeenCalledWith("amazon-file");
     expect(drive.uploadFile).toHaveBeenCalledWith(
       "folder",
@@ -160,6 +165,32 @@ describe("previewAmazonOptimizationRefresh", () => {
       folderId: "folder",
       filename: "Product Information - Amazon Listing.xlsx",
       warning: "This refreshes the workbook Optimization Recommendations sheet only. It does not call Amazon APIs or change listings, categories, bids, budgets, keywords, or ads."
+    });
+  });
+});
+
+describe("Amazon optimization refresh tool response", () => {
+  it("includes recommendation counts after confirm refresh", async () => {
+    const imports = {
+      refreshAmazonOptimizationRecommendations: vi.fn().mockResolvedValue({
+        file: { id: "amazon-file", name: "Product Information - Amazon Listing.xlsx" },
+        dailyInputCount: 2,
+        weeklyInputCount: 1,
+        recommendationCount: 3
+      })
+    };
+    const { registerImportTools } = await import("../src/tools/import-tools.js");
+    const calls: Array<{ name: string; handler: (input: { mode: "confirm"; folderId: string }) => Promise<unknown> }> = [];
+    const server = {
+      registerTool: vi.fn((name, _config, handler) => calls.push({ name, handler }))
+    };
+    registerImportTools(server as never, imports as never);
+    const tool = calls.find(call => call.name === "shopweaver_refresh_amazon_optimization_recommendations")!;
+    const response = await tool.handler({ mode: "confirm", folderId: "folder" }) as { structuredContent: Record<string, unknown> };
+    expect(response.structuredContent).toMatchObject({
+      dailyInputCount: 2,
+      weeklyInputCount: 1,
+      recommendationCount: 3
     });
   });
 });

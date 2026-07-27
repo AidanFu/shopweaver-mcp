@@ -96,12 +96,12 @@ export function registerImportTools(server: McpServer, imports: DriveImportServi
     }
   }, async ({ mode, folderId }) => {
     if (mode === "preview") return result(previewAmazonOptimizationRefresh(folderId));
-    const written = await imports.refreshAmazonOptimizationRecommendations(folderId);
+    const refreshed = await imports.refreshAmazonOptimizationRecommendations(folderId);
     return result({
       operation: "refresh_amazon_optimization_recommendations",
       folderId,
       filename: "Product Information - Amazon Listing.xlsx",
-      file: written,
+      ...refreshed,
       warning: "Workbook recommendations refreshed only. No Amazon API, listing, category, bid, budget, keyword, advertising, order, shipment, refund, or buyer-data action was performed."
     });
   });

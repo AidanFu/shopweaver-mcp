@@ -585,6 +585,17 @@ export function refreshAmazonOptimizationRecommendations(bytes: Uint8Array): Uin
   return new Uint8Array(XLSX.write(workbook, { type: "array", bookType: "xlsx" }));
 }
 
+export function summarizeAmazonOptimizationRefresh(bytes: Uint8Array) {
+  const daily = parseAmazonDailyOptimizationInputs(bytes);
+  const weekly = parseAmazonWeeklyOptimizationInputs(bytes);
+  const analyzed = analyzeAmazonOptimizationWorkbookInputs({ daily, weekly });
+  return {
+    dailyInputCount: daily.length,
+    weeklyInputCount: weekly.length,
+    recommendationCount: analyzed.daily.length + analyzed.weekly.length
+  };
+}
+
 function optimizationRecommendationRows(input: {
   daily: AmazonDailyOptimizationWorkbookInput[];
   weekly: AmazonWeeklyOptimizationWorkbookInput[];
