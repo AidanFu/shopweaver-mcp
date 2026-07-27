@@ -75,5 +75,19 @@ export function registerAmazonTools(server: McpServer, store: CredentialStore, a
       description: "Read Amazon Ads advertiser profiles through the Ads API. This is read-only and does not change campaigns, bids, budgets, keywords, negatives, or ads.",
       inputSchema: {}
     }, async () => result(await amazonAds.listProfiles()));
+
+    server.registerTool("amazon_ads_list_sp_campaigns", {
+      description: "Read Sponsored Products campaigns for one Amazon Ads profile. This is read-only and does not change campaigns, bids, budgets, keywords, negatives, or ads.",
+      inputSchema: {
+        profileId: z.string().min(1),
+        stateFilter: z.array(z.enum(["ENABLED", "PAUSED", "ARCHIVED"])).optional(),
+        maxResults: z.number().int().min(1).max(100).optional(),
+        nextToken: z.string().min(1).optional()
+      }
+    }, async ({ profileId, stateFilter, maxResults, nextToken }) => result(await amazonAds.listSponsoredProductsCampaigns(profileId, {
+      ...(stateFilter ? { stateFilter: { include: stateFilter } } : {}),
+      ...(maxResults ? { maxResults } : {}),
+      ...(nextToken ? { nextToken } : {})
+    })));
   }
 }

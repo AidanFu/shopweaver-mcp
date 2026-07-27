@@ -32,4 +32,43 @@ describe("AmazonAdsClient", () => {
       }
     }));
   });
+
+  it("lists Sponsored Products campaigns for a profile without changing campaigns", async () => {
+    const store = new MemoryCredentialStore();
+    await store.set("amazonAdsApp", { clientId: "ads-client", clientSecret: "ads-secret" });
+    await store.set("amazonAdsAuth", {
+      refreshToken: "ads-refresh",
+      region: "na",
+      accessToken: "ads-access",
+      expiresAt: Date.now() + 3_600_000
+    });
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      campaigns: [{ campaignId: "123", name: "Auto Discovery", state: "ENABLED" }],
+      nextToken: "next"
+    }), { status: 200, headers: { "content-type": "application/json" } }));
+    const client = new AmazonAdsClient(store, fetchMock);
+
+    await expect(client.listSponsoredProductsCampaigns("987654321", {
+      stateFilter: { include: ["ENABLED", "PAUSED"] },
+      maxResults: 50
+    })).resolves.toEqual({
+      campaigns: [{ campaignId: "123", name: "Auto Discovery", state: "ENABLED" }],
+      nextToken: "next"
+    });
+    expect(fetchMock).toHaveBeenCalledWith("https://advertising-api.amazon.com/sp/campaigns/list", expect.objectContaining({
+      method: "POST",
+      headers: {
+        Authorization: "Bearer ads-access",
+        "Amazon-Advertising-API-ClientId": "ads-client",
+        "Amazon-Advertising-API-Scope": "987654321",
+        Accept: "application/vnd.spCampaign.v3+json",
+        "Content-Type": "application/vnd.spCampaign.v3+json",
+        "user-agent": "ShopWeaver/0.1.0 (Language=TypeScript)"
+      },
+      body: JSON.stringify({
+        stateFilter: { include: ["ENABLED", "PAUSED"] },
+        maxResults: 50
+      })
+    }));
+  });
 });

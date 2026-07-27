@@ -4,6 +4,7 @@ const allowed = [
   "amazon_connection_status",
   "amazon_ads_connection_status",
   "amazon_ads_list_profiles",
+  "amazon_ads_list_sp_campaigns",
   "amazon_get_listing_item",
   "amazon_get_marketplace_participations",
   "amazon_optimize_campaign_metrics",
