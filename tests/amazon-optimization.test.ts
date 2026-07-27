@@ -15,6 +15,7 @@ describe("analyzeAmazonDailyOptimization", () => {
     });
     expect(result.status).toBe("needs_listing_review");
     expect(result.priority).toBe("high");
+    expect(result.actionType).toBe("listing_review");
     expect(result.recommendation).toContain("Do not increase bids");
     expect(result.recommendation).toContain("title, main image, price, bullets, and size facts");
   });
@@ -32,6 +33,7 @@ describe("analyzeAmazonDailyOptimization", () => {
     });
     expect(result.status).toBe("harvest_winners");
     expect(result.priority).toBe("normal");
+    expect(result.actionType).toBe("keyword_harvest");
     expect(result.recommendation).toContain("move converting search terms into manual exact or phrase review");
   });
 });
@@ -49,6 +51,7 @@ describe("analyzeAmazonWeeklyOptimization", () => {
     });
     expect(result.status).toBe("keep_learning");
     expect(result.priority).toBe("normal");
+    expect(result.actionType).toBe("keep_learning");
     expect(result.recommendation).toContain("Keep the current category hypothesis");
     expect(result.recommendation).toContain("review negative keywords");
   });
@@ -65,6 +68,7 @@ describe("analyzeAmazonWeeklyOptimization", () => {
     });
     expect(result.status).toBe("review_category_and_campaign");
     expect(result.priority).toBe("high");
+    expect(result.actionType).toBe("category_campaign_review");
     expect(result.recommendation).toContain("category fit");
     expect(result.recommendation).toContain("pause or negate wasteful terms");
   });
@@ -103,12 +107,14 @@ describe("analyzeAmazonOptimizationWorkbookInputs", () => {
     expect(result.daily[0]).toMatchObject({
       sku: "AMZ-HMF-0001",
       status: "needs_listing_review",
-      priority: "high"
+      priority: "high",
+      actionType: "listing_review"
     });
     expect(result.weekly[0]).toMatchObject({
       sku: "AMZ-HMF-0001",
       status: "review_category_and_campaign",
-      priority: "high"
+      priority: "high",
+      actionType: "category_campaign_review"
     });
   });
 });
