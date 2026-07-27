@@ -102,6 +102,16 @@ export function registerAmazonTools(server: McpServer, store: CredentialStore, a
       }
     }, async ({ profileId, reportId }) => result(await amazonAds.getReport(profileId, reportId)));
 
+    server.registerTool("amazon_ads_download_report", {
+      description: "Download and parse a completed Amazon Ads GZIP_JSON report URL. This is read-only and does not change ads.",
+      inputSchema: {
+        url: z.string().url()
+      }
+    }, async ({ url }) => {
+      const rows = await amazonAds.downloadReportRows(url);
+      return result({ rowCount: rows.length, rows });
+    });
+
     server.registerTool("amazon_ads_list_sp_campaigns", {
       description: "Read Sponsored Products campaigns for one Amazon Ads profile. This is read-only and does not change campaigns, bids, budgets, keywords, negatives, or ads.",
       inputSchema: {

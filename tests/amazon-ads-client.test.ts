@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { gzipSync } from "node:zlib";
 import { AmazonAdsClient } from "../src/amazon/ads-client.js";
 import { MemoryCredentialStore } from "../src/credentials/memory.js";
 
@@ -239,5 +240,35 @@ describe("AmazonAdsClient", () => {
         "user-agent": "ShopWeaver/0.1.0 (Language=TypeScript)"
       }
     }));
+  });
+
+  it("downloads and parses gzipped Amazon Ads report rows without authorization headers", async () => {
+    const store = new MemoryCredentialStore();
+    const reportRows = [
+      { campaignId: "123", adGroupId: "456", searchTerm: "crochet keychain", clicks: 12, cost: 6.25, sales7d: 49.99, purchases7d: 1 },
+      { campaignId: "123", adGroupId: "456", searchTerm: "free crochet pattern", clicks: 20, cost: 10.5, sales7d: 0, purchases7d: 0 }
+    ];
+    const fetchMock = vi.fn().mockResolvedValue(new Response(gzipSync(JSON.stringify(reportRows)), {
+      status: 200,
+      headers: { "content-type": "application/octet-stream" }
+    }));
+    const client = new AmazonAdsClient(store, fetchMock);
+
+    await expect(client.downloadReportRows("https://example.com/report.gz")).resolves.toEqual(reportRows);
+    expect(fetchMock).toHaveBeenCalledWith("https://example.com/report.gz", { method: "GET" });
+  });
+
+  it("parses gzipped newline-delimited Amazon Ads report rows", async () => {
+    const store = new MemoryCredentialStore();
+    const fetchMock = vi.fn().mockResolvedValue(new Response(gzipSync([
+      JSON.stringify({ campaignId: "123", searchTerm: "crochet bag charm" }),
+      JSON.stringify({ campaignId: "123", searchTerm: "cute keychain" })
+    ].join("\n")), { status: 200 }));
+    const client = new AmazonAdsClient(store, fetchMock);
+
+    await expect(client.downloadReportRows("https://example.com/report.gz")).resolves.toEqual([
+      { campaignId: "123", searchTerm: "crochet bag charm" },
+      { campaignId: "123", searchTerm: "cute keychain" }
+    ]);
   });
 });

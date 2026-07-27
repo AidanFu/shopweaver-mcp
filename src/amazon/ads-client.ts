@@ -1,3 +1,4 @@
+import { gunzipSync } from "node:zlib";
 import type { CredentialStore } from "../credentials/types.js";
 import { ShopWeaverError } from "../errors.js";
 import { AmazonAdsOAuth } from "./ads-oauth.js";
@@ -88,6 +89,12 @@ export class AmazonAdsClient {
     });
   }
 
+  async downloadReportRows(url: string): Promise<Array<Record<string, unknown>>> {
+    const response = await this.fetchImpl(url, { method: "GET" });
+    if (!response.ok) throw new ShopWeaverError("AMAZON_ADS_REPORT_DOWNLOAD_FAILED", "Amazon Ads report download failed.");
+    return parseGzipJsonRows(new Uint8Array(await response.arrayBuffer()));
+  }
+
   private async request(path: string, options: {
     method?: "GET" | "POST";
     profileId?: string;
@@ -116,4 +123,14 @@ export class AmazonAdsClient {
     if (!response.ok) throw new ShopWeaverError("AMAZON_ADS_REQUEST_FAILED", "Amazon Ads API request failed.");
     return response.json();
   }
+}
+
+function parseGzipJsonRows(bytes: Uint8Array): Array<Record<string, unknown>> {
+  const text = gunzipSync(bytes).toString("utf8").trim();
+  if (!text) return [];
+  const parsed = text.startsWith("[")
+    ? JSON.parse(text)
+    : text.split(/\r?\n/).filter(Boolean).map(line => JSON.parse(line));
+  if (Array.isArray(parsed)) return parsed as Array<Record<string, unknown>>;
+  return [parsed as Record<string, unknown>];
 }
