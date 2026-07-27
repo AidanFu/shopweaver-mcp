@@ -292,6 +292,9 @@ describe("refreshAmazonOptimizationRecommendations", () => {
       statusCounts: {
         needs_listing_review: 1,
         review_category_and_campaign: 1
+      },
+      priorityCounts: {
+        high: 2
       }
     });
   });

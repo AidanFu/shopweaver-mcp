@@ -110,6 +110,9 @@ describe("DriveImportService", () => {
       statusCounts: {
         needs_listing_review: 1,
         review_category_and_campaign: 1
+      },
+      priorityCounts: {
+        high: 2
       }
     });
     expect(drive.downloadFile).toHaveBeenCalledWith("amazon-file");
@@ -184,6 +187,10 @@ describe("Amazon optimization refresh tool response", () => {
         statusCounts: {
           needs_listing_review: 2,
           keep_learning: 1
+        },
+        priorityCounts: {
+          high: 2,
+          normal: 1
         }
       })
     };
@@ -202,6 +209,10 @@ describe("Amazon optimization refresh tool response", () => {
       statusCounts: {
         needs_listing_review: 2,
         keep_learning: 1
+      },
+      priorityCounts: {
+        high: 2,
+        normal: 1
       }
     });
   });
