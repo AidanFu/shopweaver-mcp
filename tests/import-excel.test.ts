@@ -139,6 +139,10 @@ describe("writeAmazonListingWorkbook", () => {
     expect(guideRows[1]["Section"]).toBe("Weekly metrics");
     expect(guideRows[1]["Details"]).toContain("ACOS");
     expect(guideRows[2]["Details"]).toContain("Seller approval is required");
+    expect(guideRows.map(row => row["Section"])).toContain("Status: needs_listing_review");
+    expect(guideRows.map(row => row["Section"])).toContain("Status: harvest_winners");
+    expect(guideRows.map(row => row["Section"])).toContain("Status: review_category_and_campaign");
+    expect(guideRows.map(row => row["Section"])).toContain("Status: keep_learning");
   });
 });
 

@@ -300,7 +300,13 @@ const AMAZON_OPTIMIZATION_GUIDE_ROWS = [
   ["Daily metrics", "Paste Date, Sessions, CTR, CPC, Spend, Orders, Sales, Conversion Rate, Search Terms, and Listing Issues into Daily Optimization Inputs."],
   ["Weekly metrics", "Paste Week Start, ACOS, TACOS, Total Spend, Total Sales, Keyword Winners, Negative Keyword Candidates, and Category Conversion Notes into Weekly Optimization Review."],
   ["Approval boundary", "Seller approval is required before applying any recommendation. Refreshing recommendations does not change Amazon listings, categories, bids, budgets, keywords, or ads."],
-  ["Recommendation refresh", "Run shopweaver_refresh_amazon_optimization_recommendations after metrics are pasted. Blank template rows are ignored."]
+  ["Recommendation refresh", "Run shopweaver_refresh_amazon_optimization_recommendations after metrics are pasted. Blank template rows are ignored."],
+  ["Status: needs_listing_review", "Traffic and spend exist but orders are weak or missing. Review title, main image, price, bullets, and size facts before increasing bids."],
+  ["Status: harvest_winners", "Search terms or campaigns are converting efficiently. Review moving winners into manual exact or phrase campaigns before seller-approved bid changes."],
+  ["Status: review_category_and_campaign", "ACOS is high and category conversion is weak. Review category fit, listing conversion, wasted terms, and campaign structure together."],
+  ["Status: keep_learning", "ACOS and conversion are acceptable. Keep the current category hypothesis, harvest winners, and review negative keywords."],
+  ["Status: collect_more_data", "Not enough daily signal exists yet. Keep collecting metrics before changing copy, category, bids, budgets, keywords, or negatives."],
+  ["Status: weekly_review_needed", "Weekly signal is mixed. Compare ACOS, TACOS, category conversion, keyword winners, and negatives before deciding changes."]
 ];
 
 export function writeAmazonListingWorkbook(rows: AmazonListingWorkbookRow[]): Uint8Array {
