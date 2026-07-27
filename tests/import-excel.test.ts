@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import * as XLSX from "xlsx";
-import { parseAmazonDailyOptimizationInputs, parseAmazonWeeklyOptimizationInputs, parseProductInformationWorkbook, writeAmazonListingWorkbook, writeAmazonOptimizationRecommendationsWorkbook } from "../src/import/excel.js";
+import { parseAmazonDailyOptimizationInputs, parseAmazonWeeklyOptimizationInputs, parseProductInformationWorkbook, refreshAmazonOptimizationRecommendations, writeAmazonListingWorkbook, writeAmazonOptimizationRecommendationsWorkbook } from "../src/import/excel.js";
 
 function workbookBytes(rows: Array<Array<string>>) {
   const workbook = XLSX.utils.book_new();
@@ -225,5 +225,33 @@ describe("writeAmazonOptimizationRecommendationsWorkbook", () => {
     expect(rows[1]["Status"]).toBe("review_category_and_campaign");
     expect(rows[1]["Recommendation"]).toContain("category fit");
     expect(rows[1]["Seller Approval Required"]).toBe("yes");
+  });
+});
+
+describe("refreshAmazonOptimizationRecommendations", () => {
+  it("replaces the recommendation sheet using pasted daily and weekly metrics", () => {
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([["SKU"], ["AMZ-HMF-0001"]]), "Amazon Listings");
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([
+      ["Date", "SKU", "Product Name", "Sessions", "CTR", "CPC", "Spend", "Orders", "Sales", "Conversion Rate", "Search Terms", "Listing Issues"],
+      ["2026-07-27", "AMZ-HMF-0001", "Purple Tulip Bunny", "120", "0.9", "0.62", "42", "0", "0", "0", "crochet bag charm", "main image weak"]
+    ]), "Daily Optimization Inputs");
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([
+      ["Week Start", "SKU", "Product Name", "ACOS", "TACOS", "Total Spend", "Total Sales", "Keyword Winners", "Negative Keyword Candidates", "Category Conversion Notes"],
+      ["2026-07-20", "AMZ-HMF-0001", "Purple Tulip Bunny", "72", "30", "180", "250", "", "free; pattern", "0.8% category conversion"]
+    ]), "Weekly Optimization Review");
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([
+      ["Cadence", "SKU", "Status"],
+      ["daily", "old", "old_status"]
+    ]), "Optimization Recommendations");
+    const refreshed = refreshAmazonOptimizationRecommendations(new Uint8Array(XLSX.write(workbook, { type: "array", bookType: "xlsx" })));
+    const parsed = XLSX.read(refreshed, { type: "array" });
+    const recommendationRows = XLSX.utils.sheet_to_json<Record<string, string>>(parsed.Sheets["Optimization Recommendations"]);
+    expect(parsed.SheetNames).toEqual(["Amazon Listings", "Daily Optimization Inputs", "Weekly Optimization Review", "Optimization Recommendations"]);
+    expect(recommendationRows).toHaveLength(2);
+    expect(recommendationRows[0]["SKU"]).toBe("AMZ-HMF-0001");
+    expect(recommendationRows[0]["Status"]).toBe("needs_listing_review");
+    expect(recommendationRows[1]["Cadence"]).toBe("weekly");
+    expect(recommendationRows[1]["Status"]).toBe("review_category_and_campaign");
   });
 });

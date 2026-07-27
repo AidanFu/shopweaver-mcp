@@ -538,6 +538,19 @@ export function writeAmazonOptimizationRecommendationsWorkbook(input: {
   return new Uint8Array(XLSX.write(workbook, { type: "array", bookType: "xlsx" }));
 }
 
+export function refreshAmazonOptimizationRecommendations(bytes: Uint8Array): Uint8Array {
+  const workbook = XLSX.read(bytes, { type: "array" });
+  const daily = parseAmazonDailyOptimizationInputs(bytes);
+  const weekly = parseAmazonWeeklyOptimizationInputs(bytes);
+  delete workbook.Sheets["Optimization Recommendations"];
+  workbook.SheetNames = workbook.SheetNames.filter(name => name !== "Optimization Recommendations");
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([
+    AMAZON_OPTIMIZATION_RECOMMENDATION_HEADERS,
+    ...optimizationRecommendationRows({ daily, weekly })
+  ]), "Optimization Recommendations");
+  return new Uint8Array(XLSX.write(workbook, { type: "array", bookType: "xlsx" }));
+}
+
 function optimizationRecommendationRows(input: {
   daily: AmazonDailyOptimizationWorkbookInput[];
   weekly: AmazonWeeklyOptimizationWorkbookInput[];
