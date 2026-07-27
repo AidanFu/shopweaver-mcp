@@ -325,12 +325,16 @@ describe("refreshAmazonOptimizationRecommendations", () => {
     expect(parsed.SheetNames).toEqual(["Amazon Listings", "Daily Optimization Inputs", "Weekly Optimization Review", "Optimization Decision Log", "Optimization Recommendations"]);
     expect(recommendationRows).toHaveLength(2);
     expect(recommendationRows[0]["Recommendation ID"]).toBe("daily:2026-07-27:AMZ-HMF-0001:listing_review");
+    expect(recommendationRows[0]["Prior Seller Decision"]).toBe("accepted");
+    expect(recommendationRows[0]["Prior Decision Date"]).toBe("2026-07-28");
+    expect(recommendationRows[0]["Prior Outcome Notes"]).toBe("CTR improved");
     expect(recommendationRows[0]["SKU"]).toBe("AMZ-HMF-0001");
     expect(recommendationRows[0]["Status"]).toBe("needs_listing_review");
     expect(recommendationRows[0]["Priority"]).toBe("high");
     expect(recommendationRows[0]["Action Type"]).toBe("listing_review");
     expect(recommendationRows[1]["Cadence"]).toBe("weekly");
     expect(recommendationRows[1]["Recommendation ID"]).toBe("weekly:2026-07-20:AMZ-HMF-0001:category_campaign_review");
+    expect(recommendationRows[1]["Prior Seller Decision"]).toBe("");
     expect(recommendationRows[1]["Status"]).toBe("review_category_and_campaign");
     expect(recommendationRows[1]["Priority"]).toBe("high");
     expect(recommendationRows[1]["Action Type"]).toBe("category_campaign_review");

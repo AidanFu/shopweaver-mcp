@@ -295,6 +295,9 @@ const AMAZON_OPTIMIZATION_RECOMMENDATION_HEADERS = [
   "Priority",
   "Action Type",
   "Recommendation",
+  "Prior Seller Decision",
+  "Prior Decision Date",
+  "Prior Outcome Notes",
   "Seller Approval Required"
 ];
 
@@ -636,11 +639,12 @@ export function refreshAmazonOptimizationRecommendations(bytes: Uint8Array): Uin
   const workbook = XLSX.read(bytes, { type: "array" });
   const daily = parseAmazonDailyOptimizationInputs(bytes);
   const weekly = parseAmazonWeeklyOptimizationInputs(bytes);
+  const decisions = parseAmazonDecisionLogInputs(bytes);
   delete workbook.Sheets["Optimization Recommendations"];
   workbook.SheetNames = workbook.SheetNames.filter(name => name !== "Optimization Recommendations");
   XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([
     AMAZON_OPTIMIZATION_RECOMMENDATION_HEADERS,
-    ...optimizationRecommendationRows({ daily, weekly })
+    ...optimizationRecommendationRows({ daily, weekly, decisions })
   ]), "Optimization Recommendations");
   return new Uint8Array(XLSX.write(workbook, { type: "array", bookType: "xlsx" }));
 }
@@ -677,10 +681,12 @@ export function summarizeAmazonOptimizationRefresh(bytes: Uint8Array) {
 function optimizationRecommendationRows(input: {
   daily: AmazonDailyOptimizationWorkbookInput[];
   weekly: AmazonWeeklyOptimizationWorkbookInput[];
+  decisions?: AmazonDecisionLogWorkbookInput[];
 }) {
   const analyzed = analyzeAmazonOptimizationWorkbookInputs({ daily: input.daily, weekly: input.weekly });
+  const decisionsByRecommendationId = new Map((input.decisions ?? []).map(row => [row.recommendationId, row]));
   return [
-    ...analyzed.daily.map(row => [
+    ...analyzed.daily.map(row => optimizationRecommendationRow(
       recommendationId("daily", row.date, row.sku, row.actionType),
       "daily",
       row.date,
@@ -690,9 +696,9 @@ function optimizationRecommendationRows(input: {
       row.priority,
       row.actionType,
       row.recommendation,
-      "yes"
-    ]),
-    ...analyzed.weekly.map(row => [
+      decisionsByRecommendationId
+    )),
+    ...analyzed.weekly.map(row => optimizationRecommendationRow(
       recommendationId("weekly", row.weekStart, row.sku, row.actionType),
       "weekly",
       row.weekStart,
@@ -702,11 +708,41 @@ function optimizationRecommendationRows(input: {
       row.priority,
       row.actionType,
       row.recommendation,
-      "yes"
-    ])
+      decisionsByRecommendationId
+    ))
   ];
 }
 
 function recommendationId(cadence: string, dateOrWeek: string, sku: string, actionType: string): string {
   return [cadence, dateOrWeek, sku, actionType].join(":");
+}
+
+function optimizationRecommendationRow(
+  id: string,
+  cadence: string,
+  dateOrWeek: string,
+  sku: string,
+  productName: string,
+  status: string,
+  priority: string,
+  actionType: string,
+  recommendation: string,
+  decisionsByRecommendationId: Map<string, AmazonDecisionLogWorkbookInput>
+) {
+  const priorDecision = decisionsByRecommendationId.get(id);
+  return [
+    id,
+    cadence,
+    dateOrWeek,
+    sku,
+    productName,
+    status,
+    priority,
+    actionType,
+    recommendation,
+    priorDecision?.sellerDecision ?? "",
+    priorDecision?.decisionDate ?? "",
+    priorDecision?.outcomeNotes ?? "",
+    "yes"
+  ];
 }
