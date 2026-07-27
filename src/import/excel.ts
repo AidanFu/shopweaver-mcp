@@ -678,6 +678,7 @@ export function summarizeAmazonOptimizationRefresh(bytes: Uint8Array, asOfDate =
   const priorityCounts: Record<string, number> = {};
   const sellerDecisionCounts: Record<string, number> = {};
   const actionDecisionCounts: Record<string, number> = {};
+  const followUpStatusCounts: Record<string, number> = {};
   for (const row of [...analyzed.daily, ...analyzed.weekly]) {
     statusCounts[row.status] = (statusCounts[row.status] ?? 0) + 1;
     priorityCounts[row.priority] = (priorityCounts[row.priority] ?? 0) + 1;
@@ -685,6 +686,8 @@ export function summarizeAmazonOptimizationRefresh(bytes: Uint8Array, asOfDate =
   for (const row of decisions) {
     if (row.sellerDecision) sellerDecisionCounts[row.sellerDecision] = (sellerDecisionCounts[row.sellerDecision] ?? 0) + 1;
     if (row.actionType) actionDecisionCounts[row.actionType] = (actionDecisionCounts[row.actionType] ?? 0) + 1;
+    const followUpStatus = dueFollowUpStatus(row.followUpDate, asOfDate);
+    if (followUpStatus) followUpStatusCounts[followUpStatus] = (followUpStatusCounts[followUpStatus] ?? 0) + 1;
   }
   return {
     dailyInputCount: daily.length,
@@ -695,7 +698,8 @@ export function summarizeAmazonOptimizationRefresh(bytes: Uint8Array, asOfDate =
     decisionCount: decisions.length,
     sellerDecisionCounts,
     actionDecisionCounts,
-    followUpDueCount: decisions.filter(row => row.followUpDate !== "" && row.followUpDate <= asOfDate).length
+    followUpDueCount: decisions.filter(row => dueFollowUpStatus(row.followUpDate, asOfDate) !== "").length,
+    followUpStatusCounts
   };
 }
 
@@ -750,8 +754,13 @@ function optimizationFollowUpRows(decisions: AmazonDecisionLogWorkbookInput[], a
       row.sellerDecision,
       row.decisionNotes,
       row.outcomeNotes,
-      row.followUpDate < asOfDate ? "overdue" : "due_today"
+      dueFollowUpStatus(row.followUpDate, asOfDate)
     ]);
+}
+
+function dueFollowUpStatus(followUpDate: string, asOfDate: string): string {
+  if (followUpDate === "" || followUpDate > asOfDate) return "";
+  return followUpDate < asOfDate ? "overdue" : "due_today";
 }
 
 function optimizationRecommendationRow(

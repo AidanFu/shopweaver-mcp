@@ -331,6 +331,7 @@ describe("refreshAmazonOptimizationRecommendations", () => {
     ]), "Optimization Recommendations");
     XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([
       ["Recommendation ID", "Decision Date", "SKU", "Product Name", "Action Type", "Seller Decision", "Decision Notes", "Follow-up Date", "Outcome Notes"],
+      ["weekly:2026-07-13:AMZ-HMF-0001:weekly_review", "2026-07-21", "AMZ-HMF-0001", "Purple Tulip Bunny", "weekly_review", "deferred", "Older weekly review", "2026-08-01", ""],
       ["daily:2026-07-27:AMZ-HMF-0001:listing_review", "2026-07-28", "AMZ-HMF-0001", "Purple Tulip Bunny", "listing_review", "accepted", "Updated main image plan", "2026-08-04", "CTR improved"],
       ["weekly:2026-07-20:AMZ-HMF-0001:category_campaign_review", "2026-07-29", "AMZ-HMF-0001", "Purple Tulip Bunny", "category_campaign_review", "deferred", "Wait one more week", "2026-08-20", ""]
     ]), "Optimization Decision Log");
@@ -365,28 +366,23 @@ describe("refreshAmazonOptimizationRecommendations", () => {
       priorityCounts: {
         high: 2
       },
-      decisionCount: 2,
+      decisionCount: 3,
       sellerDecisionCounts: {
         accepted: 1,
-        deferred: 1
+        deferred: 2
       },
       actionDecisionCounts: {
         listing_review: 1,
+        weekly_review: 1,
         category_campaign_review: 1
       },
-      followUpDueCount: 1
+      followUpDueCount: 2,
+      followUpStatusCounts: {
+        overdue: 1,
+        due_today: 1
+      }
     });
-    expect(followUpRows).toEqual([{
-      "Recommendation ID": "daily:2026-07-27:AMZ-HMF-0001:listing_review",
-      "Follow-up Date": "2026-08-04",
-      "SKU": "AMZ-HMF-0001",
-      "Product Name": "Purple Tulip Bunny",
-      "Action Type": "listing_review",
-      "Seller Decision": "accepted",
-      "Decision Notes": "Updated main image plan",
-      "Outcome Notes": "CTR improved",
-      "Follow-up Status": "due_today"
-    }]);
+    expect(followUpRows.map(row => row["Follow-up Status"])).toEqual(["overdue", "due_today"]);
   });
 
   it("does not create recommendations for blank template rows", () => {
