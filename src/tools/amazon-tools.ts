@@ -89,5 +89,27 @@ export function registerAmazonTools(server: McpServer, store: CredentialStore, a
       ...(maxResults ? { maxResults } : {}),
       ...(nextToken ? { nextToken } : {})
     })));
+
+    server.registerTool("amazon_ads_list_sp_ad_groups", {
+      description: "Read Sponsored Products ad groups for one Amazon Ads profile. This is read-only and does not change campaigns, ad groups, bids, budgets, keywords, negatives, or ads.",
+      inputSchema: {
+        profileId: z.string().min(1),
+        campaignIds: z.array(z.string().min(1)).optional(),
+        adGroupIds: z.array(z.string().min(1)).optional(),
+        stateFilter: z.array(z.enum(["ENABLED", "PAUSED", "ARCHIVED"])).optional(),
+        campaignTargetingTypeFilter: z.enum(["AUTO", "MANUAL"]).optional(),
+        includeExtendedDataFields: z.boolean().optional(),
+        maxResults: z.number().int().min(1).max(100).optional(),
+        nextToken: z.string().min(1).optional()
+      }
+    }, async ({ profileId, campaignIds, adGroupIds, stateFilter, campaignTargetingTypeFilter, includeExtendedDataFields, maxResults, nextToken }) => result(await amazonAds.listSponsoredProductsAdGroups(profileId, {
+      ...(campaignIds ? { campaignIdFilter: { include: campaignIds } } : {}),
+      ...(adGroupIds ? { adGroupIdFilter: { include: adGroupIds } } : {}),
+      ...(stateFilter ? { stateFilter: { include: stateFilter } } : {}),
+      ...(campaignTargetingTypeFilter ? { campaignTargetingTypeFilter } : {}),
+      ...(includeExtendedDataFields === undefined ? {} : { includeExtendedDataFields }),
+      ...(maxResults ? { maxResults } : {}),
+      ...(nextToken ? { nextToken } : {})
+    })));
   }
 }

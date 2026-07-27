@@ -31,6 +31,16 @@ export class AmazonAdsClient {
     });
   }
 
+  async listSponsoredProductsAdGroups(profileId: string, body: Record<string, unknown> = {}) {
+    return this.request("/sp/adGroups/list", {
+      method: "POST",
+      profileId,
+      accept: "application/vnd.spAdGroup.v3+json",
+      contentType: "application/vnd.spAdGroup.v3+json",
+      body
+    });
+  }
+
   private async request(path: string, options: {
     method?: "GET" | "POST";
     profileId?: string;

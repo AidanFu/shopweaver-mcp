@@ -71,4 +71,47 @@ describe("AmazonAdsClient", () => {
       })
     }));
   });
+
+  it("lists Sponsored Products ad groups for a campaign without changing bids", async () => {
+    const store = new MemoryCredentialStore();
+    await store.set("amazonAdsApp", { clientId: "ads-client", clientSecret: "ads-secret" });
+    await store.set("amazonAdsAuth", {
+      refreshToken: "ads-refresh",
+      region: "na",
+      accessToken: "ads-access",
+      expiresAt: Date.now() + 3_600_000
+    });
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      adGroups: [{ adGroupId: "456", campaignId: "123", name: "Exact Winners", state: "ENABLED", defaultBid: 0.75 }],
+      totalResults: 1
+    }), { status: 200, headers: { "content-type": "application/json" } }));
+    const client = new AmazonAdsClient(store, fetchMock);
+
+    await expect(client.listSponsoredProductsAdGroups("987654321", {
+      campaignIdFilter: { include: ["123"] },
+      stateFilter: { include: ["ENABLED"] },
+      includeExtendedDataFields: true,
+      maxResults: 50
+    })).resolves.toEqual({
+      adGroups: [{ adGroupId: "456", campaignId: "123", name: "Exact Winners", state: "ENABLED", defaultBid: 0.75 }],
+      totalResults: 1
+    });
+    expect(fetchMock).toHaveBeenCalledWith("https://advertising-api.amazon.com/sp/adGroups/list", expect.objectContaining({
+      method: "POST",
+      headers: {
+        Authorization: "Bearer ads-access",
+        "Amazon-Advertising-API-ClientId": "ads-client",
+        "Amazon-Advertising-API-Scope": "987654321",
+        Accept: "application/vnd.spAdGroup.v3+json",
+        "Content-Type": "application/vnd.spAdGroup.v3+json",
+        "user-agent": "ShopWeaver/0.1.0 (Language=TypeScript)"
+      },
+      body: JSON.stringify({
+        campaignIdFilter: { include: ["123"] },
+        stateFilter: { include: ["ENABLED"] },
+        includeExtendedDataFields: true,
+        maxResults: 50
+      })
+    }));
+  });
 });
