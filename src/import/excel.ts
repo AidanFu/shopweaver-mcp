@@ -492,6 +492,17 @@ export interface AmazonWeeklyOptimizationWorkbookInput {
   categoryConversionNotes: string;
 }
 
+export interface AmazonDecisionLogWorkbookInput {
+  decisionDate: string;
+  sku: string;
+  productName: string;
+  actionType: string;
+  sellerDecision: string;
+  decisionNotes: string;
+  followUpDate: string;
+  outcomeNotes: string;
+}
+
 function textValue(value: unknown): string {
   return String(value ?? "").trim();
 }
@@ -545,6 +556,25 @@ export function parseAmazonWeeklyOptimizationInputs(bytes: Uint8Array): AmazonWe
     }));
 }
 
+export function parseAmazonDecisionLogInputs(bytes: Uint8Array): AmazonDecisionLogWorkbookInput[] {
+  const workbook = XLSX.read(bytes, { type: "array" });
+  const sheet = workbook.Sheets["Optimization Decision Log"];
+  if (!sheet) return [];
+  const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: "" });
+  return rows
+    .filter(row => hasDecisionLogData(row))
+    .map(row => ({
+      decisionDate: textValue(row["Decision Date"]),
+      sku: textValue(row["SKU"]),
+      productName: textValue(row["Product Name"]),
+      actionType: textValue(row["Action Type"]),
+      sellerDecision: textValue(row["Seller Decision"]),
+      decisionNotes: textValue(row["Decision Notes"]),
+      followUpDate: textValue(row["Follow-up Date"]),
+      outcomeNotes: textValue(row["Outcome Notes"])
+    }));
+}
+
 function hasDailyOptimizationData(row: Record<string, unknown>): boolean {
   return [
     "Date",
@@ -572,6 +602,17 @@ function hasWeeklyOptimizationData(row: Record<string, unknown>): boolean {
     "Category Conversion Notes",
     "Category Decision",
     "Budget Recommendation"
+  ].some(header => textValue(row[header]) !== "");
+}
+
+function hasDecisionLogData(row: Record<string, unknown>): boolean {
+  return [
+    "Decision Date",
+    "Action Type",
+    "Seller Decision",
+    "Decision Notes",
+    "Follow-up Date",
+    "Outcome Notes"
   ].some(header => textValue(row[header]) !== "");
 }
 
@@ -603,19 +644,29 @@ export function refreshAmazonOptimizationRecommendations(bytes: Uint8Array): Uin
 export function summarizeAmazonOptimizationRefresh(bytes: Uint8Array) {
   const daily = parseAmazonDailyOptimizationInputs(bytes);
   const weekly = parseAmazonWeeklyOptimizationInputs(bytes);
+  const decisions = parseAmazonDecisionLogInputs(bytes);
   const analyzed = analyzeAmazonOptimizationWorkbookInputs({ daily, weekly });
   const statusCounts: Record<string, number> = {};
   const priorityCounts: Record<string, number> = {};
+  const sellerDecisionCounts: Record<string, number> = {};
+  const actionDecisionCounts: Record<string, number> = {};
   for (const row of [...analyzed.daily, ...analyzed.weekly]) {
     statusCounts[row.status] = (statusCounts[row.status] ?? 0) + 1;
     priorityCounts[row.priority] = (priorityCounts[row.priority] ?? 0) + 1;
+  }
+  for (const row of decisions) {
+    if (row.sellerDecision) sellerDecisionCounts[row.sellerDecision] = (sellerDecisionCounts[row.sellerDecision] ?? 0) + 1;
+    if (row.actionType) actionDecisionCounts[row.actionType] = (actionDecisionCounts[row.actionType] ?? 0) + 1;
   }
   return {
     dailyInputCount: daily.length,
     weeklyInputCount: weekly.length,
     recommendationCount: analyzed.daily.length + analyzed.weekly.length,
     statusCounts,
-    priorityCounts
+    priorityCounts,
+    decisionCount: decisions.length,
+    sellerDecisionCounts,
+    actionDecisionCounts
   };
 }
 

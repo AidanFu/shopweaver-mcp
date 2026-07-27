@@ -113,7 +113,10 @@ describe("DriveImportService", () => {
       },
       priorityCounts: {
         high: 2
-      }
+      },
+      decisionCount: 0,
+      sellerDecisionCounts: {},
+      actionDecisionCounts: {}
     });
     expect(drive.downloadFile).toHaveBeenCalledWith("amazon-file");
     expect(drive.uploadFile).toHaveBeenCalledWith(
