@@ -138,6 +138,7 @@ describe("writeAmazonListingWorkbook", () => {
     expect(recommendationRows).toEqual([]);
     expect(decisionLogRows).toEqual([]);
     expect(XLSX.utils.sheet_to_json<Record<string, string>>(workbook.Sheets["Optimization Decision Log"], { header: 1 })[0]).toEqual([
+      "Recommendation ID",
       "Decision Date",
       "SKU",
       "Product Name",
@@ -231,12 +232,13 @@ describe("parseAmazonDecisionLogInputs", () => {
   it("reads seller decision rows from the Amazon optimization decision log", () => {
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([
-      ["Decision Date", "SKU", "Product Name", "Action Type", "Seller Decision", "Decision Notes", "Follow-up Date", "Outcome Notes"],
-      ["2026-07-28", "AMZ-HMF-0001", "Purple Tulip Bunny", "listing_review", "accepted", "Updated main image plan", "2026-08-04", "CTR improved"],
-      ["", "AMZ-HMF-0002", "Rose Bunny", "", "", "", "", ""]
+      ["Recommendation ID", "Decision Date", "SKU", "Product Name", "Action Type", "Seller Decision", "Decision Notes", "Follow-up Date", "Outcome Notes"],
+      ["daily:2026-07-27:AMZ-HMF-0001:listing_review", "2026-07-28", "AMZ-HMF-0001", "Purple Tulip Bunny", "listing_review", "accepted", "Updated main image plan", "2026-08-04", "CTR improved"],
+      ["", "", "AMZ-HMF-0002", "Rose Bunny", "", "", "", "", ""]
     ]), "Optimization Decision Log");
     const bytes = new Uint8Array(XLSX.write(workbook, { type: "array", bookType: "xlsx" }));
     expect(parseAmazonDecisionLogInputs(bytes)).toEqual([{
+      recommendationId: "daily:2026-07-27:AMZ-HMF-0001:listing_review",
       decisionDate: "2026-07-28",
       sku: "AMZ-HMF-0001",
       productName: "Purple Tulip Bunny",
@@ -281,12 +283,14 @@ describe("writeAmazonOptimizationRecommendationsWorkbook", () => {
     });
     const workbook = XLSX.read(bytes, { type: "array" });
     const rows = XLSX.utils.sheet_to_json<Record<string, string>>(workbook.Sheets["Optimization Recommendations"]);
+    expect(rows[0]["Recommendation ID"]).toBe("daily:2026-07-27:AMZ-HMF-0001:listing_review");
     expect(rows[0]["Cadence"]).toBe("daily");
     expect(rows[0]["Status"]).toBe("needs_listing_review");
     expect(rows[0]["Priority"]).toBe("high");
     expect(rows[0]["Action Type"]).toBe("listing_review");
     expect(rows[0]["Recommendation"]).toContain("Do not increase bids");
     expect(rows[1]["Cadence"]).toBe("weekly");
+    expect(rows[1]["Recommendation ID"]).toBe("weekly:2026-07-20:AMZ-HMF-0001:category_campaign_review");
     expect(rows[1]["Status"]).toBe("review_category_and_campaign");
     expect(rows[1]["Priority"]).toBe("high");
     expect(rows[1]["Action Type"]).toBe("category_campaign_review");
@@ -312,19 +316,21 @@ describe("refreshAmazonOptimizationRecommendations", () => {
       ["daily", "old", "old_status"]
     ]), "Optimization Recommendations");
     XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([
-      ["Decision Date", "SKU", "Product Name", "Action Type", "Seller Decision", "Decision Notes", "Follow-up Date", "Outcome Notes"],
-      ["2026-07-28", "AMZ-HMF-0001", "Purple Tulip Bunny", "listing_review", "accepted", "Updated main image plan", "2026-08-04", "CTR improved"]
+      ["Recommendation ID", "Decision Date", "SKU", "Product Name", "Action Type", "Seller Decision", "Decision Notes", "Follow-up Date", "Outcome Notes"],
+      ["daily:2026-07-27:AMZ-HMF-0001:listing_review", "2026-07-28", "AMZ-HMF-0001", "Purple Tulip Bunny", "listing_review", "accepted", "Updated main image plan", "2026-08-04", "CTR improved"]
     ]), "Optimization Decision Log");
     const refreshed = refreshAmazonOptimizationRecommendations(new Uint8Array(XLSX.write(workbook, { type: "array", bookType: "xlsx" })));
     const parsed = XLSX.read(refreshed, { type: "array" });
     const recommendationRows = XLSX.utils.sheet_to_json<Record<string, string>>(parsed.Sheets["Optimization Recommendations"]);
     expect(parsed.SheetNames).toEqual(["Amazon Listings", "Daily Optimization Inputs", "Weekly Optimization Review", "Optimization Decision Log", "Optimization Recommendations"]);
     expect(recommendationRows).toHaveLength(2);
+    expect(recommendationRows[0]["Recommendation ID"]).toBe("daily:2026-07-27:AMZ-HMF-0001:listing_review");
     expect(recommendationRows[0]["SKU"]).toBe("AMZ-HMF-0001");
     expect(recommendationRows[0]["Status"]).toBe("needs_listing_review");
     expect(recommendationRows[0]["Priority"]).toBe("high");
     expect(recommendationRows[0]["Action Type"]).toBe("listing_review");
     expect(recommendationRows[1]["Cadence"]).toBe("weekly");
+    expect(recommendationRows[1]["Recommendation ID"]).toBe("weekly:2026-07-20:AMZ-HMF-0001:category_campaign_review");
     expect(recommendationRows[1]["Status"]).toBe("review_category_and_campaign");
     expect(recommendationRows[1]["Priority"]).toBe("high");
     expect(recommendationRows[1]["Action Type"]).toBe("category_campaign_review");
@@ -374,13 +380,14 @@ describe("refreshAmazonOptimizationRecommendations", () => {
       ["2026-07-27", "AMZ-HMF-0001", "Purple Tulip Bunny", "120", "0.9", "0.62", "42", "0", "0", "0", "crochet bag charm", "main image weak"]
     ]), "Daily Optimization Inputs");
     XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([
-      ["Decision Date", "SKU", "Product Name", "Action Type", "Seller Decision", "Decision Notes", "Follow-up Date", "Outcome Notes"],
-      ["2026-07-28", "AMZ-HMF-0001", "Purple Tulip Bunny", "listing_review", "accepted", "Updated main image plan", "2026-08-04", ""]
+      ["Recommendation ID", "Decision Date", "SKU", "Product Name", "Action Type", "Seller Decision", "Decision Notes", "Follow-up Date", "Outcome Notes"],
+      ["daily:2026-07-27:AMZ-HMF-0001:listing_review", "2026-07-28", "AMZ-HMF-0001", "Purple Tulip Bunny", "listing_review", "accepted", "Updated main image plan", "2026-08-04", ""]
     ]), "Optimization Decision Log");
     const refreshed = refreshAmazonOptimizationRecommendations(new Uint8Array(XLSX.write(workbook, { type: "array", bookType: "xlsx" })));
     const parsed = XLSX.read(refreshed, { type: "array" });
     const decisionRows = XLSX.utils.sheet_to_json<Record<string, string>>(parsed.Sheets["Optimization Decision Log"]);
     expect(decisionRows).toEqual([{
+      "Recommendation ID": "daily:2026-07-27:AMZ-HMF-0001:listing_review",
       "Decision Date": "2026-07-28",
       "SKU": "AMZ-HMF-0001",
       "Product Name": "Purple Tulip Bunny",

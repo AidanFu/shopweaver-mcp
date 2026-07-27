@@ -286,6 +286,7 @@ const AMAZON_WEEKLY_OPTIMIZATION_HEADERS = [
 ];
 
 const AMAZON_OPTIMIZATION_RECOMMENDATION_HEADERS = [
+  "Recommendation ID",
   "Cadence",
   "Date/Week",
   "SKU",
@@ -298,6 +299,7 @@ const AMAZON_OPTIMIZATION_RECOMMENDATION_HEADERS = [
 ];
 
 const AMAZON_OPTIMIZATION_DECISION_LOG_HEADERS = [
+  "Recommendation ID",
   "Decision Date",
   "SKU",
   "Product Name",
@@ -493,6 +495,7 @@ export interface AmazonWeeklyOptimizationWorkbookInput {
 }
 
 export interface AmazonDecisionLogWorkbookInput {
+  recommendationId: string;
   decisionDate: string;
   sku: string;
   productName: string;
@@ -564,6 +567,7 @@ export function parseAmazonDecisionLogInputs(bytes: Uint8Array): AmazonDecisionL
   return rows
     .filter(row => hasDecisionLogData(row))
     .map(row => ({
+      recommendationId: textValue(row["Recommendation ID"]),
       decisionDate: textValue(row["Decision Date"]),
       sku: textValue(row["SKU"]),
       productName: textValue(row["Product Name"]),
@@ -677,6 +681,7 @@ function optimizationRecommendationRows(input: {
   const analyzed = analyzeAmazonOptimizationWorkbookInputs({ daily: input.daily, weekly: input.weekly });
   return [
     ...analyzed.daily.map(row => [
+      recommendationId("daily", row.date, row.sku, row.actionType),
       "daily",
       row.date,
       row.sku,
@@ -688,6 +693,7 @@ function optimizationRecommendationRows(input: {
       "yes"
     ]),
     ...analyzed.weekly.map(row => [
+      recommendationId("weekly", row.weekStart, row.sku, row.actionType),
       "weekly",
       row.weekStart,
       row.sku,
@@ -699,4 +705,8 @@ function optimizationRecommendationRows(input: {
       "yes"
     ])
   ];
+}
+
+function recommendationId(cadence: string, dateOrWeek: string, sku: string, actionType: string): string {
+  return [cadence, dateOrWeek, sku, actionType].join(":");
 }
