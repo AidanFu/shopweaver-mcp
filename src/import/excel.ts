@@ -427,24 +427,7 @@ export function writeAmazonListingWorkbook(rows: AmazonListingWorkbookRow[]): Ui
     ])
   ]), "Weekly Optimization Review");
   XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([
-    AMAZON_OPTIMIZATION_RECOMMENDATION_HEADERS,
-    ...optimizationRecommendationRows({
-      daily: rows.map(row => ({
-        date: "",
-        sku: row.sku ?? "",
-        productName: row.productName,
-        sessions: 0,
-        ctr: 0,
-        cpc: 0,
-        spend: 0,
-        orders: 0,
-        sales: 0,
-        conversionRate: 0,
-        searchTerms: "",
-        listingIssues: ""
-      })),
-      weekly: []
-    })
+    AMAZON_OPTIMIZATION_RECOMMENDATION_HEADERS
   ]), "Optimization Recommendations");
   return new Uint8Array(XLSX.write(workbook, { type: "array", bookType: "xlsx" }));
 }

@@ -131,10 +131,7 @@ describe("writeAmazonListingWorkbook", () => {
     expect(weeklyRows[0]["SKU"]).toBe("AMZ-CHAN-PIN-YI");
     expect(weeklyRows[0]["ACOS"]).toBe("");
     expect(weeklyRows[0]["AI Weekly Recommendation"]).toContain("Review only");
-    expect(recommendationRows[0]["SKU"]).toBe("AMZ-CHAN-PIN-YI");
-    expect(recommendationRows[0]["Cadence"]).toBe("daily");
-    expect(recommendationRows[0]["Status"]).toBe("collect_more_data");
-    expect(recommendationRows[0]["Seller Approval Required"]).toBe("yes");
+    expect(recommendationRows).toEqual([]);
   });
 });
 
