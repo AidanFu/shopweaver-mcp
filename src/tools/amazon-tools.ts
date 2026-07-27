@@ -1,5 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
+import { analyzeAmazonCampaignMetrics } from "../amazon/campaign-optimization.js";
 import { analyzeAmazonExistingListing } from "../amazon/listing-optimization.js";
 import type { AmazonSpApiClient } from "../amazon/sp-api-client.js";
 import type { CredentialStore } from "../credentials/types.js";
@@ -39,4 +40,18 @@ export function registerAmazonTools(server: McpServer, store: CredentialStore, a
     description: "Read one existing Amazon listing by seller SKU and return review-only optimization recommendations. This does not change the listing.",
     inputSchema: { sku: z.string().min(1) }
   }, async ({ sku }) => result(analyzeAmazonExistingListing(await amazon.getListingItem(sku) as never)));
+
+  server.registerTool("amazon_optimize_campaign_metrics", {
+    description: "Return review-only Amazon campaign optimization recommendations from provided campaign metrics. This does not change campaigns, bids, budgets, keywords, negatives, or ads.",
+    inputSchema: {
+      campaignId: z.string().min(1),
+      campaignName: z.string().min(1),
+      spend: z.number().nonnegative(),
+      sales: z.number().nonnegative(),
+      clicks: z.number().int().nonnegative(),
+      orders: z.number().int().nonnegative(),
+      acos: z.number().nonnegative(),
+      searchTerms: z.string()
+    }
+  }, async (metrics) => result(analyzeAmazonCampaignMetrics(metrics)));
 }
