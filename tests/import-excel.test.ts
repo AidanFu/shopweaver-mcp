@@ -104,12 +104,14 @@ describe("writeAmazonListingWorkbook", () => {
     expect(workbook.SheetNames).toContain("Weekly Optimization Review");
     expect(workbook.SheetNames).toContain("Optimization Recommendations");
     expect(workbook.SheetNames).toContain("Optimization Decision Log");
+    expect(workbook.SheetNames).toContain("Optimization Follow-ups");
     expect(workbook.SheetNames).toContain("Optimization Guide");
     const rows = XLSX.utils.sheet_to_json<Record<string, string>>(workbook.Sheets["Amazon Listings"]);
     const dailyRows = XLSX.utils.sheet_to_json<Record<string, string>>(workbook.Sheets["Daily Optimization Inputs"]);
     const weeklyRows = XLSX.utils.sheet_to_json<Record<string, string>>(workbook.Sheets["Weekly Optimization Review"]);
     const recommendationRows = XLSX.utils.sheet_to_json<Record<string, string>>(workbook.Sheets["Optimization Recommendations"]);
     const decisionLogRows = XLSX.utils.sheet_to_json<Record<string, string>>(workbook.Sheets["Optimization Decision Log"]);
+    const followUpRows = XLSX.utils.sheet_to_json<Record<string, string>>(workbook.Sheets["Optimization Follow-ups"]);
     const guideRows = XLSX.utils.sheet_to_json<Record<string, string>>(workbook.Sheets["Optimization Guide"]);
     expect(rows[0]["Product Name"]).toBe("产品一");
     expect(rows[0]["Amazon Product Type"]).toBe("KEYCHAIN");
@@ -137,6 +139,7 @@ describe("writeAmazonListingWorkbook", () => {
     expect(weeklyRows[0]["AI Weekly Recommendation"]).toContain("Review only");
     expect(recommendationRows).toEqual([]);
     expect(decisionLogRows).toEqual([]);
+    expect(followUpRows).toEqual([]);
     expect(XLSX.utils.sheet_to_json<Record<string, string>>(workbook.Sheets["Optimization Decision Log"], { header: 1 })[0]).toEqual([
       "Recommendation ID",
       "Decision Date",
@@ -147,6 +150,17 @@ describe("writeAmazonListingWorkbook", () => {
       "Decision Notes",
       "Follow-up Date",
       "Outcome Notes"
+    ]);
+    expect(XLSX.utils.sheet_to_json<Record<string, string>>(workbook.Sheets["Optimization Follow-ups"], { header: 1 })[0]).toEqual([
+      "Recommendation ID",
+      "Follow-up Date",
+      "SKU",
+      "Product Name",
+      "Action Type",
+      "Seller Decision",
+      "Decision Notes",
+      "Outcome Notes",
+      "Follow-up Status"
     ]);
     expect(guideRows[0]["Section"]).toBe("Daily metrics");
     expect(guideRows[0]["Details"]).toContain("CTR");
@@ -320,10 +334,11 @@ describe("refreshAmazonOptimizationRecommendations", () => {
       ["daily:2026-07-27:AMZ-HMF-0001:listing_review", "2026-07-28", "AMZ-HMF-0001", "Purple Tulip Bunny", "listing_review", "accepted", "Updated main image plan", "2026-08-04", "CTR improved"],
       ["weekly:2026-07-20:AMZ-HMF-0001:category_campaign_review", "2026-07-29", "AMZ-HMF-0001", "Purple Tulip Bunny", "category_campaign_review", "deferred", "Wait one more week", "2026-08-20", ""]
     ]), "Optimization Decision Log");
-    const refreshed = refreshAmazonOptimizationRecommendations(new Uint8Array(XLSX.write(workbook, { type: "array", bookType: "xlsx" })));
+    const refreshed = refreshAmazonOptimizationRecommendations(new Uint8Array(XLSX.write(workbook, { type: "array", bookType: "xlsx" })), "2026-08-04");
     const parsed = XLSX.read(refreshed, { type: "array" });
     const recommendationRows = XLSX.utils.sheet_to_json<Record<string, string>>(parsed.Sheets["Optimization Recommendations"]);
-    expect(parsed.SheetNames).toEqual(["Amazon Listings", "Daily Optimization Inputs", "Weekly Optimization Review", "Optimization Decision Log", "Optimization Recommendations"]);
+    const followUpRows = XLSX.utils.sheet_to_json<Record<string, string>>(parsed.Sheets["Optimization Follow-ups"]);
+    expect(parsed.SheetNames).toEqual(["Amazon Listings", "Daily Optimization Inputs", "Weekly Optimization Review", "Optimization Decision Log", "Optimization Recommendations", "Optimization Follow-ups"]);
     expect(recommendationRows).toHaveLength(2);
     expect(recommendationRows[0]["Recommendation ID"]).toBe("daily:2026-07-27:AMZ-HMF-0001:listing_review");
     expect(recommendationRows[0]["Prior Seller Decision"]).toBe("accepted");
@@ -361,6 +376,17 @@ describe("refreshAmazonOptimizationRecommendations", () => {
       },
       followUpDueCount: 1
     });
+    expect(followUpRows).toEqual([{
+      "Recommendation ID": "daily:2026-07-27:AMZ-HMF-0001:listing_review",
+      "Follow-up Date": "2026-08-04",
+      "SKU": "AMZ-HMF-0001",
+      "Product Name": "Purple Tulip Bunny",
+      "Action Type": "listing_review",
+      "Seller Decision": "accepted",
+      "Decision Notes": "Updated main image plan",
+      "Outcome Notes": "CTR improved",
+      "Follow-up Status": "due"
+    }]);
   });
 
   it("does not create recommendations for blank template rows", () => {

@@ -313,6 +313,18 @@ const AMAZON_OPTIMIZATION_DECISION_LOG_HEADERS = [
   "Outcome Notes"
 ];
 
+const AMAZON_OPTIMIZATION_FOLLOW_UP_HEADERS = [
+  "Recommendation ID",
+  "Follow-up Date",
+  "SKU",
+  "Product Name",
+  "Action Type",
+  "Seller Decision",
+  "Decision Notes",
+  "Outcome Notes",
+  "Follow-up Status"
+];
+
 const AMAZON_OPTIMIZATION_GUIDE_ROWS = [
   ["Section", "Details"],
   ["Daily metrics", "Paste Date, Sessions, CTR, CPC, Spend, Orders, Sales, Conversion Rate, Search Terms, and Listing Issues into Daily Optimization Inputs."],
@@ -465,6 +477,9 @@ export function writeAmazonListingWorkbook(rows: AmazonListingWorkbookRow[]): Ui
   XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([
     AMAZON_OPTIMIZATION_DECISION_LOG_HEADERS
   ]), "Optimization Decision Log");
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([
+    AMAZON_OPTIMIZATION_FOLLOW_UP_HEADERS
+  ]), "Optimization Follow-ups");
   XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(AMAZON_OPTIMIZATION_GUIDE_ROWS), "Optimization Guide");
   return new Uint8Array(XLSX.write(workbook, { type: "array", bookType: "xlsx" }));
 }
@@ -635,17 +650,22 @@ export function writeAmazonOptimizationRecommendationsWorkbook(input: {
   return new Uint8Array(XLSX.write(workbook, { type: "array", bookType: "xlsx" }));
 }
 
-export function refreshAmazonOptimizationRecommendations(bytes: Uint8Array): Uint8Array {
+export function refreshAmazonOptimizationRecommendations(bytes: Uint8Array, asOfDate = new Date().toISOString().slice(0, 10)): Uint8Array {
   const workbook = XLSX.read(bytes, { type: "array" });
   const daily = parseAmazonDailyOptimizationInputs(bytes);
   const weekly = parseAmazonWeeklyOptimizationInputs(bytes);
   const decisions = parseAmazonDecisionLogInputs(bytes);
   delete workbook.Sheets["Optimization Recommendations"];
-  workbook.SheetNames = workbook.SheetNames.filter(name => name !== "Optimization Recommendations");
+  delete workbook.Sheets["Optimization Follow-ups"];
+  workbook.SheetNames = workbook.SheetNames.filter(name => name !== "Optimization Recommendations" && name !== "Optimization Follow-ups");
   XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([
     AMAZON_OPTIMIZATION_RECOMMENDATION_HEADERS,
     ...optimizationRecommendationRows({ daily, weekly, decisions })
   ]), "Optimization Recommendations");
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([
+    AMAZON_OPTIMIZATION_FOLLOW_UP_HEADERS,
+    ...optimizationFollowUpRows(decisions, asOfDate)
+  ]), "Optimization Follow-ups");
   return new Uint8Array(XLSX.write(workbook, { type: "array", bookType: "xlsx" }));
 }
 
@@ -716,6 +736,22 @@ function optimizationRecommendationRows(input: {
 
 function recommendationId(cadence: string, dateOrWeek: string, sku: string, actionType: string): string {
   return [cadence, dateOrWeek, sku, actionType].join(":");
+}
+
+function optimizationFollowUpRows(decisions: AmazonDecisionLogWorkbookInput[], asOfDate: string) {
+  return decisions
+    .filter(row => row.followUpDate !== "" && row.followUpDate <= asOfDate)
+    .map(row => [
+      row.recommendationId,
+      row.followUpDate,
+      row.sku,
+      row.productName,
+      row.actionType,
+      row.sellerDecision,
+      row.decisionNotes,
+      row.outcomeNotes,
+      "due"
+    ]);
 }
 
 function optimizationRecommendationRow(
