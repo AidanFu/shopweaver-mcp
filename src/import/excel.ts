@@ -1,4 +1,5 @@
 import * as XLSX from "xlsx";
+import { analyzeAmazonDailyOptimization, analyzeAmazonWeeklyOptimization } from "./amazon-optimization.js";
 
 export interface RawProductRecord {
   productName: string;
@@ -375,7 +376,16 @@ export function writeAmazonListingWorkbook(rows: AmazonListingWorkbookRow[]): Ui
       "",
       "",
       "",
-      "Review only: paste daily metrics before changing listing copy, category, bids, budgets, keywords, or negatives.",
+      analyzeAmazonDailyOptimization({
+        sessions: 0,
+        ctr: 0,
+        cpc: 0,
+        spend: 0,
+        orders: 0,
+        sales: 0,
+        conversionRate: 0,
+        searchTerms: ""
+      }).recommendation,
       ""
     ])
   ]), "Daily Optimization Inputs");
@@ -394,7 +404,15 @@ export function writeAmazonListingWorkbook(rows: AmazonListingWorkbookRow[]): Ui
       "",
       "",
       "",
-      "Review only: compare weekly listing, category, campaign, ACOS/TACOS, and conversion signals before seller-approved changes.",
+      analyzeAmazonWeeklyOptimization({
+        acos: 0,
+        tacos: 0,
+        totalSpend: 0,
+        totalSales: 0,
+        categoryConversionRate: 0,
+        keywordWinners: "",
+        negativeKeywordCandidates: ""
+      }).recommendation,
       ""
     ])
   ]), "Weekly Optimization Review");
