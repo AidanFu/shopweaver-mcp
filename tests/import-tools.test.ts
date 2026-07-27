@@ -106,7 +106,11 @@ describe("DriveImportService", () => {
       file: { id: "amazon-file", name: "Product Information - Amazon Listing.xlsx" },
       dailyInputCount: 1,
       weeklyInputCount: 1,
-      recommendationCount: 2
+      recommendationCount: 2,
+      statusCounts: {
+        needs_listing_review: 1,
+        review_category_and_campaign: 1
+      }
     });
     expect(drive.downloadFile).toHaveBeenCalledWith("amazon-file");
     expect(drive.uploadFile).toHaveBeenCalledWith(
@@ -176,7 +180,11 @@ describe("Amazon optimization refresh tool response", () => {
         file: { id: "amazon-file", name: "Product Information - Amazon Listing.xlsx" },
         dailyInputCount: 2,
         weeklyInputCount: 1,
-        recommendationCount: 3
+        recommendationCount: 3,
+        statusCounts: {
+          needs_listing_review: 2,
+          keep_learning: 1
+        }
       })
     };
     const { registerImportTools } = await import("../src/tools/import-tools.js");
@@ -190,7 +198,11 @@ describe("Amazon optimization refresh tool response", () => {
     expect(response.structuredContent).toMatchObject({
       dailyInputCount: 2,
       weeklyInputCount: 1,
-      recommendationCount: 3
+      recommendationCount: 3,
+      statusCounts: {
+        needs_listing_review: 2,
+        keep_learning: 1
+      }
     });
   });
 });

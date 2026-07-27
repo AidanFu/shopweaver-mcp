@@ -581,10 +581,15 @@ export function summarizeAmazonOptimizationRefresh(bytes: Uint8Array) {
   const daily = parseAmazonDailyOptimizationInputs(bytes);
   const weekly = parseAmazonWeeklyOptimizationInputs(bytes);
   const analyzed = analyzeAmazonOptimizationWorkbookInputs({ daily, weekly });
+  const statusCounts: Record<string, number> = {};
+  for (const row of [...analyzed.daily, ...analyzed.weekly]) {
+    statusCounts[row.status] = (statusCounts[row.status] ?? 0) + 1;
+  }
   return {
     dailyInputCount: daily.length,
     weeklyInputCount: weekly.length,
-    recommendationCount: analyzed.daily.length + analyzed.weekly.length
+    recommendationCount: analyzed.daily.length + analyzed.weekly.length,
+    statusCounts
   };
 }
 

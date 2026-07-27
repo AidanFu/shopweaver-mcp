@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import * as XLSX from "xlsx";
-import { parseAmazonDailyOptimizationInputs, parseAmazonWeeklyOptimizationInputs, parseProductInformationWorkbook, refreshAmazonOptimizationRecommendations, writeAmazonListingWorkbook, writeAmazonOptimizationRecommendationsWorkbook } from "../src/import/excel.js";
+import { parseAmazonDailyOptimizationInputs, parseAmazonWeeklyOptimizationInputs, parseProductInformationWorkbook, refreshAmazonOptimizationRecommendations, summarizeAmazonOptimizationRefresh, writeAmazonListingWorkbook, writeAmazonOptimizationRecommendationsWorkbook } from "../src/import/excel.js";
 
 function workbookBytes(rows: Array<Array<string>>) {
   const workbook = XLSX.utils.book_new();
@@ -277,6 +277,15 @@ describe("refreshAmazonOptimizationRecommendations", () => {
     expect(recommendationRows[0]["Status"]).toBe("needs_listing_review");
     expect(recommendationRows[1]["Cadence"]).toBe("weekly");
     expect(recommendationRows[1]["Status"]).toBe("review_category_and_campaign");
+    expect(summarizeAmazonOptimizationRefresh(refreshed)).toEqual({
+      dailyInputCount: 1,
+      weeklyInputCount: 1,
+      recommendationCount: 2,
+      statusCounts: {
+        needs_listing_review: 1,
+        review_category_and_campaign: 1
+      }
+    });
   });
 
   it("does not create recommendations for blank template rows", () => {
