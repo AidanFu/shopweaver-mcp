@@ -161,6 +161,16 @@ describe("parseAmazonDailyOptimizationInputs", () => {
       listingIssues: "main image weak"
     }]);
   });
+
+  it("ignores blank daily template rows without pasted metrics", () => {
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([
+      ["Date", "SKU", "Product Name", "Sessions", "CTR", "CPC", "Spend", "Orders", "Sales", "Conversion Rate", "Search Terms", "Listing Issues"],
+      ["", "AMZ-HMF-0001", "Purple Tulip Bunny", "", "", "", "", "", "", "", "", ""]
+    ]), "Daily Optimization Inputs");
+    const bytes = new Uint8Array(XLSX.write(workbook, { type: "array", bookType: "xlsx" }));
+    expect(parseAmazonDailyOptimizationInputs(bytes)).toEqual([]);
+  });
 });
 
 describe("parseAmazonWeeklyOptimizationInputs", () => {
@@ -183,6 +193,16 @@ describe("parseAmazonWeeklyOptimizationInputs", () => {
       negativeKeywordCandidates: "free; pattern",
       categoryConversionNotes: "0.8% category conversion"
     }]);
+  });
+
+  it("ignores blank weekly template rows without pasted metrics", () => {
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([
+      ["Week Start", "SKU", "Product Name", "ACOS", "TACOS", "Total Spend", "Total Sales", "Keyword Winners", "Negative Keyword Candidates", "Category Conversion Notes"],
+      ["", "AMZ-HMF-0001", "Purple Tulip Bunny", "", "", "", "", "", "", ""]
+    ]), "Weekly Optimization Review");
+    const bytes = new Uint8Array(XLSX.write(workbook, { type: "array", bookType: "xlsx" }));
+    expect(parseAmazonWeeklyOptimizationInputs(bytes)).toEqual([]);
   });
 });
 
@@ -253,5 +273,22 @@ describe("refreshAmazonOptimizationRecommendations", () => {
     expect(recommendationRows[0]["Status"]).toBe("needs_listing_review");
     expect(recommendationRows[1]["Cadence"]).toBe("weekly");
     expect(recommendationRows[1]["Status"]).toBe("review_category_and_campaign");
+  });
+
+  it("does not create recommendations for blank template rows", () => {
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([["SKU"], ["AMZ-HMF-0001"]]), "Amazon Listings");
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([
+      ["Date", "SKU", "Product Name", "Sessions", "CTR", "CPC", "Spend", "Orders", "Sales", "Conversion Rate", "Search Terms", "Listing Issues"],
+      ["", "AMZ-HMF-0001", "Purple Tulip Bunny", "", "", "", "", "", "", "", "", ""]
+    ]), "Daily Optimization Inputs");
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([
+      ["Week Start", "SKU", "Product Name", "ACOS", "TACOS", "Total Spend", "Total Sales", "Keyword Winners", "Negative Keyword Candidates", "Category Conversion Notes"],
+      ["", "AMZ-HMF-0001", "Purple Tulip Bunny", "", "", "", "", "", "", ""]
+    ]), "Weekly Optimization Review");
+    const refreshed = refreshAmazonOptimizationRecommendations(new Uint8Array(XLSX.write(workbook, { type: "array", bookType: "xlsx" })));
+    const parsed = XLSX.read(refreshed, { type: "array" });
+    const recommendationRows = XLSX.utils.sheet_to_json<Record<string, string>>(parsed.Sheets["Optimization Recommendations"]);
+    expect(recommendationRows).toEqual([]);
   });
 });

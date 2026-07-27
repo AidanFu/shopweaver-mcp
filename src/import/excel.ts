@@ -491,20 +491,22 @@ export function parseAmazonDailyOptimizationInputs(bytes: Uint8Array): AmazonDai
   const sheet = workbook.Sheets["Daily Optimization Inputs"];
   if (!sheet) return [];
   const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: "" });
-  return rows.map(row => ({
-    date: textValue(row["Date"]),
-    sku: textValue(row["SKU"]),
-    productName: textValue(row["Product Name"]),
-    sessions: numberValue(row["Sessions"]),
-    ctr: numberValue(row["CTR"]),
-    cpc: numberValue(row["CPC"]),
-    spend: numberValue(row["Spend"]),
-    orders: numberValue(row["Orders"]),
-    sales: numberValue(row["Sales"]),
-    conversionRate: numberValue(row["Conversion Rate"]),
-    searchTerms: textValue(row["Search Terms"]),
-    listingIssues: textValue(row["Listing Issues"])
-  }));
+  return rows
+    .filter(row => hasDailyOptimizationData(row))
+    .map(row => ({
+      date: textValue(row["Date"]),
+      sku: textValue(row["SKU"]),
+      productName: textValue(row["Product Name"]),
+      sessions: numberValue(row["Sessions"]),
+      ctr: numberValue(row["CTR"]),
+      cpc: numberValue(row["CPC"]),
+      spend: numberValue(row["Spend"]),
+      orders: numberValue(row["Orders"]),
+      sales: numberValue(row["Sales"]),
+      conversionRate: numberValue(row["Conversion Rate"]),
+      searchTerms: textValue(row["Search Terms"]),
+      listingIssues: textValue(row["Listing Issues"])
+    }));
 }
 
 export function parseAmazonWeeklyOptimizationInputs(bytes: Uint8Array): AmazonWeeklyOptimizationWorkbookInput[] {
@@ -512,18 +514,50 @@ export function parseAmazonWeeklyOptimizationInputs(bytes: Uint8Array): AmazonWe
   const sheet = workbook.Sheets["Weekly Optimization Review"];
   if (!sheet) return [];
   const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: "" });
-  return rows.map(row => ({
-    weekStart: textValue(row["Week Start"]),
-    sku: textValue(row["SKU"]),
-    productName: textValue(row["Product Name"]),
-    acos: numberValue(row["ACOS"]),
-    tacos: numberValue(row["TACOS"]),
-    totalSpend: numberValue(row["Total Spend"]),
-    totalSales: numberValue(row["Total Sales"]),
-    keywordWinners: textValue(row["Keyword Winners"]),
-    negativeKeywordCandidates: textValue(row["Negative Keyword Candidates"]),
-    categoryConversionNotes: textValue(row["Category Conversion Notes"])
-  }));
+  return rows
+    .filter(row => hasWeeklyOptimizationData(row))
+    .map(row => ({
+      weekStart: textValue(row["Week Start"]),
+      sku: textValue(row["SKU"]),
+      productName: textValue(row["Product Name"]),
+      acos: numberValue(row["ACOS"]),
+      tacos: numberValue(row["TACOS"]),
+      totalSpend: numberValue(row["Total Spend"]),
+      totalSales: numberValue(row["Total Sales"]),
+      keywordWinners: textValue(row["Keyword Winners"]),
+      negativeKeywordCandidates: textValue(row["Negative Keyword Candidates"]),
+      categoryConversionNotes: textValue(row["Category Conversion Notes"])
+    }));
+}
+
+function hasDailyOptimizationData(row: Record<string, unknown>): boolean {
+  return [
+    "Date",
+    "Sessions",
+    "CTR",
+    "CPC",
+    "Spend",
+    "Orders",
+    "Sales",
+    "Conversion Rate",
+    "Search Terms",
+    "Listing Issues"
+  ].some(header => textValue(row[header]) !== "");
+}
+
+function hasWeeklyOptimizationData(row: Record<string, unknown>): boolean {
+  return [
+    "Week Start",
+    "ACOS",
+    "TACOS",
+    "Total Spend",
+    "Total Sales",
+    "Keyword Winners",
+    "Negative Keyword Candidates",
+    "Category Conversion Notes",
+    "Category Decision",
+    "Budget Recommendation"
+  ].some(header => textValue(row[header]) !== "");
 }
 
 export function writeAmazonOptimizationRecommendationsWorkbook(input: {
