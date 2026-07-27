@@ -14,6 +14,7 @@
     "dev": "tsx src/index.ts",
     "setup": "tsx src/setup.ts",
     "google:setup": "tsx src/google-setup.ts",
+    "amazon:setup": "tsx src/amazon-setup.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "check:safety": "node scripts/check-forbidden-tools.mjs",
