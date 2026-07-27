@@ -1,6 +1,8 @@
 import { readFile } from "node:fs/promises";
 
 const allowed = [
+  "amazon_connection_status",
+  "amazon_get_marketplace_participations",
   "etsy_connection_status",
   "etsy_create_draft_listing",
   "etsy_get_listing",
@@ -22,7 +24,7 @@ const allowed = [
   "shopweaver_write_enriched_workbook"
 ].sort();
 
-const files = ["src/tools/read-tools.ts", "src/tools/write-tools.ts", "src/tools/google-tools.ts", "src/tools/import-tools.ts", "src/tools/drive-image-tools.ts"];
+const files = ["src/tools/read-tools.ts", "src/tools/write-tools.ts", "src/tools/google-tools.ts", "src/tools/import-tools.ts", "src/tools/drive-image-tools.ts", "src/tools/amazon-tools.ts"];
 const found = [];
 for (const file of files) {
   const source = await readFile(new URL(`../${file}`, import.meta.url), "utf8");

@@ -1,6 +1,7 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { describe, expect, it, vi } from "vitest";
+import { AmazonSpApiClient } from "../src/amazon/sp-api-client.js";
 import { MemoryCredentialStore } from "../src/credentials/memory.js";
 import { ListingService } from "../src/etsy/listings.js";
 import { OrderService } from "../src/etsy/orders.js";
@@ -22,12 +23,15 @@ describe("MCP integration", () => {
     const googleFolders = new GoogleFolderToolService({} as never);
     const driveImports = new DriveImportService({} as never);
     const driveImageUploads = new DriveImageUploadService(clientApi, listings, {} as never, store, new ConfirmationStore());
-    const server = createServer({ store, listings, orders, writes, googleFolders, driveImports, driveImageUploads });
+    const amazonSpApi = new AmazonSpApiClient(store, vi.fn());
+    const server = createServer({ store, listings, orders, writes, googleFolders, driveImports, driveImageUploads, amazonSpApi });
     const client = new Client({ name: "test", version: "1" });
     const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
     await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
     const tools = await client.listTools();
     expect(tools.tools.map(tool => tool.name).sort()).toEqual([
+      "amazon_connection_status",
+      "amazon_get_marketplace_participations",
       "etsy_connection_status",
       "etsy_create_draft_listing",
       "etsy_get_listing",
