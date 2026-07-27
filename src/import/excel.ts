@@ -750,7 +750,7 @@ function optimizationFollowUpRows(decisions: AmazonDecisionLogWorkbookInput[], a
       row.sellerDecision,
       row.decisionNotes,
       row.outcomeNotes,
-      "due"
+      row.followUpDate < asOfDate ? "overdue" : "due_today"
     ]);
 }
 

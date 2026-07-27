@@ -385,7 +385,7 @@ describe("refreshAmazonOptimizationRecommendations", () => {
       "Seller Decision": "accepted",
       "Decision Notes": "Updated main image plan",
       "Outcome Notes": "CTR improved",
-      "Follow-up Status": "due"
+      "Follow-up Status": "due_today"
     }]);
   });
 
