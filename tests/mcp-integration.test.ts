@@ -33,6 +33,7 @@ describe("MCP integration", () => {
       "amazon_connection_status",
       "amazon_get_listing_item",
       "amazon_get_marketplace_participations",
+      "amazon_optimize_existing_listing",
       "etsy_connection_status",
       "etsy_create_draft_listing",
       "etsy_get_listing",

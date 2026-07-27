@@ -1,5 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
+import { analyzeAmazonExistingListing } from "../amazon/listing-optimization.js";
 import type { AmazonSpApiClient } from "../amazon/sp-api-client.js";
 import type { CredentialStore } from "../credentials/types.js";
 
@@ -33,4 +34,9 @@ export function registerAmazonTools(server: McpServer, store: CredentialStore, a
     description: "Read one existing Amazon listing item by seller SKU through SP-API for optimization review. This is read-only and does not change listings.",
     inputSchema: { sku: z.string().min(1) }
   }, async ({ sku }) => result(await amazon.getListingItem(sku)));
+
+  server.registerTool("amazon_optimize_existing_listing", {
+    description: "Read one existing Amazon listing by seller SKU and return review-only optimization recommendations. This does not change the listing.",
+    inputSchema: { sku: z.string().min(1) }
+  }, async ({ sku }) => result(analyzeAmazonExistingListing(await amazon.getListingItem(sku) as never)));
 }
