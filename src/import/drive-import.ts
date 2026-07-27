@@ -1,6 +1,6 @@
 import { ShopWeaverError } from "../errors.js";
 import type { GoogleDriveService } from "../google/drive.js";
-import { parseProductInformationWorkbook, writeAmazonListingWorkbook, writeEnrichedWorkbook, type AmazonListingWorkbookRow, type EnrichedWorkbookRow } from "./excel.js";
+import { parseProductInformationWorkbook, refreshAmazonOptimizationRecommendations, writeAmazonListingWorkbook, writeEnrichedWorkbook, type AmazonListingWorkbookRow, type EnrichedWorkbookRow } from "./excel.js";
 import { matchProductsToImages } from "./matcher.js";
 
 const FOLDER_TYPE = "application/vnd.google-apps.folder";
@@ -48,5 +48,14 @@ export class DriveImportService {
   async writeAmazonListingWorkbook(folderId: string, rows: AmazonListingWorkbookRow[]) {
     const bytes = writeAmazonListingWorkbook(rows);
     return this.drive.uploadFile(folderId, "Product Information - Amazon Listing.xlsx", bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+  }
+
+  async refreshAmazonOptimizationRecommendations(folderId: string) {
+    const rootChildren = await this.drive.listFolderChildren(folderId);
+    const workbook = rootChildren.find(file => file.name === "Product Information - Amazon Listing.xlsx");
+    if (!workbook) throw new ShopWeaverError("DRIVE_AMAZON_WORKBOOK_MISSING", "Allowed Drive folder must contain Product Information - Amazon Listing.xlsx.");
+    const workbookBytes = await this.drive.downloadFile(workbook.id);
+    const refreshedBytes = refreshAmazonOptimizationRecommendations(workbookBytes);
+    return this.drive.uploadFile(folderId, "Product Information - Amazon Listing.xlsx", refreshedBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
   }
 }

@@ -82,6 +82,40 @@ describe("DriveImportService", () => {
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     );
   });
+
+  it("refreshes Amazon optimization recommendations in an existing Drive workbook", async () => {
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([["SKU"], ["AMZ-HMF-0001"]]), "Amazon Listings");
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([
+      ["Date", "SKU", "Product Name", "Sessions", "CTR", "CPC", "Spend", "Orders", "Sales", "Conversion Rate", "Search Terms", "Listing Issues"],
+      ["2026-07-27", "AMZ-HMF-0001", "Purple Tulip Bunny", "120", "0.9", "0.62", "42", "0", "0", "0", "crochet bag charm", "main image weak"]
+    ]), "Daily Optimization Inputs");
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([
+      ["Week Start", "SKU", "Product Name", "ACOS", "TACOS", "Total Spend", "Total Sales", "Keyword Winners", "Negative Keyword Candidates", "Category Conversion Notes"],
+      ["2026-07-20", "AMZ-HMF-0001", "Purple Tulip Bunny", "72", "30", "180", "250", "", "free; pattern", "0.8% category conversion"]
+    ]), "Weekly Optimization Review");
+    const drive = {
+      listFolderChildren: vi.fn().mockResolvedValue([
+        { id: "amazon-file", name: "Product Information - Amazon Listing.xlsx", mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }
+      ]),
+      downloadFile: vi.fn().mockResolvedValue(new Uint8Array(XLSX.write(workbook, { type: "array", bookType: "xlsx" }))),
+      uploadFile: vi.fn().mockResolvedValue({ id: "amazon-file", name: "Product Information - Amazon Listing.xlsx" })
+    };
+    const service = new DriveImportService(drive as never);
+    await expect(service.refreshAmazonOptimizationRecommendations("folder")).resolves.toEqual({ id: "amazon-file", name: "Product Information - Amazon Listing.xlsx" });
+    expect(drive.downloadFile).toHaveBeenCalledWith("amazon-file");
+    expect(drive.uploadFile).toHaveBeenCalledWith(
+      "folder",
+      "Product Information - Amazon Listing.xlsx",
+      expect.any(Uint8Array),
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+    const uploadedBytes = drive.uploadFile.mock.calls[0][2] as Uint8Array;
+    const uploadedWorkbook = XLSX.read(uploadedBytes, { type: "array" });
+    const recommendationRows = XLSX.utils.sheet_to_json<Record<string, string>>(uploadedWorkbook.Sheets["Optimization Recommendations"]);
+    expect(recommendationRows[0]["Status"]).toBe("needs_listing_review");
+    expect(recommendationRows[1]["Status"]).toBe("review_category_and_campaign");
+  });
 });
 
 describe("previewDraftInputFromEnrichedRow", () => {
