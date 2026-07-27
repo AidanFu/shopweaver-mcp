@@ -143,7 +143,9 @@ The Amazon workflow uses the same approved Google Drive folder import, but write
 Product Information - Amazon Listing.xlsx
 ```
 
-Use `shopweaver_write_amazon_listing_workbook` in preview mode first, then confirm only after reviewing the row count and target folder. The generated workbook includes Amazon title, bullets, description, backend search terms, image notes, A+ Content planning copy, ad seed ideas, category suggestions, compliance notes, and review flags.
+Use `shopweaver_write_amazon_listing_workbook` in preview mode first, then confirm only after reviewing the row count and target folder. The generated workbook includes Amazon title, bullets, description, backend search terms, image notes, A+ Content planning copy, ad seed ideas, category suggestions, compliance notes, daily/weekly optimization input sheets, review-only recommendations, and review flags.
+
+After Amazon metrics are pasted into the workbook, use `shopweaver_refresh_amazon_optimization_recommendations` in preview mode first, then confirm to refresh only the `Optimization Recommendations` sheet. This still does not call Amazon APIs or change listings, categories, bids, budgets, keywords, or ads.
 
 This is not an Amazon submission path. Future Amazon API phases should be designed separately with Product Type Definitions validation, local preview, and explicit approval before every write.
 
@@ -197,6 +199,7 @@ The Codex plugin manifest uses `.mcp.json` to run the built server with stdio tr
 - `shopweaver_preview_etsy_draft_from_enriched_row`
 - `shopweaver_upload_drive_images_to_etsy_draft`
 - `shopweaver_write_amazon_listing_workbook`
+- `shopweaver_refresh_amazon_optimization_recommendations`
 
 For every write, run preview mode first, inspect the complete normalized payload, then explicitly confirm using the unchanged payload and returned confirmation token.
 
