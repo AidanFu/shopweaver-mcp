@@ -40,6 +40,15 @@ export function previewAmazonListingWorkbookWrite(folderId: string, rowCount: nu
   };
 }
 
+export function previewAmazonOptimizationRefresh(folderId: string) {
+  return {
+    operation: "refresh_amazon_optimization_recommendations" as const,
+    folderId,
+    filename: "Product Information - Amazon Listing.xlsx",
+    warning: "This refreshes the workbook Optimization Recommendations sheet only. It does not call Amazon APIs or change listings, categories, bids, budgets, keywords, or ads."
+  };
+}
+
 export function registerImportTools(server: McpServer, imports: DriveImportService): void {
   server.registerTool("shopweaver_import_drive_folder", {
     description: "Import Product Information.xlsx and matched product images from one explicitly allowed Google Drive folder.",
@@ -76,6 +85,24 @@ export function registerImportTools(server: McpServer, imports: DriveImportServi
       filename: "Product Information - Amazon Listing.xlsx",
       file: written,
       warning: "Workbook written only. No Amazon API, image, A+ Content, advertising, order, shipment, refund, or buyer-data action was performed."
+    });
+  });
+
+  server.registerTool("shopweaver_refresh_amazon_optimization_recommendations", {
+    description: "Refresh the Optimization Recommendations sheet in Product Information - Amazon Listing.xlsx from pasted daily/weekly workbook metrics. This is workbook-only and does not call Amazon APIs.",
+    inputSchema: {
+      mode: z.enum(["preview", "confirm"]).default("preview"),
+      folderId: z.string().min(1)
+    }
+  }, async ({ mode, folderId }) => {
+    if (mode === "preview") return result(previewAmazonOptimizationRefresh(folderId));
+    const written = await imports.refreshAmazonOptimizationRecommendations(folderId);
+    return result({
+      operation: "refresh_amazon_optimization_recommendations",
+      folderId,
+      filename: "Product Information - Amazon Listing.xlsx",
+      file: written,
+      warning: "Workbook recommendations refreshed only. No Amazon API, listing, category, bid, budget, keyword, advertising, order, shipment, refund, or buyer-data action was performed."
     });
   });
 

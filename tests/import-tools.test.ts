@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import * as XLSX from "xlsx";
 import { DriveImportService } from "../src/import/drive-import.js";
-import { previewAmazonListingWorkbookWrite, previewDraftInputFromEnrichedRow } from "../src/tools/import-tools.js";
+import { previewAmazonListingWorkbookWrite, previewAmazonOptimizationRefresh, previewDraftInputFromEnrichedRow } from "../src/tools/import-tools.js";
 
 function workbookBytes() {
   const workbook = XLSX.utils.book_new();
@@ -149,6 +149,17 @@ describe("previewAmazonListingWorkbookWrite", () => {
       rowCount: 38,
       filename: "Product Information - Amazon Listing.xlsx",
       warning: "This writes an Amazon planning workbook only. It does not call Amazon APIs, submit listings, upload images, create A+ Content, or change ads."
+    });
+  });
+});
+
+describe("previewAmazonOptimizationRefresh", () => {
+  it("previews Amazon optimization recommendation refresh without writing", () => {
+    expect(previewAmazonOptimizationRefresh("folder")).toEqual({
+      operation: "refresh_amazon_optimization_recommendations",
+      folderId: "folder",
+      filename: "Product Information - Amazon Listing.xlsx",
+      warning: "This refreshes the workbook Optimization Recommendations sheet only. It does not call Amazon APIs or change listings, categories, bids, budgets, keywords, or ads."
     });
   });
 });
