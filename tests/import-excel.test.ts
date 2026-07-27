@@ -89,6 +89,13 @@ describe("writeAmazonListingWorkbook", () => {
       categoryExperimentPlan: "Start with bag charm/keychain positioning.",
       categoryLearningStatus: "hypothesis_ready",
       aiOptimizationBrief: "Review benefit-led bullets, Rufus/Alexa readiness, category evidence, and campaign learning before Amazon submission.",
+      listingOptimizationRecommendation: "Confirm measured dimensions and improve benefit-led copy before launch.",
+      categoryOptimizationRecommendation: "Keep handmade bag charm/keychain as the primary hypothesis until performance data says otherwise.",
+      campaignOptimizationRecommendation: "Start conservative auto discovery and review search terms before bid changes.",
+      analysisCadence: "daily after launch; weekly category and budget review",
+      dailyAnalysisInputs: "sessions, CTR, CPC, spend, orders, conversion rate, search terms",
+      weeklyAnalysisInputs: "ACOS, TACOS, category conversion, keyword winners, category experiment result",
+      optimizationNextAction: "Update dimensions and review competitor category evidence.",
       validationStatus: "needs_review",
       validationNotes: "Review Amazon category/product type before submission."
     }]);
@@ -104,6 +111,13 @@ describe("writeAmazonListingWorkbook", () => {
     expect(rows[0]["Primary Category Hypothesis"]).toBe("Handmade bag charm / keychain accessory");
     expect(rows[0]["Category Learning Status"]).toBe("hypothesis_ready");
     expect(rows[0]["AI Optimization Brief"]).toContain("benefit-led bullets");
+    expect(rows[0]["Listing Optimization Recommendation"]).toContain("benefit-led copy");
+    expect(rows[0]["Category Optimization Recommendation"]).toContain("primary hypothesis");
+    expect(rows[0]["Campaign Optimization Recommendation"]).toContain("auto discovery");
+    expect(rows[0]["Analysis Cadence"]).toBe("daily after launch; weekly category and budget review");
+    expect(rows[0]["Daily Analysis Inputs"]).toContain("CTR");
+    expect(rows[0]["Weekly Analysis Inputs"]).toContain("category conversion");
+    expect(rows[0]["Optimization Next Action"]).toContain("competitor category evidence");
     expect(rows[0]["Validation Status"]).toBe("needs_review");
   });
 });

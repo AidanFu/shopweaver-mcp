@@ -184,6 +184,24 @@ describe("buildAmazonListingRows", () => {
     expect(rows[0].aiOptimizationBrief).toContain("campaign learning");
   });
 
+  it("adds evolving optimization recommendations for listing, category, and campaign review", () => {
+    const rows = buildAmazonListingRows([{
+      productName: "冬日小雪人",
+      rawChineseDescription: "冬日小雪人挂件，适合圣诞节送礼。",
+      imageFolderName: "冬日小雪人",
+      imageCount: 5,
+      images: []
+    }]);
+    expect(rows[0].listingOptimizationRecommendation).toContain("Confirm measured dimensions");
+    expect(rows[0].categoryOptimizationRecommendation).toContain("handmade bag charm/keychain");
+    expect(rows[0].campaignOptimizationRecommendation).toContain("Start conservative auto discovery");
+    expect(rows[0].analysisCadence).toBe("daily after launch; weekly category and budget review");
+    expect(rows[0].dailyAnalysisInputs).toContain("CTR");
+    expect(rows[0].dailyAnalysisInputs).toContain("CPC");
+    expect(rows[0].weeklyAnalysisInputs).toContain("category conversion");
+    expect(rows[0].optimizationNextAction).toContain("Update dimensions");
+  });
+
   it("uses English-only sequential SKUs and fills listing copy fields", () => {
     const rows = buildAmazonListingRows([
       {

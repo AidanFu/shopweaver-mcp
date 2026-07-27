@@ -162,6 +162,16 @@ function aiOptimizationBrief(name: string, extractedDimensions: boolean): string
   ].join(" ");
 }
 
+function listingOptimizationRecommendation(extractedDimensions: boolean): string {
+  const dimensionAction = extractedDimensions ? "Verify package depth and size image before launch." : "Confirm measured dimensions before launch.";
+  return `${dimensionAction} Keep the 3 benefits, 1 worry reducer, and 1 after-purchase surprise bullet structure, then improve title and search terms after real search-term data is available.`;
+}
+
+function optimizationNextAction(extractedDimensions: boolean): string {
+  if (!extractedDimensions) return "Update dimensions, review competitor category evidence, then approve listing copy before Amazon submission.";
+  return "Review competitor category evidence, approve listing copy, then prepare launch keyword tracking before Amazon submission.";
+}
+
 export function buildAmazonListingRows(products: ImportedDriveProduct[]): AmazonListingWorkbookRow[] {
   return products.map((product, index) => {
     const mainImageName = product.images[0]?.name;
@@ -245,7 +255,14 @@ export function buildAmazonListingRows(products: ImportedDriveProduct[]): Amazon
       expectedConversionFit: "high",
       categoryExperimentPlan: "Start with bag charm/keychain positioning; compare discovery terms for hanging ornament and car hanging ornament before changing category.",
       categoryLearningStatus: "hypothesis_ready",
-      aiOptimizationBrief: aiOptimizationBrief(name, Boolean(extractedDimensions))
+      aiOptimizationBrief: aiOptimizationBrief(name, Boolean(extractedDimensions)),
+      listingOptimizationRecommendation: listingOptimizationRecommendation(Boolean(extractedDimensions)),
+      categoryOptimizationRecommendation: "Keep handmade bag charm/keychain as the primary hypothesis until bestseller evidence or conversion data supports a category change.",
+      campaignOptimizationRecommendation: "Start conservative auto discovery, collect search terms, then move converting terms into exact/phrase campaigns after review.",
+      analysisCadence: "daily after launch; weekly category and budget review",
+      dailyAnalysisInputs: "sessions, CTR, CPC, spend, orders, conversion rate, search terms, keyword waste, listing quality flags",
+      weeklyAnalysisInputs: "ACOS, TACOS, category conversion, keyword winners, negative keyword candidates, category experiment result, budget efficiency",
+      optimizationNextAction: optimizationNextAction(Boolean(extractedDimensions))
     };
   });
 }

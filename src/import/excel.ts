@@ -165,6 +165,13 @@ export interface AmazonListingWorkbookRow {
   categoryExperimentPlan?: string;
   categoryLearningStatus?: string;
   aiOptimizationBrief?: string;
+  listingOptimizationRecommendation?: string;
+  categoryOptimizationRecommendation?: string;
+  campaignOptimizationRecommendation?: string;
+  analysisCadence?: string;
+  dailyAnalysisInputs?: string;
+  weeklyAnalysisInputs?: string;
+  optimizationNextAction?: string;
   validationStatus?: string;
   validationNotes?: string;
 }
@@ -232,6 +239,13 @@ const AMAZON_LISTING_HEADERS = [
   "Category Experiment Plan",
   "Category Learning Status",
   "AI Optimization Brief",
+  "Listing Optimization Recommendation",
+  "Category Optimization Recommendation",
+  "Campaign Optimization Recommendation",
+  "Analysis Cadence",
+  "Daily Analysis Inputs",
+  "Weekly Analysis Inputs",
+  "Optimization Next Action",
   "Validation Status",
   "Validation Notes"
 ];
@@ -301,6 +315,13 @@ export function writeAmazonListingWorkbook(rows: AmazonListingWorkbookRow[]): Ui
     row.categoryExperimentPlan ?? "",
     row.categoryLearningStatus ?? "",
     row.aiOptimizationBrief ?? "",
+    row.listingOptimizationRecommendation ?? "",
+    row.categoryOptimizationRecommendation ?? "",
+    row.campaignOptimizationRecommendation ?? "",
+    row.analysisCadence ?? "",
+    row.dailyAnalysisInputs ?? "",
+    row.weeklyAnalysisInputs ?? "",
+    row.optimizationNextAction ?? "",
     row.validationStatus ?? "",
     row.validationNotes ?? ""
   ]);
