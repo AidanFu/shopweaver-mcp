@@ -159,4 +159,85 @@ describe("AmazonAdsClient", () => {
       })
     }));
   });
+
+  it("requests a Sponsored Products search-term report for later campaign optimization", async () => {
+    const store = new MemoryCredentialStore();
+    await store.set("amazonAdsApp", { clientId: "ads-client", clientSecret: "ads-secret" });
+    await store.set("amazonAdsAuth", {
+      refreshToken: "ads-refresh",
+      region: "na",
+      accessToken: "ads-access",
+      expiresAt: Date.now() + 3_600_000
+    });
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ reportId: "report-1", status: "PENDING" }), {
+      status: 200,
+      headers: { "content-type": "application/json" }
+    }));
+    const client = new AmazonAdsClient(store, fetchMock);
+
+    await expect(client.createSponsoredProductsSearchTermReport("987654321", {
+      name: "SP search terms 2026-07-01 to 2026-07-07",
+      startDate: "2026-07-01",
+      endDate: "2026-07-07",
+      timeUnit: "SUMMARY",
+      keywordType: ["BROAD", "PHRASE", "EXACT"]
+    })).resolves.toEqual({ reportId: "report-1", status: "PENDING" });
+    expect(fetchMock).toHaveBeenCalledWith("https://advertising-api.amazon.com/reporting/reports", expect.objectContaining({
+      method: "POST",
+      headers: {
+        Authorization: "Bearer ads-access",
+        "Amazon-Advertising-API-ClientId": "ads-client",
+        "Amazon-Advertising-API-Scope": "987654321",
+        "Content-Type": "application/vnd.createasyncreportrequest.v3+json",
+        "user-agent": "ShopWeaver/0.1.0 (Language=TypeScript)"
+      },
+      body: JSON.stringify({
+        name: "SP search terms 2026-07-01 to 2026-07-07",
+        startDate: "2026-07-01",
+        endDate: "2026-07-07",
+        configuration: {
+          adProduct: "SPONSORED_PRODUCTS",
+          groupBy: ["searchTerm"],
+          columns: ["impressions", "clicks", "cost", "campaignId", "campaignName", "adGroupId", "adGroupName", "startDate", "endDate", "keywordType", "keyword", "matchType", "keywordId", "searchTerm", "sales7d", "purchases7d", "acosClicks7d", "roasClicks7d"],
+          filters: [{ field: "keywordType", values: ["BROAD", "PHRASE", "EXACT"] }],
+          reportTypeId: "spSearchTerm",
+          timeUnit: "SUMMARY",
+          format: "GZIP_JSON"
+        }
+      })
+    }));
+  });
+
+  it("gets Amazon Ads report status by report ID", async () => {
+    const store = new MemoryCredentialStore();
+    await store.set("amazonAdsApp", { clientId: "ads-client", clientSecret: "ads-secret" });
+    await store.set("amazonAdsAuth", {
+      refreshToken: "ads-refresh",
+      region: "na",
+      accessToken: "ads-access",
+      expiresAt: Date.now() + 3_600_000
+    });
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      reportId: "report-1",
+      status: "COMPLETED",
+      url: "https://example.com/report.gz"
+    }), { status: 200, headers: { "content-type": "application/json" } }));
+    const client = new AmazonAdsClient(store, fetchMock);
+
+    await expect(client.getReport("987654321", "report-1")).resolves.toEqual({
+      reportId: "report-1",
+      status: "COMPLETED",
+      url: "https://example.com/report.gz"
+    });
+    expect(fetchMock).toHaveBeenCalledWith("https://advertising-api.amazon.com/reporting/reports/report-1", expect.objectContaining({
+      method: "GET",
+      headers: {
+        Authorization: "Bearer ads-access",
+        "Amazon-Advertising-API-ClientId": "ads-client",
+        "Amazon-Advertising-API-Scope": "987654321",
+        "Content-Type": "application/vnd.createasyncreportrequest.v3+json",
+        "user-agent": "ShopWeaver/0.1.0 (Language=TypeScript)"
+      }
+    }));
+  });
 });

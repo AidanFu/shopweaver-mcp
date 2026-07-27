@@ -4,6 +4,14 @@ import { AmazonAdsOAuth } from "./ads-oauth.js";
 
 type FetchLike = (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
 
+interface SponsoredProductsSearchTermReportInput {
+  name: string;
+  startDate: string;
+  endDate: string;
+  timeUnit: "SUMMARY" | "DAILY";
+  keywordType: Array<"BROAD" | "PHRASE" | "EXACT" | "TARGETING_EXPRESSION" | "TARGETING_EXPRESSION_PREDEFINED">;
+}
+
 const ADS_ENDPOINTS = {
   na: "https://advertising-api.amazon.com",
   eu: "https://advertising-api-eu.amazon.com",
@@ -48,6 +56,35 @@ export class AmazonAdsClient {
       accept: "application/vnd.spKeyword.v3+json",
       contentType: "application/vnd.spKeyword.v3+json",
       body
+    });
+  }
+
+  async createSponsoredProductsSearchTermReport(profileId: string, input: SponsoredProductsSearchTermReportInput) {
+    return this.request("/reporting/reports", {
+      method: "POST",
+      profileId,
+      contentType: "application/vnd.createasyncreportrequest.v3+json",
+      body: {
+        name: input.name,
+        startDate: input.startDate,
+        endDate: input.endDate,
+        configuration: {
+          adProduct: "SPONSORED_PRODUCTS",
+          groupBy: ["searchTerm"],
+          columns: ["impressions", "clicks", "cost", "campaignId", "campaignName", "adGroupId", "adGroupName", "startDate", "endDate", "keywordType", "keyword", "matchType", "keywordId", "searchTerm", "sales7d", "purchases7d", "acosClicks7d", "roasClicks7d"],
+          filters: [{ field: "keywordType", values: input.keywordType }],
+          reportTypeId: "spSearchTerm",
+          timeUnit: input.timeUnit,
+          format: "GZIP_JSON"
+        }
+      }
+    });
+  }
+
+  async getReport(profileId: string, reportId: string) {
+    return this.request(`/reporting/reports/${encodeURIComponent(reportId)}`, {
+      profileId,
+      contentType: "application/vnd.createasyncreportrequest.v3+json"
     });
   }
 

@@ -76,6 +76,32 @@ export function registerAmazonTools(server: McpServer, store: CredentialStore, a
       inputSchema: {}
     }, async () => result(await amazonAds.listProfiles()));
 
+    server.registerTool("amazon_ads_create_sp_search_term_report", {
+      description: "Request an asynchronous Sponsored Products search-term report for one Amazon Ads profile. This is read-only and does not change campaigns, bids, budgets, keywords, negatives, or ads.",
+      inputSchema: {
+        profileId: z.string().min(1),
+        name: z.string().min(1),
+        startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        timeUnit: z.enum(["SUMMARY", "DAILY"]).default("SUMMARY"),
+        keywordType: z.array(z.enum(["BROAD", "PHRASE", "EXACT", "TARGETING_EXPRESSION", "TARGETING_EXPRESSION_PREDEFINED"])).default(["BROAD", "PHRASE", "EXACT"])
+      }
+    }, async ({ profileId, name, startDate, endDate, timeUnit, keywordType }) => result(await amazonAds.createSponsoredProductsSearchTermReport(profileId, {
+      name,
+      startDate,
+      endDate,
+      timeUnit,
+      keywordType
+    })));
+
+    server.registerTool("amazon_ads_get_report", {
+      description: "Read Amazon Ads report generation status by report ID. Completed responses may include a download URL. This does not change ads.",
+      inputSchema: {
+        profileId: z.string().min(1),
+        reportId: z.string().min(1)
+      }
+    }, async ({ profileId, reportId }) => result(await amazonAds.getReport(profileId, reportId)));
+
     server.registerTool("amazon_ads_list_sp_campaigns", {
       description: "Read Sponsored Products campaigns for one Amazon Ads profile. This is read-only and does not change campaigns, bids, budgets, keywords, negatives, or ads.",
       inputSchema: {
