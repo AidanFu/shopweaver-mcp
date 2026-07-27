@@ -317,7 +317,8 @@ describe("refreshAmazonOptimizationRecommendations", () => {
     ]), "Optimization Recommendations");
     XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([
       ["Recommendation ID", "Decision Date", "SKU", "Product Name", "Action Type", "Seller Decision", "Decision Notes", "Follow-up Date", "Outcome Notes"],
-      ["daily:2026-07-27:AMZ-HMF-0001:listing_review", "2026-07-28", "AMZ-HMF-0001", "Purple Tulip Bunny", "listing_review", "accepted", "Updated main image plan", "2026-08-04", "CTR improved"]
+      ["daily:2026-07-27:AMZ-HMF-0001:listing_review", "2026-07-28", "AMZ-HMF-0001", "Purple Tulip Bunny", "listing_review", "accepted", "Updated main image plan", "2026-08-04", "CTR improved"],
+      ["weekly:2026-07-20:AMZ-HMF-0001:category_campaign_review", "2026-07-29", "AMZ-HMF-0001", "Purple Tulip Bunny", "category_campaign_review", "deferred", "Wait one more week", "2026-08-20", ""]
     ]), "Optimization Decision Log");
     const refreshed = refreshAmazonOptimizationRecommendations(new Uint8Array(XLSX.write(workbook, { type: "array", bookType: "xlsx" })));
     const parsed = XLSX.read(refreshed, { type: "array" });
@@ -334,11 +335,11 @@ describe("refreshAmazonOptimizationRecommendations", () => {
     expect(recommendationRows[0]["Action Type"]).toBe("listing_review");
     expect(recommendationRows[1]["Cadence"]).toBe("weekly");
     expect(recommendationRows[1]["Recommendation ID"]).toBe("weekly:2026-07-20:AMZ-HMF-0001:category_campaign_review");
-    expect(recommendationRows[1]["Prior Seller Decision"]).toBe("");
+    expect(recommendationRows[1]["Prior Seller Decision"]).toBe("deferred");
     expect(recommendationRows[1]["Status"]).toBe("review_category_and_campaign");
     expect(recommendationRows[1]["Priority"]).toBe("high");
     expect(recommendationRows[1]["Action Type"]).toBe("category_campaign_review");
-    expect(summarizeAmazonOptimizationRefresh(refreshed)).toEqual({
+    expect(summarizeAmazonOptimizationRefresh(refreshed, "2026-08-04")).toEqual({
       dailyInputCount: 1,
       weeklyInputCount: 1,
       recommendationCount: 2,
@@ -349,13 +350,16 @@ describe("refreshAmazonOptimizationRecommendations", () => {
       priorityCounts: {
         high: 2
       },
-      decisionCount: 1,
+      decisionCount: 2,
       sellerDecisionCounts: {
-        accepted: 1
+        accepted: 1,
+        deferred: 1
       },
       actionDecisionCounts: {
-        listing_review: 1
-      }
+        listing_review: 1,
+        category_campaign_review: 1
+      },
+      followUpDueCount: 1
     });
   });
 

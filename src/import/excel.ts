@@ -649,7 +649,7 @@ export function refreshAmazonOptimizationRecommendations(bytes: Uint8Array): Uin
   return new Uint8Array(XLSX.write(workbook, { type: "array", bookType: "xlsx" }));
 }
 
-export function summarizeAmazonOptimizationRefresh(bytes: Uint8Array) {
+export function summarizeAmazonOptimizationRefresh(bytes: Uint8Array, asOfDate = new Date().toISOString().slice(0, 10)) {
   const daily = parseAmazonDailyOptimizationInputs(bytes);
   const weekly = parseAmazonWeeklyOptimizationInputs(bytes);
   const decisions = parseAmazonDecisionLogInputs(bytes);
@@ -674,7 +674,8 @@ export function summarizeAmazonOptimizationRefresh(bytes: Uint8Array) {
     priorityCounts,
     decisionCount: decisions.length,
     sellerDecisionCounts,
-    actionDecisionCounts
+    actionDecisionCounts,
+    followUpDueCount: decisions.filter(row => row.followUpDate !== "" && row.followUpDate <= asOfDate).length
   };
 }
 

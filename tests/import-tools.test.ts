@@ -116,7 +116,8 @@ describe("DriveImportService", () => {
       },
       decisionCount: 0,
       sellerDecisionCounts: {},
-      actionDecisionCounts: {}
+      actionDecisionCounts: {},
+      followUpDueCount: 0
     });
     expect(drive.downloadFile).toHaveBeenCalledWith("amazon-file");
     expect(drive.uploadFile).toHaveBeenCalledWith(
