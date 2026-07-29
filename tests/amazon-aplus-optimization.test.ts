@@ -116,4 +116,29 @@ describe("analyzeAmazonAplusContent", () => {
       ]
     });
   });
+
+  it("builds an optimized A+ preview response without validation", () => {
+    const optimizedDocument = buildOptimizedAmazonAplusContentDocument({
+      name: "Existing A+",
+      contentType: "EBC",
+      locale: "en-US",
+      contentModuleList: []
+    }, {
+      asin: "B0GDPKVXSZ",
+      finish: "Gold",
+      heightInches: 38
+    });
+
+    expect({
+      operation: "preview_optimized_aplus_content",
+      asin: "B0GDPKVXSZ",
+      optimizedDocument,
+      applied: false
+    }).toMatchObject({
+      operation: "preview_optimized_aplus_content",
+      asin: "B0GDPKVXSZ",
+      optimizedDocument: { name: "ShopWeaver optimized B0GDPKVXSZ Gold" },
+      applied: false
+    });
+  });
 });

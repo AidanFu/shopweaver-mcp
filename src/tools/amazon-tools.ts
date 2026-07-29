@@ -1,6 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { analyzeAmazonAplusContent, buildOptimizedAmazonAplusContentDocument } from "../amazon/aplus-optimization.js";
+import { analyzeAmazonSearchTermReportFile } from "../amazon/campaign-report-file.js";
 import { analyzeAmazonCampaignMetrics, analyzeAmazonSearchTermReportRows } from "../amazon/campaign-optimization.js";
 import { analyzeAmazonExistingListing, buildAmazonListingCopyPatch } from "../amazon/listing-optimization.js";
 import type { AmazonAdsClient } from "../amazon/ads-client.js";
@@ -193,6 +194,33 @@ export function registerAmazonTools(server: McpServer, store: CredentialStore, a
     });
   });
 
+  server.registerTool("amazon_preview_optimized_aplus_content", {
+    description: "Build optimized A+ Content from the currently published A+ document and return it for review only. This does not validate, create, update, publish, or submit A+ content.",
+    inputSchema: {
+      asin: z.string().min(1),
+      expectedFinish: z.string().min(1),
+      expectedHeightInches: z.number().positive()
+    }
+  }, async ({ asin, expectedFinish, expectedHeightInches }) => {
+    const records = await amazon.getAplusContentPublishRecords(asin) as { publishRecordList?: Array<{ locale?: string; contentReferenceKey?: string }> };
+    const record = records.publishRecordList?.find(item => item.locale === "en_US") ?? records.publishRecordList?.[0];
+    if (!record?.contentReferenceKey) throw new ShopWeaverError("AMAZON_APLUS_CONTENT_NOT_FOUND", "No published A+ content record was found for this ASIN.");
+    const document = await amazon.getAplusContentDocument(record.contentReferenceKey) as { contentRecord?: { contentDocument?: unknown } };
+    const currentDocument = document.contentRecord?.contentDocument ?? (document as { contentDocument?: unknown }).contentDocument;
+    if (!currentDocument) throw new ShopWeaverError("AMAZON_APLUS_CONTENT_NOT_FOUND", "No A+ content document payload was found for this ASIN.");
+    return result({
+      operation: "preview_optimized_aplus_content",
+      asin,
+      sourceContentReferenceKey: record.contentReferenceKey,
+      optimizedDocument: buildOptimizedAmazonAplusContentDocument(currentDocument as never, {
+        asin,
+        finish: expectedFinish,
+        heightInches: expectedHeightInches
+      }),
+      applied: false
+    });
+  });
+
   server.registerTool("amazon_optimize_existing_listing", {
     description: "Read one existing Amazon listing by seller SKU and return review-only optimization recommendations. This does not change the listing.",
     inputSchema: { sku: z.string().min(1) }
@@ -239,6 +267,13 @@ export function registerAmazonTools(server: McpServer, store: CredentialStore, a
       searchTerms: z.string()
     }
   }, async (metrics) => result(analyzeAmazonCampaignMetrics(metrics)));
+
+  server.registerTool("amazon_ads_optimize_sp_search_term_report_file", {
+    description: "Analyze a local exported Sponsored Products search-term report file. This is read-only and does not change campaigns, bids, budgets, keywords, negatives, or ads.",
+    inputSchema: {
+      filePath: z.string().min(1)
+    }
+  }, async ({ filePath }) => result(await analyzeAmazonSearchTermReportFile(filePath)));
 
   if (amazonAds) {
     server.registerTool("amazon_ads_list_profiles", {
