@@ -10,6 +10,12 @@ const REGION_ENDPOINTS = {
   fe: "https://sellingpartnerapi-fe.amazon.com"
 } as const;
 
+type RequestOptions = {
+  method?: "GET" | "PATCH";
+  query?: Record<string, string>;
+  body?: unknown;
+};
+
 export class AmazonSpApiClient {
   constructor(
     private readonly store: CredentialStore,
@@ -25,28 +31,47 @@ export class AmazonSpApiClient {
     const auth = await this.store.get("amazonSpApiAuth");
     if (!auth) throw new ShopWeaverError("AMAZON_SP_API_AUTH_REQUIRED", "Connect Amazon SP-API before using Amazon seller tools.");
     return this.request(`/listings/2021-08-01/items/${encodeURIComponent(auth.sellingPartnerId)}/${encodeURIComponent(sku)}`, {
-      marketplaceIds: auth.marketplaceIds.join(","),
-      includedData: "summaries,attributes,issues,offers,fulfillmentAvailability"
+      query: {
+        marketplaceIds: auth.marketplaceIds.join(","),
+        includedData: "summaries,attributes,issues,offers,fulfillmentAvailability"
+      }
     });
   }
 
-  private async request(path: string, query?: Record<string, string>): Promise<unknown> {
+  async patchListingItem(sku: string, body: unknown, options: { validationPreview?: boolean } = {}) {
+    const auth = await this.store.get("amazonSpApiAuth");
+    if (!auth) throw new ShopWeaverError("AMAZON_SP_API_AUTH_REQUIRED", "Connect Amazon SP-API before using Amazon seller tools.");
+    return this.request(`/listings/2021-08-01/items/${encodeURIComponent(auth.sellingPartnerId)}/${encodeURIComponent(sku)}`, {
+      method: "PATCH",
+      query: {
+        marketplaceIds: auth.marketplaceIds.join(","),
+        includedData: "issues",
+        ...(options.validationPreview ? { mode: "VALIDATION_PREVIEW", issueLocale: "en_US" } : {})
+      },
+      body
+    });
+  }
+
+  private async request(path: string, options: RequestOptions = {}): Promise<unknown> {
     const auth = await this.store.get("amazonSpApiAuth");
     if (!auth) throw new ShopWeaverError("AMAZON_SP_API_AUTH_REQUIRED", "Connect Amazon SP-API before using Amazon seller tools.");
     const accessToken = auth.accessToken && auth.expiresAt && auth.expiresAt > Date.now() + 60_000
       ? auth.accessToken
       : (await this.oauth.refreshAccessToken()).accessToken;
     const endpoint = REGION_ENDPOINTS[auth.region];
-    const url = query ? `${endpoint}${path}?${new URLSearchParams(query).toString()}` : `${endpoint}${path}`;
+    const url = options.query ? `${endpoint}${path}?${new URLSearchParams(options.query).toString()}` : `${endpoint}${path}`;
     const host = new URL(endpoint).host;
+    const headers: Record<string, string> = {
+      host,
+      "x-amz-access-token": accessToken,
+      "x-amz-date": amazonDate(new Date()),
+      "user-agent": "ShopWeaver/0.1.0 (Language=TypeScript)"
+    };
+    if (options.body !== undefined) headers["content-type"] = "application/json";
     const response = await this.fetchImpl(url, {
-      method: "GET",
-      headers: {
-        host,
-        "x-amz-access-token": accessToken,
-        "x-amz-date": amazonDate(new Date()),
-        "user-agent": "ShopWeaver/0.1.0 (Language=TypeScript)"
-      }
+      method: options.method ?? "GET",
+      headers,
+      ...(options.body === undefined ? {} : { body: JSON.stringify(options.body) })
     });
     if (!response.ok) throw new ShopWeaverError("AMAZON_SP_API_REQUEST_FAILED", "Amazon SP-API request failed.");
     const contentType = response.headers.get("content-type") ?? "";

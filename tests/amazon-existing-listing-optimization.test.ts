@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { analyzeAmazonExistingListing } from "../src/amazon/listing-optimization.js";
+import { analyzeAmazonExistingListing, buildAmazonListingCopyPatch } from "../src/amazon/listing-optimization.js";
 
 describe("analyzeAmazonExistingListing", () => {
   it("recommends review-only listing improvements from existing Amazon listing data", () => {
@@ -91,6 +91,47 @@ describe("analyzeAmazonExistingListing", () => {
       optimizedDescription: "Upgrade daily bathroom comfort with a wall mounted electric towel warmer rack designed to warm and dry towels while saving floor space. The 3-bar vertical design uses 304-grade stainless steel with a polished Gold finish and a 38 inch profile for bathrooms, laundry rooms, spa areas, and compact wall spaces. A digital timer helps manage run time, and plug-in or hardwired installation options give flexibility for different setups. Review dimensions and installation requirements before purchase to confirm fit.",
       optimizedBackendSearchTerms: "heated towel rail bathroom towel dryer wall towel warmer plug in hardwired spa towel rack electric towel holder vertical towel heater",
       sellerApprovalRequired: true
+    });
+  });
+
+  it("builds a Listings Items API patch for optimized copy attributes", () => {
+    expect(buildAmazonListingCopyPatch({
+      marketplaceId: "ATVPDKIKX0DER",
+      productType: "TOWEL_HOLDER",
+      title: "Electric Towel Warmer Rack, Wall Mount 3-Bar Stainless Steel, 38 in, Gold",
+      bullets: ["Benefit one.", "Benefit two.", "Benefit three.", "Worry reducer.", "Post sale support."],
+      description: "Optimized bathroom comfort description.",
+      backendSearchTerms: "heated towel rail bathroom towel dryer wall towel warmer"
+    })).toEqual({
+      productType: "TOWEL_HOLDER",
+      patches: [
+        {
+          op: "replace",
+          path: "/attributes/item_name",
+          value: [{ value: "Electric Towel Warmer Rack, Wall Mount 3-Bar Stainless Steel, 38 in, Gold", marketplace_id: "ATVPDKIKX0DER" }]
+        },
+        {
+          op: "replace",
+          path: "/attributes/bullet_point",
+          value: [
+            { value: "Benefit one.", marketplace_id: "ATVPDKIKX0DER" },
+            { value: "Benefit two.", marketplace_id: "ATVPDKIKX0DER" },
+            { value: "Benefit three.", marketplace_id: "ATVPDKIKX0DER" },
+            { value: "Worry reducer.", marketplace_id: "ATVPDKIKX0DER" },
+            { value: "Post sale support.", marketplace_id: "ATVPDKIKX0DER" }
+          ]
+        },
+        {
+          op: "replace",
+          path: "/attributes/product_description",
+          value: [{ value: "Optimized bathroom comfort description.", marketplace_id: "ATVPDKIKX0DER" }]
+        },
+        {
+          op: "replace",
+          path: "/attributes/generic_keyword",
+          value: [{ value: "heated towel rail bathroom towel dryer wall towel warmer", marketplace_id: "ATVPDKIKX0DER" }]
+        }
+      ]
     });
   });
 });

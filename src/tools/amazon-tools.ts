@@ -1,14 +1,17 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { analyzeAmazonCampaignMetrics, analyzeAmazonSearchTermReportRows } from "../amazon/campaign-optimization.js";
-import { analyzeAmazonExistingListing } from "../amazon/listing-optimization.js";
+import { analyzeAmazonExistingListing, buildAmazonListingCopyPatch } from "../amazon/listing-optimization.js";
 import type { AmazonAdsClient } from "../amazon/ads-client.js";
 import type { AmazonSpApiClient } from "../amazon/sp-api-client.js";
 import type { CredentialStore } from "../credentials/types.js";
+import { ShopWeaverError } from "../errors.js";
 
 function result(value: unknown) {
   return { content: [{ type: "text" as const, text: JSON.stringify(value, null, 2) }], structuredContent: value as Record<string, unknown> };
 }
+
+type AmazonListingPayload = { summaries?: Array<{ productType?: string }> };
 
 export async function amazonConnectionStatus(store: CredentialStore) {
   const [app, auth] = await Promise.all([store.get("amazonSpApiApp"), store.get("amazonSpApiAuth")]);
@@ -55,6 +58,38 @@ export function registerAmazonTools(server: McpServer, store: CredentialStore, a
     description: "Read one existing Amazon listing by seller SKU and return review-only optimization recommendations. This does not change the listing.",
     inputSchema: { sku: z.string().min(1) }
   }, async ({ sku }) => result(analyzeAmazonExistingListing(await amazon.getListingItem(sku) as never)));
+
+  server.registerTool("amazon_validate_listing_copy_update", {
+    description: "Build optimized copy for one existing Amazon listing and submit an SP-API validation preview. This does not apply listing changes.",
+    inputSchema: { sku: z.string().min(1) }
+  }, async ({ sku }) => {
+    const auth = await store.get("amazonSpApiAuth");
+    if (!auth) throw new ShopWeaverError("AMAZON_SP_API_AUTH_REQUIRED", "Connect Amazon SP-API before using Amazon seller tools.");
+    const listing = await amazon.getListingItem(sku) as { payload?: AmazonListingPayload };
+    const listingPayload = (listing.payload ?? listing) as AmazonListingPayload;
+    const recommendation = analyzeAmazonExistingListing(listingPayload as never);
+    const productType = listingPayload.summaries?.[0]?.productType;
+    const marketplaceId = auth.marketplaceIds[0];
+    if (!productType || !recommendation.optimizedTitle || !recommendation.optimizedBullets || !recommendation.optimizedDescription || !recommendation.optimizedBackendSearchTerms) {
+      throw new ShopWeaverError("AMAZON_LISTING_OPTIMIZED_COPY_UNAVAILABLE", "ShopWeaver could not generate optimized copy for this Amazon listing yet.");
+    }
+    const patch = buildAmazonListingCopyPatch({
+      marketplaceId,
+      productType,
+      title: recommendation.optimizedTitle,
+      bullets: recommendation.optimizedBullets,
+      description: recommendation.optimizedDescription,
+      backendSearchTerms: recommendation.optimizedBackendSearchTerms
+    });
+    return result({
+      operation: "validate_listing_copy_update",
+      sku,
+      productType,
+      patch,
+      validation: await amazon.patchListingItem(sku, patch, { validationPreview: true }),
+      applied: false
+    });
+  });
 
   server.registerTool("amazon_optimize_campaign_metrics", {
     description: "Return review-only Amazon campaign optimization recommendations from provided campaign metrics. This does not change campaigns, bids, budgets, keywords, negatives, or ads.",

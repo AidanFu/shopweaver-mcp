@@ -1,4 +1,9 @@
 type AttributeValue = { value?: string };
+type AmazonListingPatchOperation = {
+  op: "replace";
+  path: string;
+  value: Array<{ value: string; marketplace_id: string }>;
+};
 
 export interface AmazonExistingListingInput {
   sku: string;
@@ -28,6 +33,20 @@ export interface AmazonExistingListingRecommendation {
   sellerApprovalRequired: true;
 }
 
+export interface AmazonListingCopyPatchInput {
+  marketplaceId: string;
+  productType: string;
+  title: string;
+  bullets: string[];
+  description: string;
+  backendSearchTerms: string;
+}
+
+export interface AmazonListingCopyPatchBody {
+  productType: string;
+  patches: AmazonListingPatchOperation[];
+}
+
 export function analyzeAmazonExistingListing(listing: AmazonExistingListingInput): AmazonExistingListingRecommendation {
   const title = listing.summaries?.[0]?.itemName ?? "";
   const bullets = listing.attributes?.bullet_point ?? [];
@@ -51,6 +70,34 @@ export function analyzeAmazonExistingListing(listing: AmazonExistingListingInput
     issueRecommendation: issues.length > 0 ? `Resolve Amazon listing issues before campaign scaling: ${issues.map(issue => issue.code).filter(Boolean).join(", ")}.` : "No active listing issues found in the fetched listing item.",
     ...optimizedContent,
     sellerApprovalRequired: true
+  };
+}
+
+export function buildAmazonListingCopyPatch(input: AmazonListingCopyPatchInput): AmazonListingCopyPatchBody {
+  return {
+    productType: input.productType,
+    patches: [
+      {
+        op: "replace",
+        path: "/attributes/item_name",
+        value: [{ value: input.title, marketplace_id: input.marketplaceId }]
+      },
+      {
+        op: "replace",
+        path: "/attributes/bullet_point",
+        value: input.bullets.map(value => ({ value, marketplace_id: input.marketplaceId }))
+      },
+      {
+        op: "replace",
+        path: "/attributes/product_description",
+        value: [{ value: input.description, marketplace_id: input.marketplaceId }]
+      },
+      {
+        op: "replace",
+        path: "/attributes/generic_keyword",
+        value: [{ value: input.backendSearchTerms, marketplace_id: input.marketplaceId }]
+      }
+    ]
   };
 }
 
