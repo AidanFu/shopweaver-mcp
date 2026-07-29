@@ -153,6 +153,32 @@ export async function writeAmazonSearchTermOptimizationWorkbook(reportFilePath: 
   };
 }
 
+export async function readAmazonAdsActionDecisions(filePath: string) {
+  if (!isAbsolute(filePath)) throw new ShopWeaverError("AMAZON_ADS_REVIEW_PATH_INVALID", "Amazon Ads reviewed workbook path must be absolute.");
+  const workbook = XLSX.read(await readFile(filePath));
+  const sheet = workbook.Sheets["Action Plan"];
+  if (!sheet) throw new ShopWeaverError("AMAZON_ADS_ACTION_PLAN_MISSING", "Amazon Ads reviewed workbook must include an Action Plan sheet.");
+  const rows = XLSX.utils.sheet_to_json(sheet, { defval: "" }) as Array<Record<string, unknown>>;
+  const decisions = rows
+    .map(row => ({
+      actionId: text(row["Action ID"]),
+      action: text(row.Action),
+      scope: text(row.Scope),
+      campaignId: text(row["Campaign ID"]),
+      adGroupId: text(row["Ad Group ID"]),
+      searchTerm: text(row["Search Term"]),
+      decision: text(row.Decision).toLowerCase(),
+      reviewedBy: text(row["Reviewed By"]),
+      reviewNotes: text(row["Review Notes"])
+    }))
+    .filter(row => ["approve", "reject", "defer"].includes(row.decision));
+  return {
+    operation: "read_amazon_ads_action_decisions" as const,
+    reviewedActionCount: decisions.length,
+    decisions
+  };
+}
+
 export async function readAmazonSearchTermReportRows(filePath: string): Promise<Array<Record<string, unknown>>> {
   if (!isAbsolute(filePath)) throw new ShopWeaverError("AMAZON_ADS_REPORT_PATH_INVALID", "Amazon Ads report path must be absolute.");
   const extension = extname(filePath).toLowerCase();
@@ -192,4 +218,8 @@ function actionId(action: string, scope: string, campaignId: string, adGroupId =
 
 function slug(value: string): string {
   return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+}
+
+function text(value: unknown): string {
+  return String(value ?? "").trim();
 }

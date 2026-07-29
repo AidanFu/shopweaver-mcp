@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { describe, expect, it } from "vitest";
 import * as XLSX from "xlsx";
-import { analyzeAmazonSearchTermReportFile, writeAmazonSearchTermOptimizationWorkbook } from "../src/amazon/campaign-report-file.js";
+import { analyzeAmazonSearchTermReportFile, readAmazonAdsActionDecisions, writeAmazonSearchTermOptimizationWorkbook } from "../src/amazon/campaign-report-file.js";
 
 describe("analyzeAmazonSearchTermReportFile", () => {
   it("optimizes a Seller Central exported CSV search-term report", async () => {
@@ -129,5 +129,68 @@ describe("analyzeAmazonSearchTermReportFile", () => {
       { "Decision": "reject", "Meaning": "Do not apply this recommendation." },
       { "Decision": "defer", "Meaning": "Review again after more campaign data is available." }
     ]);
+  });
+
+  it("reads reviewed Ads action decisions from the action plan sheet", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "shopweaver-amazon-ads-"));
+    const file = join(dir, "reviewed-optimization.xlsx");
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet([
+      {
+        "Action ID": "negative_exact_candidate:ad_group:campaign-1:adgroup-1:free-towel-warmer-manual",
+        "Action": "negative_exact_candidate",
+        "Scope": "ad_group",
+        "Campaign ID": "campaign-1",
+        "Ad Group ID": "adgroup-1",
+        "Search Term": "free towel warmer manual",
+        "Decision": "Approve",
+        "Reviewed By": "Aidan",
+        "Review Notes": "Waste term"
+      },
+      {
+        "Action ID": "budget_watch:campaign:campaign-1",
+        "Action": "budget_watch",
+        "Scope": "campaign",
+        "Campaign ID": "campaign-1",
+        "Decision": "defer",
+        "Reviewed By": "Aidan",
+        "Review Notes": "Wait for next week"
+      },
+      {
+        "Action ID": "exact_match_or_bid_review:ad_group:campaign-2:adgroup-2:electric-towel-warmer-gold",
+        "Action": "exact_match_or_bid_review",
+        "Decision": ""
+      }
+    ]), "Action Plan");
+    XLSX.writeFile(workbook, file);
+
+    await expect(readAmazonAdsActionDecisions(file)).resolves.toEqual({
+      operation: "read_amazon_ads_action_decisions",
+      reviewedActionCount: 2,
+      decisions: [
+        {
+          actionId: "negative_exact_candidate:ad_group:campaign-1:adgroup-1:free-towel-warmer-manual",
+          action: "negative_exact_candidate",
+          scope: "ad_group",
+          campaignId: "campaign-1",
+          adGroupId: "adgroup-1",
+          searchTerm: "free towel warmer manual",
+          decision: "approve",
+          reviewedBy: "Aidan",
+          reviewNotes: "Waste term"
+        },
+        {
+          actionId: "budget_watch:campaign:campaign-1",
+          action: "budget_watch",
+          scope: "campaign",
+          campaignId: "campaign-1",
+          adGroupId: "",
+          searchTerm: "",
+          decision: "defer",
+          reviewedBy: "Aidan",
+          reviewNotes: "Wait for next week"
+        }
+      ]
+    });
   });
 });
