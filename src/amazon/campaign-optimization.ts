@@ -35,6 +35,8 @@ export interface AmazonWasteSearchTerm {
   campaignName: string;
   adGroupId: string;
   adGroupName: string;
+  matchType: string;
+  targeting: string;
   searchTerm: string;
   clicks: number;
   spend: number;
@@ -92,6 +94,8 @@ export function analyzeAmazonSearchTermReportRows(rows: Array<Record<string, unk
     const campaignName = fieldText(row, ["campaignName", "Campaign Name"]) || campaignId;
     const adGroupId = fieldText(row, ["adGroupId", "Ad Group ID", "Ad Group Id"]);
     const adGroupName = fieldText(row, ["adGroupName", "Ad Group Name"]);
+    const matchType = fieldText(row, ["matchType", "Match Type"]);
+    const targeting = fieldText(row, ["targeting", "Targeting"]);
     const clicks = fieldNumber(row, ["clicks", "Clicks"]);
     const spend = fieldNumber(row, ["cost", "Spend", "Cost"]);
     const sales = fieldNumber(row, ["sales7d", "7 Day Total Sales", "Sales"]);
@@ -119,6 +123,8 @@ export function analyzeAmazonSearchTermReportRows(rows: Array<Record<string, unk
         campaignName,
         adGroupId,
         adGroupName,
+        matchType,
+        targeting,
         searchTerm,
         clicks,
         spend,
@@ -134,6 +140,8 @@ export function analyzeAmazonSearchTermReportRows(rows: Array<Record<string, unk
         campaignName,
         adGroupId,
         adGroupName,
+        matchType,
+        targeting,
         searchTerm,
         clicks,
         spend,

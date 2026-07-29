@@ -42,9 +42,9 @@ describe("analyzeAmazonCampaignMetrics", () => {
 
   it("turns Sponsored Products search-term report rows into campaign recommendations", () => {
     expect(analyzeAmazonSearchTermReportRows([
-      { campaignId: "campaign-1", campaignName: "Auto Discovery", adGroupId: "adgroup-1", adGroupName: "Discovery", searchTerm: "free crochet pattern", clicks: 80, cost: 48, sales7d: 0, purchases7d: 0 },
-      { campaignId: "campaign-1", campaignName: "Auto Discovery", adGroupId: "adgroup-1", adGroupName: "Discovery", searchTerm: "crochet keychain", clicks: 45, cost: 30, sales7d: 0, purchases7d: 0 },
-      { campaignId: "campaign-2", campaignName: "Manual Exact Winners", adGroupId: "adgroup-2", adGroupName: "Exact Winners", searchTerm: "crochet bag charm", clicks: 50, cost: 40, sales7d: 180, purchases7d: 6 }
+      { campaignId: "campaign-1", campaignName: "Auto Discovery", adGroupId: "adgroup-1", adGroupName: "Discovery", matchType: "BROAD", targeting: "crochet keychain", searchTerm: "free crochet pattern", clicks: 80, cost: 48, sales7d: 0, purchases7d: 0 },
+      { campaignId: "campaign-1", campaignName: "Auto Discovery", adGroupId: "adgroup-1", adGroupName: "Discovery", matchType: "PHRASE", targeting: "crochet charm", searchTerm: "crochet keychain", clicks: 45, cost: 30, sales7d: 0, purchases7d: 0 },
+      { campaignId: "campaign-2", campaignName: "Manual Exact Winners", adGroupId: "adgroup-2", adGroupName: "Exact Winners", matchType: "EXACT", targeting: "crochet bag charm", searchTerm: "crochet bag charm", clicks: 50, cost: 40, sales7d: 180, purchases7d: 6 }
     ])).toEqual({
       rowCount: 3,
       campaignCount: 2,
@@ -52,11 +52,11 @@ describe("analyzeAmazonCampaignMetrics", () => {
       totalSales: 180,
       blendedAcos: 65.56,
       wasteSearchTerms: [
-        { campaignId: "campaign-1", campaignName: "Auto Discovery", adGroupId: "adgroup-1", adGroupName: "Discovery", searchTerm: "free crochet pattern", clicks: 80, spend: 48, sales: 0, orders: 0, recommendation: "Add as negative exact candidate after review; high spend/clicks with no orders." },
-        { campaignId: "campaign-1", campaignName: "Auto Discovery", adGroupId: "adgroup-1", adGroupName: "Discovery", searchTerm: "crochet keychain", clicks: 45, spend: 30, sales: 0, orders: 0, recommendation: "Add as negative exact candidate after review; high spend/clicks with no orders." }
+        { campaignId: "campaign-1", campaignName: "Auto Discovery", adGroupId: "adgroup-1", adGroupName: "Discovery", matchType: "BROAD", targeting: "crochet keychain", searchTerm: "free crochet pattern", clicks: 80, spend: 48, sales: 0, orders: 0, recommendation: "Add as negative exact candidate after review; high spend/clicks with no orders." },
+        { campaignId: "campaign-1", campaignName: "Auto Discovery", adGroupId: "adgroup-1", adGroupName: "Discovery", matchType: "PHRASE", targeting: "crochet charm", searchTerm: "crochet keychain", clicks: 45, spend: 30, sales: 0, orders: 0, recommendation: "Add as negative exact candidate after review; high spend/clicks with no orders." }
       ],
       efficientSearchTerms: [
-        { campaignId: "campaign-2", campaignName: "Manual Exact Winners", adGroupId: "adgroup-2", adGroupName: "Exact Winners", searchTerm: "crochet bag charm", clicks: 50, spend: 40, sales: 180, orders: 6, acos: 22.22, recommendation: "Keep active; consider moving to exact match or modest bid increase only after budget waste is reduced." }
+        { campaignId: "campaign-2", campaignName: "Manual Exact Winners", adGroupId: "adgroup-2", adGroupName: "Exact Winners", matchType: "EXACT", targeting: "crochet bag charm", searchTerm: "crochet bag charm", clicks: 50, spend: 40, sales: 180, orders: 6, acos: 22.22, recommendation: "Keep active; consider moving to exact match or modest bid increase only after budget waste is reduced." }
       ],
       recommendations: [{
         campaignId: "campaign-1",
