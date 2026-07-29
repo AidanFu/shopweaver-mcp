@@ -23,6 +23,7 @@ export async function writeAmazonSearchTermOptimizationWorkbook(reportFilePath: 
   }]), "Summary");
   XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet([
     ...analysis.wasteSearchTerms.map(term => ({
+      "Action ID": actionId("negative_exact_candidate", "ad_group", term.campaignId, term.adGroupId, term.searchTerm),
       "Priority": "high",
       "Action": "negative_exact_candidate",
       "Scope": "ad_group",
@@ -47,6 +48,7 @@ export async function writeAmazonSearchTermOptimizationWorkbook(reportFilePath: 
       .map(recommendation => {
         const campaign = campaignMetrics(analysis, recommendation.campaignId);
         return {
+          "Action ID": actionId(recommendation.actionType, "campaign", recommendation.campaignId),
           "Priority": recommendation.priority,
           "Action": recommendation.actionType,
           "Scope": "campaign",
@@ -68,6 +70,7 @@ export async function writeAmazonSearchTermOptimizationWorkbook(reportFilePath: 
         };
       }),
     ...analysis.efficientSearchTerms.map(term => ({
+      "Action ID": actionId("exact_match_or_bid_review", "ad_group", term.campaignId, term.adGroupId, term.searchTerm),
       "Priority": "normal",
       "Action": "exact_match_or_bid_review",
       "Scope": "ad_group",
@@ -167,4 +170,12 @@ function campaignMetrics(analysis: AmazonSearchTermReportAnalysis, campaignId: s
     orders: terms.reduce((sum, term) => sum + term.orders, 0),
     acos: sales > 0 ? Number(((spend / sales) * 100).toFixed(2)) : 0
   };
+}
+
+function actionId(action: string, scope: string, campaignId: string, adGroupId = "", searchTerm = ""): string {
+  return [action, scope, slug(campaignId), slug(adGroupId), slug(searchTerm)].filter(Boolean).join(":");
+}
+
+function slug(value: string): string {
+  return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 }

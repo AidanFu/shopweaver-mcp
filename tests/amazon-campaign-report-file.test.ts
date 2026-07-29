@@ -44,6 +44,7 @@ describe("analyzeAmazonSearchTermReportFile", () => {
     expect(workbook.SheetNames).toEqual(["Summary", "Action Plan", "Waste Search Terms", "Efficient Search Terms", "Campaign Recommendations"]);
     expect(XLSX.utils.sheet_to_json(workbook.Sheets["Action Plan"])).toEqual([
       {
+        "Action ID": "negative_exact_candidate:ad_group:campaign-1:adgroup-1:free-towel-warmer-manual",
         "Priority": "high",
         "Action": "negative_exact_candidate",
         "Scope": "ad_group",
@@ -64,6 +65,7 @@ describe("analyzeAmazonSearchTermReportFile", () => {
         "Approval Required": true
       },
       {
+        "Action ID": "budget_watch:campaign:campaign-1",
         "Priority": "high",
         "Action": "budget_watch",
         "Scope": "campaign",
@@ -84,6 +86,7 @@ describe("analyzeAmazonSearchTermReportFile", () => {
         "Approval Required": true
       },
       {
+        "Action ID": "exact_match_or_bid_review:ad_group:campaign-2:adgroup-2:electric-towel-warmer-gold",
         "Priority": "normal",
         "Action": "exact_match_or_bid_review",
         "Scope": "ad_group",
