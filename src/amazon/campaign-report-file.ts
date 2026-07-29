@@ -25,6 +25,7 @@ export async function writeAmazonSearchTermOptimizationWorkbook(reportFilePath: 
     ...analysis.wasteSearchTerms.map(term => ({
       "Priority": "high",
       "Action": "negative_exact_candidate",
+      "Scope": "ad_group",
       "Campaign ID": term.campaignId,
       "Campaign Name": term.campaignName,
       "Ad Group ID": term.adGroupId,
@@ -40,6 +41,7 @@ export async function writeAmazonSearchTermOptimizationWorkbook(reportFilePath: 
       .map(recommendation => ({
         "Priority": recommendation.priority,
         "Action": recommendation.actionType,
+        "Scope": "campaign",
         "Campaign ID": recommendation.campaignId,
         "Campaign Name": recommendation.campaignName,
         "Ad Group ID": "",
@@ -53,6 +55,7 @@ export async function writeAmazonSearchTermOptimizationWorkbook(reportFilePath: 
     ...analysis.efficientSearchTerms.map(term => ({
       "Priority": "normal",
       "Action": "exact_match_or_bid_review",
+      "Scope": "ad_group",
       "Campaign ID": term.campaignId,
       "Campaign Name": term.campaignName,
       "Ad Group ID": term.adGroupId,

@@ -46,6 +46,7 @@ describe("analyzeAmazonSearchTermReportFile", () => {
       {
         "Priority": "high",
         "Action": "negative_exact_candidate",
+        "Scope": "ad_group",
         "Campaign ID": "campaign-1",
         "Campaign Name": "Auto Discovery",
         "Ad Group ID": "adgroup-1",
@@ -59,6 +60,7 @@ describe("analyzeAmazonSearchTermReportFile", () => {
       {
         "Priority": "high",
         "Action": "budget_watch",
+        "Scope": "campaign",
         "Campaign ID": "campaign-1",
         "Campaign Name": "Auto Discovery",
         "Ad Group ID": "",
@@ -72,6 +74,7 @@ describe("analyzeAmazonSearchTermReportFile", () => {
       {
         "Priority": "normal",
         "Action": "exact_match_or_bid_review",
+        "Scope": "ad_group",
         "Campaign ID": "campaign-2",
         "Campaign Name": "Manual Exact",
         "Ad Group ID": "adgroup-2",
