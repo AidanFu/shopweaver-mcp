@@ -31,6 +31,17 @@ export async function writeAmazonSearchTermOptimizationWorkbook(reportFilePath: 
       "Reason": "High spend/clicks with no orders.",
       "Approval Required": true
     })),
+    ...analysis.recommendations
+      .filter(recommendation => recommendation.actionType === "budget_watch")
+      .map(recommendation => ({
+        "Priority": recommendation.priority,
+        "Action": recommendation.actionType,
+        "Campaign ID": recommendation.campaignId,
+        "Campaign Name": recommendation.campaignName,
+        "Search Term": "",
+        "Reason": "High campaign spend/clicks with no orders.",
+        "Approval Required": recommendation.sellerApprovalRequired
+      })),
     ...analysis.efficientSearchTerms.map(term => ({
       "Priority": "normal",
       "Action": "exact_match_or_bid_review",

@@ -29,7 +29,7 @@ describe("analyzeAmazonSearchTermReportFile", () => {
     const output = join(dir, "optimization.xlsx");
     await writeFile(report, [
       "Campaign Name,Campaign ID,Customer Search Term,Clicks,Spend,7 Day Total Sales,7 Day Total Orders (#)",
-      "Auto Discovery,campaign-1,free towel warmer manual,18,$16.25,$0.00,0",
+      "Auto Discovery,campaign-1,free towel warmer manual,31,$26.25,$0.00,0",
       "Manual Exact,campaign-2,electric towel warmer gold,22,$12.00,$89.99,2"
     ].join("\n"));
 
@@ -50,6 +50,15 @@ describe("analyzeAmazonSearchTermReportFile", () => {
         "Campaign Name": "Auto Discovery",
         "Search Term": "free towel warmer manual",
         "Reason": "High spend/clicks with no orders.",
+        "Approval Required": true
+      },
+      {
+        "Priority": "high",
+        "Action": "budget_watch",
+        "Campaign ID": "campaign-1",
+        "Campaign Name": "Auto Discovery",
+        "Search Term": "",
+        "Reason": "High campaign spend/clicks with no orders.",
         "Approval Required": true
       },
       {

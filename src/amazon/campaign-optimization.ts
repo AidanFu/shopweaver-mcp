@@ -14,7 +14,7 @@ export interface AmazonCampaignRecommendation {
   campaignName: string;
   status: "reduce_waste" | "scale_carefully" | "collect_more_data";
   priority: "high" | "normal";
-  actionType: "negative_keywords_and_listing_review" | "budget_bid_review" | "data_collection";
+  actionType: "negative_keywords_and_listing_review" | "budget_watch" | "budget_bid_review" | "data_collection";
   recommendation: string;
   sellerApprovalRequired: true;
 }
@@ -52,8 +52,8 @@ export function analyzeAmazonCampaignMetrics(metrics: AmazonCampaignMetrics): Am
       campaignName: metrics.campaignName,
       status: "reduce_waste",
       priority: "high",
-      actionType: "negative_keywords_and_listing_review",
-      recommendation: "Review search terms and listing conversion before increasing budget; add irrelevant terms as negative keyword candidates after seller approval.",
+      actionType: "budget_watch",
+      recommendation: "Reduce or cap budget until waste terms and listing conversion are reviewed; this campaign has high spend and clicks with no orders.",
       sellerApprovalRequired: true
     };
   }

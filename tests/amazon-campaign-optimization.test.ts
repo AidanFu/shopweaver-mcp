@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { analyzeAmazonCampaignMetrics, analyzeAmazonSearchTermReportRows } from "../src/amazon/campaign-optimization.js";
 
 describe("analyzeAmazonCampaignMetrics", () => {
-  it("flags spend with clicks but no orders for search-term and listing review", () => {
+  it("flags spend with clicks but no orders for budget review", () => {
     expect(analyzeAmazonCampaignMetrics({
       campaignId: "campaign-1",
       campaignName: "Auto Discovery",
@@ -17,8 +17,8 @@ describe("analyzeAmazonCampaignMetrics", () => {
       campaignName: "Auto Discovery",
       status: "reduce_waste",
       priority: "high",
-      actionType: "negative_keywords_and_listing_review",
-      recommendation: "Review search terms and listing conversion before increasing budget; add irrelevant terms as negative keyword candidates after seller approval.",
+      actionType: "budget_watch",
+      recommendation: "Reduce or cap budget until waste terms and listing conversion are reviewed; this campaign has high spend and clicks with no orders.",
       sellerApprovalRequired: true
     });
   });
@@ -63,8 +63,8 @@ describe("analyzeAmazonCampaignMetrics", () => {
         campaignName: "Auto Discovery",
         status: "reduce_waste",
         priority: "high",
-        actionType: "negative_keywords_and_listing_review",
-        recommendation: "Review search terms and listing conversion before increasing budget; add irrelevant terms as negative keyword candidates after seller approval.",
+        actionType: "budget_watch",
+        recommendation: "Reduce or cap budget until waste terms and listing conversion are reviewed; this campaign has high spend and clicks with no orders.",
         sellerApprovalRequired: true
       }, {
         campaignId: "campaign-2",
