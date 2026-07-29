@@ -55,6 +55,11 @@ describe("analyzeAmazonSearchTermReportFile", () => {
         "Match Type": "BROAD",
         "Targeting": "towel warmer",
         "Search Term": "free towel warmer manual",
+        "Clicks": 31,
+        "Spend": 26.25,
+        "Sales": 0,
+        "Orders": 0,
+        "ACOS": "",
         "Reason": "High spend/clicks with no orders.",
         "Approval Required": true
       },
@@ -70,6 +75,11 @@ describe("analyzeAmazonSearchTermReportFile", () => {
         "Match Type": "",
         "Targeting": "",
         "Search Term": "",
+        "Clicks": 31,
+        "Spend": 26.25,
+        "Sales": 0,
+        "Orders": 0,
+        "ACOS": "",
         "Reason": "High campaign spend/clicks with no orders.",
         "Approval Required": true
       },
@@ -85,6 +95,11 @@ describe("analyzeAmazonSearchTermReportFile", () => {
         "Match Type": "EXACT",
         "Targeting": "electric towel warmer gold",
         "Search Term": "electric towel warmer gold",
+        "Clicks": 22,
+        "Spend": 12,
+        "Sales": 89.99,
+        "Orders": 2,
+        "ACOS": 13.33,
         "Reason": "Orders with ACOS at or below 35%.",
         "Approval Required": true
       }

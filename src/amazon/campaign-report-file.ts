@@ -2,7 +2,7 @@ import { extname, isAbsolute } from "node:path";
 import { readFile } from "node:fs/promises";
 import * as XLSX from "xlsx";
 import { ShopWeaverError } from "../errors.js";
-import { analyzeAmazonSearchTermReportRows } from "./campaign-optimization.js";
+import { analyzeAmazonSearchTermReportRows, type AmazonSearchTermReportAnalysis } from "./campaign-optimization.js";
 
 export async function analyzeAmazonSearchTermReportFile(filePath: string) {
   return analyzeAmazonSearchTermReportRows(await readAmazonSearchTermReportRows(filePath));
@@ -34,26 +34,39 @@ export async function writeAmazonSearchTermOptimizationWorkbook(reportFilePath: 
       "Match Type": term.matchType,
       "Targeting": term.targeting,
       "Search Term": term.searchTerm,
+      "Clicks": term.clicks,
+      "Spend": term.spend,
+      "Sales": term.sales,
+      "Orders": term.orders,
+      "ACOS": "",
       "Reason": "High spend/clicks with no orders.",
       "Approval Required": true
     })),
     ...analysis.recommendations
       .filter(recommendation => recommendation.actionType === "budget_watch")
-      .map(recommendation => ({
-        "Priority": recommendation.priority,
-        "Action": recommendation.actionType,
-        "Scope": "campaign",
-        "Proposed Change": "Review reducing or capping campaign budget until waste terms are handled.",
-        "Campaign ID": recommendation.campaignId,
-        "Campaign Name": recommendation.campaignName,
-        "Ad Group ID": "",
-        "Ad Group Name": "",
-        "Match Type": "",
-        "Targeting": "",
-        "Search Term": "",
-        "Reason": "High campaign spend/clicks with no orders.",
-        "Approval Required": recommendation.sellerApprovalRequired
-      })),
+      .map(recommendation => {
+        const campaign = campaignMetrics(analysis, recommendation.campaignId);
+        return {
+          "Priority": recommendation.priority,
+          "Action": recommendation.actionType,
+          "Scope": "campaign",
+          "Proposed Change": "Review reducing or capping campaign budget until waste terms are handled.",
+          "Campaign ID": recommendation.campaignId,
+          "Campaign Name": recommendation.campaignName,
+          "Ad Group ID": "",
+          "Ad Group Name": "",
+          "Match Type": "",
+          "Targeting": "",
+          "Search Term": "",
+          "Clicks": campaign.clicks,
+          "Spend": campaign.spend,
+          "Sales": campaign.sales,
+          "Orders": campaign.orders,
+          "ACOS": campaign.acos || "",
+          "Reason": "High campaign spend/clicks with no orders.",
+          "Approval Required": recommendation.sellerApprovalRequired
+        };
+      }),
     ...analysis.efficientSearchTerms.map(term => ({
       "Priority": "normal",
       "Action": "exact_match_or_bid_review",
@@ -66,6 +79,11 @@ export async function writeAmazonSearchTermOptimizationWorkbook(reportFilePath: 
       "Match Type": term.matchType,
       "Targeting": term.targeting,
       "Search Term": term.searchTerm,
+      "Clicks": term.clicks,
+      "Spend": term.spend,
+      "Sales": term.sales,
+      "Orders": term.orders,
+      "ACOS": term.acos,
       "Reason": "Orders with ACOS at or below 35%.",
       "Approval Required": true
     }))
@@ -136,4 +154,17 @@ function readCsvRows(text: string): Array<Record<string, unknown>> {
   const firstSheet = rows.SheetNames[0];
   if (!firstSheet) return [];
   return XLSX.utils.sheet_to_json(rows.Sheets[firstSheet], { defval: "" }) as Array<Record<string, unknown>>;
+}
+
+function campaignMetrics(analysis: AmazonSearchTermReportAnalysis, campaignId: string) {
+  const terms = [...analysis.wasteSearchTerms, ...analysis.efficientSearchTerms].filter(term => term.campaignId === campaignId);
+  const spend = Number(terms.reduce((sum, term) => sum + term.spend, 0).toFixed(2));
+  const sales = Number(terms.reduce((sum, term) => sum + term.sales, 0).toFixed(2));
+  return {
+    clicks: terms.reduce((sum, term) => sum + term.clicks, 0),
+    spend,
+    sales,
+    orders: terms.reduce((sum, term) => sum + term.orders, 0),
+    acos: sales > 0 ? Number(((spend / sales) * 100).toFixed(2)) : 0
+  };
 }
