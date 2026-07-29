@@ -10,6 +10,7 @@ const allowed = [
   "amazon_ads_list_profiles",
   "amazon_ads_list_sp_campaigns",
   "amazon_ads_list_sp_keywords",
+  "amazon_ads_optimize_sp_search_term_report",
   "amazon_get_listing_item",
   "amazon_get_marketplace_participations",
   "amazon_optimize_campaign_metrics",

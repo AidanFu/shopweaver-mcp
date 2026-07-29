@@ -40,6 +40,7 @@ describe("MCP integration", () => {
       "amazon_ads_list_sp_ad_groups",
       "amazon_ads_list_sp_campaigns",
       "amazon_ads_list_sp_keywords",
+      "amazon_ads_optimize_sp_search_term_report",
       "amazon_connection_status",
       "amazon_get_listing_item",
       "amazon_get_marketplace_participations",

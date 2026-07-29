@@ -1,6 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { analyzeAmazonCampaignMetrics } from "../amazon/campaign-optimization.js";
+import { analyzeAmazonCampaignMetrics, analyzeAmazonSearchTermReportRows } from "../amazon/campaign-optimization.js";
 import { analyzeAmazonExistingListing } from "../amazon/listing-optimization.js";
 import type { AmazonAdsClient } from "../amazon/ads-client.js";
 import type { AmazonSpApiClient } from "../amazon/sp-api-client.js";
@@ -111,6 +111,13 @@ export function registerAmazonTools(server: McpServer, store: CredentialStore, a
       const rows = await amazonAds.downloadReportRows(url);
       return result({ rowCount: rows.length, rows });
     });
+
+    server.registerTool("amazon_ads_optimize_sp_search_term_report", {
+      description: "Download a completed Sponsored Products search-term report URL and return review-only campaign optimization recommendations. This does not change campaigns, bids, budgets, keywords, negatives, or ads.",
+      inputSchema: {
+        url: z.string().url()
+      }
+    }, async ({ url }) => result(analyzeAmazonSearchTermReportRows(await amazonAds.downloadReportRows(url))));
 
     server.registerTool("amazon_ads_list_sp_campaigns", {
       description: "Read Sponsored Products campaigns for one Amazon Ads profile. This is read-only and does not change campaigns, bids, budgets, keywords, negatives, or ads.",
