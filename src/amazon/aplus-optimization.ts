@@ -1,5 +1,5 @@
-type TextEntry = { value?: string | null; decoratorSet?: string[] };
-type AplusModule = {
+export type TextEntry = { value?: string | null; decoratorSet?: string[] };
+export type AplusModule = {
   contentModuleType?: string;
   standardProductDescription?: { body?: { textList?: TextEntry[] | null } | null } | null;
   standardImageTextOverlay?: {
@@ -11,7 +11,7 @@ type AplusModule = {
   } | null;
 };
 
-type AplusContentDocument = {
+export type AplusContentDocument = {
   name: string;
   contentType: string;
   locale: string;

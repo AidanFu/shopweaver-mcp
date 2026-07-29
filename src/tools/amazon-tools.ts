@@ -1,6 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { analyzeAmazonAplusContent, buildOptimizedAmazonAplusContentDocument } from "../amazon/aplus-optimization.js";
+import { writeAmazonAplusOptimizationWorkbook } from "../amazon/aplus-workbook.js";
 import { analyzeAmazonSearchTermReportFile, writeAmazonSearchTermOptimizationWorkbook } from "../amazon/campaign-report-file.js";
 import { analyzeAmazonCampaignMetrics, analyzeAmazonSearchTermReportRows } from "../amazon/campaign-optimization.js";
 import { analyzeAmazonExistingListing, buildAmazonListingCopyPatch } from "../amazon/listing-optimization.js";
@@ -219,6 +220,33 @@ export function registerAmazonTools(server: McpServer, store: CredentialStore, a
       }),
       applied: false
     });
+  });
+
+  server.registerTool("amazon_write_aplus_optimization_workbook", {
+    description: "Read current published A+ Content for ASINs and write a local review workbook with recommendations and optimized draft copy. This does not validate, create, update, publish, or submit A+ content.",
+    inputSchema: {
+      outputPath: z.string().min(1),
+      variations: z.array(z.object({
+        asin: z.string().min(1),
+        expectedFinish: z.string().min(1),
+        expectedHeightInches: z.number().positive()
+      })).min(1)
+    }
+  }, async ({ outputPath, variations }) => {
+    const items = [];
+    for (const variation of variations) {
+      const records = await amazon.getAplusContentPublishRecords(variation.asin) as { publishRecordList?: Array<{ locale?: string; contentReferenceKey?: string }> };
+      const record = records.publishRecordList?.find(item => item.locale === "en_US") ?? records.publishRecordList?.[0];
+      if (!record?.contentReferenceKey) throw new ShopWeaverError("AMAZON_APLUS_CONTENT_NOT_FOUND", `No published A+ content record was found for ASIN ${variation.asin}.`);
+      const document = await amazon.getAplusContentDocument(record.contentReferenceKey) as { contentRecord?: { contentDocument?: unknown } };
+      const contentRecord = document.contentRecord ?? document;
+      items.push({
+        ...variation,
+        sourceContentReferenceKey: record.contentReferenceKey,
+        contentRecord: contentRecord as never
+      });
+    }
+    return result(await writeAmazonAplusOptimizationWorkbook({ outputPath, items }));
   });
 
   server.registerTool("amazon_optimize_existing_listing", {
