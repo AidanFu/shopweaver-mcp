@@ -41,7 +41,7 @@ describe("analyzeAmazonSearchTermReportFile", () => {
       efficientSearchTermCount: 1
     });
     const workbook = XLSX.readFile(output);
-    expect(workbook.SheetNames).toEqual(["Summary", "Action Plan", "Waste Search Terms", "Efficient Search Terms", "Campaign Recommendations"]);
+    expect(workbook.SheetNames).toEqual(["Summary", "Action Plan", "Decision Options", "Waste Search Terms", "Efficient Search Terms", "Campaign Recommendations"]);
     expect(XLSX.utils.sheet_to_json(workbook.Sheets["Action Plan"])).toEqual([
       {
         "Action ID": "negative_exact_candidate:ad_group:campaign-1:adgroup-1:free-towel-warmer-manual",
@@ -124,5 +124,10 @@ describe("analyzeAmazonSearchTermReportFile", () => {
       "Search Term": "free towel warmer manual",
       "Recommendation": "Add as negative exact candidate after review; high spend/clicks with no orders."
     });
+    expect(XLSX.utils.sheet_to_json(workbook.Sheets["Decision Options"])).toEqual([
+      { "Decision": "approve", "Meaning": "Approved for a future Amazon Ads write after a final confirmation gate." },
+      { "Decision": "reject", "Meaning": "Do not apply this recommendation." },
+      { "Decision": "defer", "Meaning": "Review again after more campaign data is available." }
+    ]);
   });
 });

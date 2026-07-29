@@ -100,6 +100,11 @@ export async function writeAmazonSearchTermOptimizationWorkbook(reportFilePath: 
       "Review Notes": ""
     }))
   ]), "Action Plan");
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet([
+    { "Decision": "approve", "Meaning": "Approved for a future Amazon Ads write after a final confirmation gate." },
+    { "Decision": "reject", "Meaning": "Do not apply this recommendation." },
+    { "Decision": "defer", "Meaning": "Review again after more campaign data is available." }
+  ]), "Decision Options");
   XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(analysis.wasteSearchTerms.map(term => ({
     "Campaign ID": term.campaignId,
     "Campaign Name": term.campaignName,
