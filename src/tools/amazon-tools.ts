@@ -1,6 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { analyzeAmazonAplusContent } from "../amazon/aplus-optimization.js";
+import { analyzeAmazonAplusContent, buildOptimizedAmazonAplusContentDocument } from "../amazon/aplus-optimization.js";
 import { analyzeAmazonCampaignMetrics, analyzeAmazonSearchTermReportRows } from "../amazon/campaign-optimization.js";
 import { analyzeAmazonExistingListing, buildAmazonListingCopyPatch } from "../amazon/listing-optimization.js";
 import type { AmazonAdsClient } from "../amazon/ads-client.js";
@@ -161,6 +161,35 @@ export function registerAmazonTools(server: McpServer, store: CredentialStore, a
         expectedHeightInches,
         contentRecord: (document.contentRecord ?? document) as never
       })
+    });
+  });
+
+  server.registerTool("amazon_validate_optimized_aplus_content", {
+    description: "Build an optimized A+ Content document from the currently published A+ document and submit validation only. This does not create, update, publish, or submit A+ content for approval.",
+    inputSchema: {
+      asin: z.string().min(1),
+      expectedFinish: z.string().min(1),
+      expectedHeightInches: z.number().positive()
+    }
+  }, async ({ asin, expectedFinish, expectedHeightInches }) => {
+    const records = await amazon.getAplusContentPublishRecords(asin) as { publishRecordList?: Array<{ locale?: string; contentReferenceKey?: string }> };
+    const record = records.publishRecordList?.find(item => item.locale === "en_US") ?? records.publishRecordList?.[0];
+    if (!record?.contentReferenceKey) throw new ShopWeaverError("AMAZON_APLUS_CONTENT_NOT_FOUND", "No published A+ content record was found for this ASIN.");
+    const document = await amazon.getAplusContentDocument(record.contentReferenceKey) as { contentRecord?: { contentDocument?: unknown } };
+    const currentDocument = document.contentRecord?.contentDocument ?? (document as { contentDocument?: unknown }).contentDocument;
+    if (!currentDocument) throw new ShopWeaverError("AMAZON_APLUS_CONTENT_NOT_FOUND", "No A+ content document payload was found for this ASIN.");
+    const optimizedDocument = buildOptimizedAmazonAplusContentDocument(currentDocument as never, {
+      asin,
+      finish: expectedFinish,
+      heightInches: expectedHeightInches
+    });
+    return result({
+      operation: "validate_optimized_aplus_content",
+      asin,
+      sourceContentReferenceKey: record.contentReferenceKey,
+      optimizedDocument,
+      validation: await amazon.validateAplusContentDocument([asin], optimizedDocument),
+      applied: false
     });
   });
 

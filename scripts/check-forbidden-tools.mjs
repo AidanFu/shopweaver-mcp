@@ -20,6 +20,7 @@ const allowed = [
   "amazon_optimize_existing_listing",
   "amazon_update_listing_copy",
   "amazon_validate_listing_copy_update",
+  "amazon_validate_optimized_aplus_content",
   "etsy_connection_status",
   "etsy_create_draft_listing",
   "etsy_get_listing",

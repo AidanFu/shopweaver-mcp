@@ -136,4 +136,57 @@ describe("AmazonSpApiClient", () => {
     await expect(client.getAplusContentDocument("doc-1")).resolves.toEqual({ contentRecord: { contentReferenceKey: "doc-1" } });
     expect(fetchMock.mock.calls[0][0]).toBe("https://sellingpartnerapi-na.amazon.com/aplus/2020-11-01/contentDocuments/doc-1?marketplaceId=ATVPDKIKX0DER&includedDataSet=CONTENTS%2CMETADATA");
   });
+
+  it("validates an A+ content document against ASIN relations without publishing changes", async () => {
+    const store = new MemoryCredentialStore();
+    await store.set("amazonSpApiApp", { clientId: "client", clientSecret: "secret" });
+    await store.set("amazonSpApiAuth", {
+      refreshToken: "refresh",
+      accessToken: "access",
+      expiresAt: Date.now() + 120_000,
+      sellingPartnerId: "A1SELLER",
+      region: "na",
+      marketplaceIds: ["ATVPDKIKX0DER"]
+    });
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ warnings: [], errors: [] }), {
+      status: 200,
+      headers: { "content-type": "application/json" }
+    }));
+    const client = new AmazonSpApiClient(store, fetchMock);
+    const contentDocument = { name: "Optimized A+ Gold", contentType: "EBC", locale: "en-US", contentModuleList: [] };
+
+    await expect(client.validateAplusContentDocument(["B0GDPKVXSZ"], contentDocument)).resolves.toEqual({ warnings: [], errors: [] });
+    expect(fetchMock).toHaveBeenCalledWith("https://sellingpartnerapi-na.amazon.com/aplus/2020-11-01/contentAsinValidations?marketplaceId=ATVPDKIKX0DER&asinSet=B0GDPKVXSZ", expect.objectContaining({
+      method: "POST",
+      headers: expect.objectContaining({
+        "content-type": "application/json",
+        "x-amz-access-token": "access",
+        host: "sellingpartnerapi-na.amazon.com"
+      }),
+      body: JSON.stringify({ contentDocument })
+    }));
+  });
+
+  it("fails SP-API requests cleanly when Amazon does not respond before the timeout", async () => {
+    vi.useFakeTimers();
+    const store = new MemoryCredentialStore();
+    await store.set("amazonSpApiApp", { clientId: "client", clientSecret: "secret" });
+    await store.set("amazonSpApiAuth", {
+      refreshToken: "refresh",
+      accessToken: "access",
+      expiresAt: Date.now() + 120_000,
+      sellingPartnerId: "A1SELLER",
+      region: "na",
+      marketplaceIds: ["ATVPDKIKX0DER"]
+    });
+    const fetchMock = vi.fn((_input, init?: RequestInit) => new Promise((_resolve, reject) => {
+      init?.signal?.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")));
+    }));
+    const client = new AmazonSpApiClient(store, fetchMock as never, undefined, 1000);
+
+    const promise = expect(client.getMarketplaceParticipations()).rejects.toMatchObject({ code: "AMAZON_SP_API_REQUEST_TIMEOUT" });
+    await vi.advanceTimersByTimeAsync(1000);
+    await promise;
+    vi.useRealTimers();
+  });
 });

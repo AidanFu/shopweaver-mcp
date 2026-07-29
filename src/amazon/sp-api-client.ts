@@ -11,7 +11,7 @@ const REGION_ENDPOINTS = {
 } as const;
 
 type RequestOptions = {
-  method?: "GET" | "PATCH";
+  method?: "GET" | "PATCH" | "POST";
   query?: Record<string, string>;
   body?: unknown;
 };
@@ -20,7 +20,8 @@ export class AmazonSpApiClient {
   constructor(
     private readonly store: CredentialStore,
     private readonly fetchImpl: FetchLike = fetch,
-    private readonly oauth = new AmazonSpApiOAuth(store, fetchImpl)
+    private readonly oauth = new AmazonSpApiOAuth(store, fetchImpl),
+    private readonly timeoutMs = 30_000
   ) {}
 
   async getMarketplaceParticipations() {
@@ -74,6 +75,19 @@ export class AmazonSpApiClient {
     });
   }
 
+  async validateAplusContentDocument(asinSet: string[], contentDocument: unknown) {
+    const auth = await this.store.get("amazonSpApiAuth");
+    if (!auth) throw new ShopWeaverError("AMAZON_SP_API_AUTH_REQUIRED", "Connect Amazon SP-API before using Amazon seller tools.");
+    return this.request("/aplus/2020-11-01/contentAsinValidations", {
+      method: "POST",
+      query: {
+        marketplaceId: auth.marketplaceIds[0],
+        asinSet: asinSet.join(",")
+      },
+      body: { contentDocument }
+    });
+  }
+
   private async request(path: string, options: RequestOptions = {}): Promise<unknown> {
     const auth = await this.store.get("amazonSpApiAuth");
     if (!auth) throw new ShopWeaverError("AMAZON_SP_API_AUTH_REQUIRED", "Connect Amazon SP-API before using Amazon seller tools.");
@@ -90,11 +104,24 @@ export class AmazonSpApiClient {
       "user-agent": "ShopWeaver/0.1.0 (Language=TypeScript)"
     };
     if (options.body !== undefined) headers["content-type"] = "application/json";
-    const response = await this.fetchImpl(url, {
-      method: options.method ?? "GET",
-      headers,
-      ...(options.body === undefined ? {} : { body: JSON.stringify(options.body) })
-    });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
+    let response: Response;
+    try {
+      response = await this.fetchImpl(url, {
+        method: options.method ?? "GET",
+        headers,
+        signal: controller.signal,
+        ...(options.body === undefined ? {} : { body: JSON.stringify(options.body) })
+      });
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") {
+        throw new ShopWeaverError("AMAZON_SP_API_REQUEST_TIMEOUT", "Amazon SP-API request timed out.", error);
+      }
+      throw error;
+    } finally {
+      clearTimeout(timeout);
+    }
     if (!response.ok) throw new ShopWeaverError("AMAZON_SP_API_REQUEST_FAILED", "Amazon SP-API request failed.");
     const contentType = response.headers.get("content-type") ?? "";
     if (contentType.includes("application/json")) return response.json();

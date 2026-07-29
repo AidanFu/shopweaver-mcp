@@ -1,14 +1,21 @@
-type TextEntry = { value?: string | null };
+type TextEntry = { value?: string | null; decoratorSet?: string[] };
 type AplusModule = {
   contentModuleType?: string;
   standardProductDescription?: { body?: { textList?: TextEntry[] | null } | null } | null;
   standardImageTextOverlay?: {
     block?: {
       image?: { altText?: string | null } | null;
-      headline?: { value?: string | null } | null;
+      headline?: { value?: string | null; decoratorSet?: string[] } | null;
       body?: { textList?: TextEntry[] | null } | null;
     } | null;
   } | null;
+};
+
+type AplusContentDocument = {
+  name: string;
+  contentType: string;
+  locale: string;
+  contentModuleList: AplusModule[];
 };
 
 export interface AmazonAplusContentInput {
@@ -31,6 +38,12 @@ export interface AmazonAplusContentRecommendation {
   genericAltTextCount: number;
   recommendations: string[];
   proposedModulePlan: string[];
+}
+
+export interface OptimizedAmazonAplusContext {
+  asin: string;
+  finish: string;
+  heightInches: number;
 }
 
 export function analyzeAmazonAplusContent(input: AmazonAplusContentInput): AmazonAplusContentRecommendation {
@@ -70,6 +83,81 @@ export function analyzeAmazonAplusContent(input: AmazonAplusContentInput): Amazo
       `Spec/reassurance module: 304 stainless steel, 3-bar vertical layout, ${input.expectedHeightInches ?? 38} inch height, ${capitalize(input.expectedFinish ?? "selected")} finish, seller support.`
     ]
   };
+}
+
+export function buildOptimizedAmazonAplusContentDocument(document: AplusContentDocument, context: OptimizedAmazonAplusContext): AplusContentDocument {
+  return {
+    ...document,
+    name: `ShopWeaver optimized ${context.asin} ${capitalize(context.finish)}`.slice(0, 100),
+    contentModuleList: document.contentModuleList.map((module, index) => {
+      if (module.contentModuleType === "STANDARD_PRODUCT_DESCRIPTION") return productDescriptionModule(context);
+      if (module.contentModuleType === "STANDARD_IMAGE_TEXT_OVERLAY") return imageTextOverlayModule(module, context, index);
+      return module;
+    })
+  };
+}
+
+function productDescriptionModule(context: OptimizedAmazonAplusContext): AplusModule {
+  return {
+    contentModuleType: "STANDARD_PRODUCT_DESCRIPTION",
+    standardProductDescription: {
+      body: {
+        textList: [{
+          value: `Upgrade daily bathroom comfort with a wall mounted electric towel warmer rack designed to warm and dry towels while saving floor space. The 3-bar vertical design uses 304-grade stainless steel with a polished ${capitalize(context.finish)} finish and a ${context.heightInches} inch profile for bathrooms, laundry rooms, spa areas, and compact wall spaces. A digital timer helps manage run time, and plug-in or hardwired installation options give flexibility for different setups.`,
+          decoratorSet: []
+        }]
+      }
+    }
+  };
+}
+
+function imageTextOverlayModule(module: AplusModule, context: OptimizedAmazonAplusContext, index: number): AplusModule {
+  const copy = overlayCopy(index);
+  return {
+    ...module,
+    standardImageTextOverlay: {
+      ...module.standardImageTextOverlay,
+      block: {
+        ...module.standardImageTextOverlay?.block,
+        image: {
+          ...module.standardImageTextOverlay?.block?.image,
+          altText: `${capitalize(context.finish)} electric towel warmer shown in a bathroom use case`
+        },
+        headline: { value: copy.headline, decoratorSet: [] },
+        body: { textList: [{ value: copy.body, decoratorSet: [] }] }
+      }
+    }
+  };
+}
+
+function overlayCopy(index: number): { headline: string; body: string } {
+  const copy = [
+    {
+      headline: "Warmer, drier towels after daily showers",
+      body: "Create a more comfortable bathroom routine while helping towels dry neatly on the wall mounted 3-bar rack."
+    },
+    {
+      headline: "Save floor space with a vertical wall mount",
+      body: "The narrow profile keeps towels organized without adding a freestanding rack to compact bathrooms or laundry rooms."
+    },
+    {
+      headline: "Timer control for everyday flexibility",
+      body: "Use the digital timer to manage warming time for morning showers, evening routines, or damp towel drying."
+    },
+    {
+      headline: "Plug-in or hardwired installation options",
+      body: "Choose the setup that fits your bathroom plan, and review measurements before purchase for the best wall placement."
+    },
+    {
+      headline: "304 stainless steel for daily bathroom use",
+      body: "A polished finish and 3-bar layout support regular towel warming while adding a clean bathroom upgrade."
+    },
+    {
+      headline: "Useful beyond bath towels",
+      body: "Use it for hand towels, swimsuits, laundry-room drying, spa spaces, or a warmer touch after cold mornings."
+    }
+  ];
+  return copy[Math.max(0, Math.min(index - 1, copy.length - 1))];
 }
 
 function moduleTexts(module: AplusModule): string[] {
