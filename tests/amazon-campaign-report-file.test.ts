@@ -62,7 +62,10 @@ describe("analyzeAmazonSearchTermReportFile", () => {
         "Orders": 0,
         "ACOS": "",
         "Reason": "High spend/clicks with no orders.",
-        "Approval Required": true
+        "Approval Required": true,
+        "Decision": "",
+        "Reviewed By": "",
+        "Review Notes": ""
       },
       {
         "Action ID": "budget_watch:campaign:campaign-1",
@@ -83,7 +86,10 @@ describe("analyzeAmazonSearchTermReportFile", () => {
         "Orders": 0,
         "ACOS": "",
         "Reason": "High campaign spend/clicks with no orders.",
-        "Approval Required": true
+        "Approval Required": true,
+        "Decision": "",
+        "Reviewed By": "",
+        "Review Notes": ""
       },
       {
         "Action ID": "exact_match_or_bid_review:ad_group:campaign-2:adgroup-2:electric-towel-warmer-gold",
@@ -104,7 +110,10 @@ describe("analyzeAmazonSearchTermReportFile", () => {
         "Orders": 2,
         "ACOS": 13.33,
         "Reason": "Orders with ACOS at or below 35%.",
-        "Approval Required": true
+        "Approval Required": true,
+        "Decision": "",
+        "Reviewed By": "",
+        "Review Notes": ""
       }
     ]);
     expect(XLSX.utils.sheet_to_json(workbook.Sheets["Waste Search Terms"])[0]).toMatchObject({

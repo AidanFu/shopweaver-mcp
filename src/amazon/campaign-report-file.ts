@@ -41,7 +41,10 @@ export async function writeAmazonSearchTermOptimizationWorkbook(reportFilePath: 
       "Orders": term.orders,
       "ACOS": "",
       "Reason": "High spend/clicks with no orders.",
-      "Approval Required": true
+      "Approval Required": true,
+      "Decision": "",
+      "Reviewed By": "",
+      "Review Notes": ""
     })),
     ...analysis.recommendations
       .filter(recommendation => recommendation.actionType === "budget_watch")
@@ -66,7 +69,10 @@ export async function writeAmazonSearchTermOptimizationWorkbook(reportFilePath: 
           "Orders": campaign.orders,
           "ACOS": campaign.acos || "",
           "Reason": "High campaign spend/clicks with no orders.",
-          "Approval Required": recommendation.sellerApprovalRequired
+          "Approval Required": recommendation.sellerApprovalRequired,
+          "Decision": "",
+          "Reviewed By": "",
+          "Review Notes": ""
         };
       }),
     ...analysis.efficientSearchTerms.map(term => ({
@@ -88,7 +94,10 @@ export async function writeAmazonSearchTermOptimizationWorkbook(reportFilePath: 
       "Orders": term.orders,
       "ACOS": term.acos,
       "Reason": "Orders with ACOS at or below 35%.",
-      "Approval Required": true
+      "Approval Required": true,
+      "Decision": "",
+      "Reviewed By": "",
+      "Review Notes": ""
     }))
   ]), "Action Plan");
   XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(analysis.wasteSearchTerms.map(term => ({
