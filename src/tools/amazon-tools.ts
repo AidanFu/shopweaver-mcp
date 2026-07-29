@@ -2,7 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { analyzeAmazonAplusContent, buildOptimizedAmazonAplusContentDocument } from "../amazon/aplus-optimization.js";
 import { writeAmazonAplusOptimizationWorkbook } from "../amazon/aplus-workbook.js";
-import { analyzeAmazonSearchTermReportFile, writeAmazonSearchTermOptimizationWorkbook } from "../amazon/campaign-report-file.js";
+import { analyzeAmazonSearchTermReportFile, readAmazonAdsActionDecisions, writeAmazonSearchTermOptimizationWorkbook } from "../amazon/campaign-report-file.js";
 import { analyzeAmazonCampaignMetrics, analyzeAmazonSearchTermReportRows } from "../amazon/campaign-optimization.js";
 import { analyzeAmazonExistingListing, buildAmazonListingCopyPatch } from "../amazon/listing-optimization.js";
 import type { AmazonAdsClient } from "../amazon/ads-client.js";
@@ -310,6 +310,13 @@ export function registerAmazonTools(server: McpServer, store: CredentialStore, a
       outputPath: z.string().min(1)
     }
   }, async ({ reportFilePath, outputPath }) => result(await writeAmazonSearchTermOptimizationWorkbook(reportFilePath, outputPath)));
+
+  server.registerTool("amazon_ads_read_action_decisions", {
+    description: "Read approved, rejected, or deferred rows from a reviewed local Amazon Ads optimization workbook. This is read-only and does not change campaigns, bids, budgets, keywords, negatives, or ads.",
+    inputSchema: {
+      filePath: z.string().min(1)
+    }
+  }, async ({ filePath }) => result(await readAmazonAdsActionDecisions(filePath)));
 
   if (amazonAds) {
     server.registerTool("amazon_ads_list_profiles", {

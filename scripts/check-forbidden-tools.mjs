@@ -12,6 +12,7 @@ const allowed = [
   "amazon_ads_list_sp_keywords",
   "amazon_ads_optimize_sp_search_term_report",
   "amazon_ads_optimize_sp_search_term_report_file",
+  "amazon_ads_read_action_decisions",
   "amazon_ads_write_sp_search_term_optimization_workbook",
   "amazon_get_aplus_content_document",
   "amazon_get_aplus_publish_records",
