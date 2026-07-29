@@ -48,6 +48,16 @@ describe("analyzeAmazonCampaignMetrics", () => {
     ])).toEqual({
       rowCount: 3,
       campaignCount: 2,
+      totalSpend: 118,
+      totalSales: 180,
+      blendedAcos: 65.56,
+      wasteSearchTerms: [
+        { campaignId: "campaign-1", campaignName: "Auto Discovery", searchTerm: "free crochet pattern", clicks: 80, spend: 48, sales: 0, orders: 0, recommendation: "Add as negative exact candidate after review; high spend/clicks with no orders." },
+        { campaignId: "campaign-1", campaignName: "Auto Discovery", searchTerm: "crochet keychain", clicks: 45, spend: 30, sales: 0, orders: 0, recommendation: "Add as negative exact candidate after review; high spend/clicks with no orders." }
+      ],
+      efficientSearchTerms: [
+        { campaignId: "campaign-2", campaignName: "Manual Exact Winners", searchTerm: "crochet bag charm", clicks: 50, spend: 40, sales: 180, orders: 6, acos: 22.22, recommendation: "Keep active; consider moving to exact match or modest bid increase only after budget waste is reduced." }
+      ],
       recommendations: [{
         campaignId: "campaign-1",
         campaignName: "Auto Discovery",
@@ -64,6 +74,23 @@ describe("analyzeAmazonCampaignMetrics", () => {
         actionType: "budget_bid_review",
         recommendation: "Review controlled budget or bid increases for efficient terms; keep changes seller-approved and monitor ACOS after each adjustment.",
         sellerApprovalRequired: true
+      }]
+    });
+  });
+
+  it("normalizes exported report column names for waste-term review", () => {
+    expect(analyzeAmazonSearchTermReportRows([
+      { "Campaign Name": "Auto Discovery", "Campaign ID": "campaign-1", "Customer Search Term": "free towel warmer manual", Clicks: "18", Spend: "$16.25", "7 Day Total Sales": "$0.00", "7 Day Total Orders (#)": "0" }
+    ])).toMatchObject({
+      totalSpend: 16.25,
+      wasteSearchTerms: [{
+        campaignId: "campaign-1",
+        campaignName: "Auto Discovery",
+        searchTerm: "free towel warmer manual",
+        clicks: 18,
+        spend: 16.25,
+        sales: 0,
+        orders: 0
       }]
     });
   });

@@ -22,7 +22,27 @@ export interface AmazonCampaignRecommendation {
 export interface AmazonSearchTermReportAnalysis {
   rowCount: number;
   campaignCount: number;
+  totalSpend: number;
+  totalSales: number;
+  blendedAcos: number;
+  wasteSearchTerms: AmazonWasteSearchTerm[];
+  efficientSearchTerms: AmazonEfficientSearchTerm[];
   recommendations: AmazonCampaignRecommendation[];
+}
+
+export interface AmazonWasteSearchTerm {
+  campaignId: string;
+  campaignName: string;
+  searchTerm: string;
+  clicks: number;
+  spend: number;
+  sales: number;
+  orders: number;
+  recommendation: string;
+}
+
+export interface AmazonEfficientSearchTerm extends AmazonWasteSearchTerm {
+  acos: number;
 }
 
 export function analyzeAmazonCampaignMetrics(metrics: AmazonCampaignMetrics): AmazonCampaignRecommendation {
@@ -61,12 +81,20 @@ export function analyzeAmazonCampaignMetrics(metrics: AmazonCampaignMetrics): Am
 
 export function analyzeAmazonSearchTermReportRows(rows: Array<Record<string, unknown>>): AmazonSearchTermReportAnalysis {
   const campaigns = new Map<string, AmazonCampaignMetrics>();
+  const wasteSearchTerms: AmazonWasteSearchTerm[] = [];
+  const efficientSearchTerms: AmazonEfficientSearchTerm[] = [];
   for (const row of rows) {
-    const campaignId = text(row.campaignId);
+    const campaignId = fieldText(row, ["campaignId", "Campaign ID", "Campaign Id"]);
     if (!campaignId) continue;
+    const searchTerm = fieldText(row, ["searchTerm", "Customer Search Term", "Search Term"]);
+    const campaignName = fieldText(row, ["campaignName", "Campaign Name"]) || campaignId;
+    const clicks = fieldNumber(row, ["clicks", "Clicks"]);
+    const spend = fieldNumber(row, ["cost", "Spend", "Cost"]);
+    const sales = fieldNumber(row, ["sales7d", "7 Day Total Sales", "Sales"]);
+    const orders = fieldNumber(row, ["purchases7d", "7 Day Total Orders (#)", "Orders"]);
     const current = campaigns.get(campaignId) ?? {
       campaignId,
-      campaignName: text(row.campaignName) || campaignId,
+      campaignName,
       spend: 0,
       sales: 0,
       clicks: 0,
@@ -74,21 +102,54 @@ export function analyzeAmazonSearchTermReportRows(rows: Array<Record<string, unk
       acos: 0,
       searchTerms: ""
     };
-    const searchTerms = [current.searchTerms, text(row.searchTerm)].filter(Boolean);
-    current.spend += number(row.cost);
-    current.sales += number(row.sales7d);
-    current.clicks += number(row.clicks);
-    current.orders += number(row.purchases7d);
+    const searchTerms = [current.searchTerms, searchTerm].filter(Boolean);
+    current.spend += spend;
+    current.sales += sales;
+    current.clicks += clicks;
+    current.orders += orders;
     current.searchTerms = Array.from(new Set(searchTerms)).join("; ");
     campaigns.set(campaignId, current);
+    if (searchTerm && orders === 0 && sales === 0 && (clicks >= 15 || spend >= 10)) {
+      wasteSearchTerms.push({
+        campaignId,
+        campaignName,
+        searchTerm,
+        clicks,
+        spend,
+        sales,
+        orders,
+        recommendation: "Add as negative exact candidate after review; high spend/clicks with no orders."
+      });
+    }
+    const acos = sales > 0 ? Number(((spend / sales) * 100).toFixed(2)) : 0;
+    if (searchTerm && orders > 0 && acos > 0 && acos <= 35) {
+      efficientSearchTerms.push({
+        campaignId,
+        campaignName,
+        searchTerm,
+        clicks,
+        spend,
+        sales,
+        orders,
+        acos,
+        recommendation: "Keep active; consider moving to exact match or modest bid increase only after budget waste is reduced."
+      });
+    }
   }
   const metrics = [...campaigns.values()].map(campaign => ({
     ...campaign,
     acos: campaign.sales > 0 ? Number(((campaign.spend / campaign.sales) * 100).toFixed(2)) : 0
   }));
+  const totalSpend = Number(metrics.reduce((sum, campaign) => sum + campaign.spend, 0).toFixed(2));
+  const totalSales = Number(metrics.reduce((sum, campaign) => sum + campaign.sales, 0).toFixed(2));
   return {
     rowCount: rows.length,
     campaignCount: metrics.length,
+    totalSpend,
+    totalSales,
+    blendedAcos: totalSales > 0 ? Number(((totalSpend / totalSales) * 100).toFixed(2)) : 0,
+    wasteSearchTerms,
+    efficientSearchTerms,
     recommendations: metrics.map(analyzeAmazonCampaignMetrics)
   };
 }
@@ -98,6 +159,21 @@ function text(value: unknown): string {
 }
 
 function number(value: unknown): number {
-  const parsed = Number(value ?? 0);
+  const parsed = Number(String(value ?? 0).replace(/[$,%]/g, ""));
   return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function fieldText(row: Record<string, unknown>, keys: string[]): string {
+  for (const key of keys) {
+    const value = text(row[key]);
+    if (value) return value;
+  }
+  return "";
+}
+
+function fieldNumber(row: Record<string, unknown>, keys: string[]): number {
+  for (const key of keys) {
+    if (row[key] !== undefined && row[key] !== null && text(row[key]) !== "") return number(row[key]);
+  }
+  return 0;
 }
