@@ -94,4 +94,46 @@ describe("AmazonSpApiClient", () => {
       body: JSON.stringify(patch)
     }));
   });
+
+  it("searches A+ publish records for one ASIN", async () => {
+    const store = new MemoryCredentialStore();
+    await store.set("amazonSpApiApp", { clientId: "client", clientSecret: "secret" });
+    await store.set("amazonSpApiAuth", {
+      refreshToken: "refresh",
+      accessToken: "access",
+      expiresAt: Date.now() + 120_000,
+      sellingPartnerId: "A1SELLER",
+      region: "na",
+      marketplaceIds: ["ATVPDKIKX0DER"]
+    });
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ publishRecordList: [] }), {
+      status: 200,
+      headers: { "content-type": "application/json" }
+    }));
+    const client = new AmazonSpApiClient(store, fetchMock);
+
+    await expect(client.getAplusContentPublishRecords("B0GDPKVXSZ")).resolves.toEqual({ publishRecordList: [] });
+    expect(fetchMock.mock.calls[0][0]).toBe("https://sellingpartnerapi-na.amazon.com/aplus/2020-11-01/contentPublishRecords?marketplaceId=ATVPDKIKX0DER&asin=B0GDPKVXSZ");
+  });
+
+  it("gets an A+ content document with content and metadata", async () => {
+    const store = new MemoryCredentialStore();
+    await store.set("amazonSpApiApp", { clientId: "client", clientSecret: "secret" });
+    await store.set("amazonSpApiAuth", {
+      refreshToken: "refresh",
+      accessToken: "access",
+      expiresAt: Date.now() + 120_000,
+      sellingPartnerId: "A1SELLER",
+      region: "na",
+      marketplaceIds: ["ATVPDKIKX0DER"]
+    });
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ contentRecord: { contentReferenceKey: "doc-1" } }), {
+      status: 200,
+      headers: { "content-type": "application/json" }
+    }));
+    const client = new AmazonSpApiClient(store, fetchMock);
+
+    await expect(client.getAplusContentDocument("doc-1")).resolves.toEqual({ contentRecord: { contentReferenceKey: "doc-1" } });
+    expect(fetchMock.mock.calls[0][0]).toBe("https://sellingpartnerapi-na.amazon.com/aplus/2020-11-01/contentDocuments/doc-1?marketplaceId=ATVPDKIKX0DER&includedDataSet=CONTENTS%2CMETADATA");
+  });
 });

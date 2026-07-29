@@ -52,6 +52,28 @@ export class AmazonSpApiClient {
     });
   }
 
+  async getAplusContentPublishRecords(asin: string) {
+    const auth = await this.store.get("amazonSpApiAuth");
+    if (!auth) throw new ShopWeaverError("AMAZON_SP_API_AUTH_REQUIRED", "Connect Amazon SP-API before using Amazon seller tools.");
+    return this.request("/aplus/2020-11-01/contentPublishRecords", {
+      query: {
+        marketplaceId: auth.marketplaceIds[0],
+        asin
+      }
+    });
+  }
+
+  async getAplusContentDocument(contentReferenceKey: string) {
+    const auth = await this.store.get("amazonSpApiAuth");
+    if (!auth) throw new ShopWeaverError("AMAZON_SP_API_AUTH_REQUIRED", "Connect Amazon SP-API before using Amazon seller tools.");
+    return this.request(`/aplus/2020-11-01/contentDocuments/${encodeURIComponent(contentReferenceKey)}`, {
+      query: {
+        marketplaceId: auth.marketplaceIds[0],
+        includedDataSet: "CONTENTS,METADATA"
+      }
+    });
+  }
+
   private async request(path: string, options: RequestOptions = {}): Promise<unknown> {
     const auth = await this.store.get("amazonSpApiAuth");
     if (!auth) throw new ShopWeaverError("AMAZON_SP_API_AUTH_REQUIRED", "Connect Amazon SP-API before using Amazon seller tools.");

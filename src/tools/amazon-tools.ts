@@ -1,5 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
+import { analyzeAmazonAplusContent } from "../amazon/aplus-optimization.js";
 import { analyzeAmazonCampaignMetrics, analyzeAmazonSearchTermReportRows } from "../amazon/campaign-optimization.js";
 import { analyzeAmazonExistingListing, buildAmazonListingCopyPatch } from "../amazon/listing-optimization.js";
 import type { AmazonAdsClient } from "../amazon/ads-client.js";
@@ -129,6 +130,39 @@ export function registerAmazonTools(server: McpServer, store: CredentialStore, a
     description: "Read one existing Amazon listing item by seller SKU through SP-API for optimization review. This is read-only and does not change listings.",
     inputSchema: { sku: z.string().min(1) }
   }, async ({ sku }) => result(await amazon.getListingItem(sku)));
+
+  server.registerTool("amazon_get_aplus_publish_records", {
+    description: "Read published A+ Content records for one ASIN through SP-API. This is read-only and does not change A+ content.",
+    inputSchema: { asin: z.string().min(1) }
+  }, async ({ asin }) => result(await amazon.getAplusContentPublishRecords(asin)));
+
+  server.registerTool("amazon_get_aplus_content_document", {
+    description: "Read one A+ Content document with contents and metadata through SP-API. This is read-only and does not change A+ content.",
+    inputSchema: { contentReferenceKey: z.string().min(1) }
+  }, async ({ contentReferenceKey }) => result(await amazon.getAplusContentDocument(contentReferenceKey)));
+
+  server.registerTool("amazon_optimize_aplus_content", {
+    description: "Read the published English A+ Content document for one ASIN and return review-only optimization recommendations. This does not change A+ content.",
+    inputSchema: {
+      asin: z.string().min(1),
+      expectedFinish: z.string().min(1).optional(),
+      expectedHeightInches: z.number().positive().optional()
+    }
+  }, async ({ asin, expectedFinish, expectedHeightInches }) => {
+    const records = await amazon.getAplusContentPublishRecords(asin) as { publishRecordList?: Array<{ locale?: string; contentReferenceKey?: string }> };
+    const record = records.publishRecordList?.find(item => item.locale === "en_US") ?? records.publishRecordList?.[0];
+    if (!record?.contentReferenceKey) throw new ShopWeaverError("AMAZON_APLUS_CONTENT_NOT_FOUND", "No published A+ content record was found for this ASIN.");
+    const document = await amazon.getAplusContentDocument(record.contentReferenceKey) as { contentRecord?: unknown };
+    return result({
+      contentReferenceKey: record.contentReferenceKey,
+      recommendation: analyzeAmazonAplusContent({
+        asin,
+        expectedFinish,
+        expectedHeightInches,
+        contentRecord: (document.contentRecord ?? document) as never
+      })
+    });
+  });
 
   server.registerTool("amazon_optimize_existing_listing", {
     description: "Read one existing Amazon listing by seller SKU and return review-only optimization recommendations. This does not change the listing.",
