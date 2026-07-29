@@ -21,6 +21,26 @@ export async function writeAmazonSearchTermOptimizationWorkbook(reportFilePath: 
     "Waste Search Terms": analysis.wasteSearchTerms.length,
     "Efficient Search Terms": analysis.efficientSearchTerms.length
   }]), "Summary");
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet([
+    ...analysis.wasteSearchTerms.map(term => ({
+      "Priority": "high",
+      "Action": "negative_exact_candidate",
+      "Campaign ID": term.campaignId,
+      "Campaign Name": term.campaignName,
+      "Search Term": term.searchTerm,
+      "Reason": "High spend/clicks with no orders.",
+      "Approval Required": true
+    })),
+    ...analysis.efficientSearchTerms.map(term => ({
+      "Priority": "normal",
+      "Action": "exact_match_or_bid_review",
+      "Campaign ID": term.campaignId,
+      "Campaign Name": term.campaignName,
+      "Search Term": term.searchTerm,
+      "Reason": "Orders with ACOS at or below 35%.",
+      "Approval Required": true
+    }))
+  ]), "Action Plan");
   XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(analysis.wasteSearchTerms.map(term => ({
     "Campaign ID": term.campaignId,
     "Campaign Name": term.campaignName,

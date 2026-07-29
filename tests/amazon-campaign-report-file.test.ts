@@ -41,7 +41,27 @@ describe("analyzeAmazonSearchTermReportFile", () => {
       efficientSearchTermCount: 1
     });
     const workbook = XLSX.readFile(output);
-    expect(workbook.SheetNames).toEqual(["Summary", "Waste Search Terms", "Efficient Search Terms", "Campaign Recommendations"]);
+    expect(workbook.SheetNames).toEqual(["Summary", "Action Plan", "Waste Search Terms", "Efficient Search Terms", "Campaign Recommendations"]);
+    expect(XLSX.utils.sheet_to_json(workbook.Sheets["Action Plan"])).toEqual([
+      {
+        "Priority": "high",
+        "Action": "negative_exact_candidate",
+        "Campaign ID": "campaign-1",
+        "Campaign Name": "Auto Discovery",
+        "Search Term": "free towel warmer manual",
+        "Reason": "High spend/clicks with no orders.",
+        "Approval Required": true
+      },
+      {
+        "Priority": "normal",
+        "Action": "exact_match_or_bid_review",
+        "Campaign ID": "campaign-2",
+        "Campaign Name": "Manual Exact",
+        "Search Term": "electric towel warmer gold",
+        "Reason": "Orders with ACOS at or below 35%.",
+        "Approval Required": true
+      }
+    ]);
     expect(XLSX.utils.sheet_to_json(workbook.Sheets["Waste Search Terms"])[0]).toMatchObject({
       "Search Term": "free towel warmer manual",
       "Recommendation": "Add as negative exact candidate after review; high spend/clicks with no orders."
