@@ -27,6 +27,8 @@ export async function writeAmazonSearchTermOptimizationWorkbook(reportFilePath: 
       "Action": "negative_exact_candidate",
       "Campaign ID": term.campaignId,
       "Campaign Name": term.campaignName,
+      "Ad Group ID": term.adGroupId,
+      "Ad Group Name": term.adGroupName,
       "Search Term": term.searchTerm,
       "Reason": "High spend/clicks with no orders.",
       "Approval Required": true
@@ -38,6 +40,8 @@ export async function writeAmazonSearchTermOptimizationWorkbook(reportFilePath: 
         "Action": recommendation.actionType,
         "Campaign ID": recommendation.campaignId,
         "Campaign Name": recommendation.campaignName,
+        "Ad Group ID": "",
+        "Ad Group Name": "",
         "Search Term": "",
         "Reason": "High campaign spend/clicks with no orders.",
         "Approval Required": recommendation.sellerApprovalRequired
@@ -47,6 +51,8 @@ export async function writeAmazonSearchTermOptimizationWorkbook(reportFilePath: 
       "Action": "exact_match_or_bid_review",
       "Campaign ID": term.campaignId,
       "Campaign Name": term.campaignName,
+      "Ad Group ID": term.adGroupId,
+      "Ad Group Name": term.adGroupName,
       "Search Term": term.searchTerm,
       "Reason": "Orders with ACOS at or below 35%.",
       "Approval Required": true
@@ -55,6 +61,8 @@ export async function writeAmazonSearchTermOptimizationWorkbook(reportFilePath: 
   XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(analysis.wasteSearchTerms.map(term => ({
     "Campaign ID": term.campaignId,
     "Campaign Name": term.campaignName,
+    "Ad Group ID": term.adGroupId,
+    "Ad Group Name": term.adGroupName,
     "Search Term": term.searchTerm,
     "Clicks": term.clicks,
     "Spend": term.spend,
@@ -65,6 +73,8 @@ export async function writeAmazonSearchTermOptimizationWorkbook(reportFilePath: 
   XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(analysis.efficientSearchTerms.map(term => ({
     "Campaign ID": term.campaignId,
     "Campaign Name": term.campaignName,
+    "Ad Group ID": term.adGroupId,
+    "Ad Group Name": term.adGroupName,
     "Search Term": term.searchTerm,
     "Clicks": term.clicks,
     "Spend": term.spend,

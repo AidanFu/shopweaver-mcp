@@ -10,16 +10,16 @@ describe("analyzeAmazonSearchTermReportFile", () => {
     const dir = await mkdtemp(join(tmpdir(), "shopweaver-amazon-ads-"));
     const file = join(dir, "search-terms.csv");
     await writeFile(file, [
-      "Campaign Name,Campaign ID,Customer Search Term,Clicks,Spend,7 Day Total Sales,7 Day Total Orders (#)",
-      "Auto Discovery,campaign-1,free towel warmer manual,18,$16.25,$0.00,0",
-      "Manual Exact,campaign-2,electric towel warmer gold,22,$12.00,$89.99,2"
+      "Campaign Name,Campaign ID,Ad Group Name,Ad Group ID,Customer Search Term,Clicks,Spend,7 Day Total Sales,7 Day Total Orders (#)",
+      "Auto Discovery,campaign-1,Discovery Ad Group,adgroup-1,free towel warmer manual,18,$16.25,$0.00,0",
+      "Manual Exact,campaign-2,Exact Winners,adgroup-2,electric towel warmer gold,22,$12.00,$89.99,2"
     ].join("\n"));
 
     await expect(analyzeAmazonSearchTermReportFile(file)).resolves.toMatchObject({
       rowCount: 2,
       totalSpend: 28.25,
-      wasteSearchTerms: [{ searchTerm: "free towel warmer manual", spend: 16.25 }],
-      efficientSearchTerms: [{ searchTerm: "electric towel warmer gold", orders: 2 }]
+      wasteSearchTerms: [{ adGroupId: "adgroup-1", adGroupName: "Discovery Ad Group", searchTerm: "free towel warmer manual", spend: 16.25 }],
+      efficientSearchTerms: [{ adGroupId: "adgroup-2", adGroupName: "Exact Winners", searchTerm: "electric towel warmer gold", orders: 2 }]
     });
   });
 
@@ -28,9 +28,9 @@ describe("analyzeAmazonSearchTermReportFile", () => {
     const report = join(dir, "search-terms.csv");
     const output = join(dir, "optimization.xlsx");
     await writeFile(report, [
-      "Campaign Name,Campaign ID,Customer Search Term,Clicks,Spend,7 Day Total Sales,7 Day Total Orders (#)",
-      "Auto Discovery,campaign-1,free towel warmer manual,31,$26.25,$0.00,0",
-      "Manual Exact,campaign-2,electric towel warmer gold,22,$12.00,$89.99,2"
+      "Campaign Name,Campaign ID,Ad Group Name,Ad Group ID,Customer Search Term,Clicks,Spend,7 Day Total Sales,7 Day Total Orders (#)",
+      "Auto Discovery,campaign-1,Discovery Ad Group,adgroup-1,free towel warmer manual,31,$26.25,$0.00,0",
+      "Manual Exact,campaign-2,Exact Winners,adgroup-2,electric towel warmer gold,22,$12.00,$89.99,2"
     ].join("\n"));
 
     await expect(writeAmazonSearchTermOptimizationWorkbook(report, output)).resolves.toMatchObject({
@@ -48,6 +48,8 @@ describe("analyzeAmazonSearchTermReportFile", () => {
         "Action": "negative_exact_candidate",
         "Campaign ID": "campaign-1",
         "Campaign Name": "Auto Discovery",
+        "Ad Group ID": "adgroup-1",
+        "Ad Group Name": "Discovery Ad Group",
         "Search Term": "free towel warmer manual",
         "Reason": "High spend/clicks with no orders.",
         "Approval Required": true
@@ -57,6 +59,8 @@ describe("analyzeAmazonSearchTermReportFile", () => {
         "Action": "budget_watch",
         "Campaign ID": "campaign-1",
         "Campaign Name": "Auto Discovery",
+        "Ad Group ID": "",
+        "Ad Group Name": "",
         "Search Term": "",
         "Reason": "High campaign spend/clicks with no orders.",
         "Approval Required": true
@@ -66,12 +70,16 @@ describe("analyzeAmazonSearchTermReportFile", () => {
         "Action": "exact_match_or_bid_review",
         "Campaign ID": "campaign-2",
         "Campaign Name": "Manual Exact",
+        "Ad Group ID": "adgroup-2",
+        "Ad Group Name": "Exact Winners",
         "Search Term": "electric towel warmer gold",
         "Reason": "Orders with ACOS at or below 35%.",
         "Approval Required": true
       }
     ]);
     expect(XLSX.utils.sheet_to_json(workbook.Sheets["Waste Search Terms"])[0]).toMatchObject({
+      "Ad Group ID": "adgroup-1",
+      "Ad Group Name": "Discovery Ad Group",
       "Search Term": "free towel warmer manual",
       "Recommendation": "Add as negative exact candidate after review; high spend/clicks with no orders."
     });
