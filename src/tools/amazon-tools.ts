@@ -6,12 +6,17 @@ import type { AmazonAdsClient } from "../amazon/ads-client.js";
 import type { AmazonSpApiClient } from "../amazon/sp-api-client.js";
 import type { CredentialStore } from "../credentials/types.js";
 import { ShopWeaverError } from "../errors.js";
+import type { ConfirmationStore } from "../writes/confirmations.js";
 
 function result(value: unknown) {
   return { content: [{ type: "text" as const, text: JSON.stringify(value, null, 2) }], structuredContent: value as Record<string, unknown> };
 }
 
 type AmazonListingPayload = { summaries?: Array<{ productType?: string }> };
+type AmazonListingCopyPreview = {
+  sku: string;
+  patch: ReturnType<typeof buildAmazonListingCopyPatch>;
+};
 
 export async function amazonConnectionStatus(store: CredentialStore) {
   const [app, auth] = await Promise.all([store.get("amazonSpApiApp"), store.get("amazonSpApiAuth")]);
@@ -33,7 +38,78 @@ export async function amazonAdsConnectionStatus(store: CredentialStore) {
   };
 }
 
-export function registerAmazonTools(server: McpServer, store: CredentialStore, amazon: AmazonSpApiClient, amazonAds?: AmazonAdsClient): void {
+export class AmazonListingWriteService {
+  constructor(
+    private readonly store: CredentialStore,
+    private readonly amazon: Pick<AmazonSpApiClient, "getListingItem" | "patchListingItem">,
+    private readonly confirmations: ConfirmationStore
+  ) {}
+
+  async previewListingCopyUpdate(sku: string) {
+    const preview = await buildListingCopyPreview(this.store, this.amazon, sku);
+    return {
+      operation: "amazon_update_listing_copy" as const,
+      sku,
+      productType: preview.patch.productType,
+      patch: preview.patch,
+      validation: await this.amazon.patchListingItem(sku, preview.patch, { validationPreview: true }),
+      applied: false,
+      ...this.confirmations.issue("amazon_update_listing_copy", 0, preview),
+      warning: "This validation preview did not change the Amazon listing. Confirm with the returned token to apply the exact patch."
+    };
+  }
+
+  async validateListingCopyUpdate(sku: string) {
+    const preview = await buildListingCopyPreview(this.store, this.amazon, sku);
+    return {
+      operation: "validate_listing_copy_update" as const,
+      sku,
+      productType: preview.patch.productType,
+      patch: preview.patch,
+      validation: await this.amazon.patchListingItem(sku, preview.patch, { validationPreview: true }),
+      applied: false
+    };
+  }
+
+  async confirmListingCopyUpdate(sku: string, confirmationToken: string) {
+    const preview = await buildListingCopyPreview(this.store, this.amazon, sku);
+    this.confirmations.consume(confirmationToken, "amazon_update_listing_copy", 0, preview);
+    return {
+      operation: "amazon_update_listing_copy" as const,
+      sku,
+      productType: preview.patch.productType,
+      patch: preview.patch,
+      result: await this.amazon.patchListingItem(sku, preview.patch),
+      applied: true
+    };
+  }
+}
+
+async function buildListingCopyPreview(store: CredentialStore, amazon: Pick<AmazonSpApiClient, "getListingItem">, sku: string): Promise<AmazonListingCopyPreview> {
+  const auth = await store.get("amazonSpApiAuth");
+  if (!auth) throw new ShopWeaverError("AMAZON_SP_API_AUTH_REQUIRED", "Connect Amazon SP-API before using Amazon seller tools.");
+  const listing = await amazon.getListingItem(sku) as { payload?: AmazonListingPayload };
+  const listingPayload = (listing.payload ?? listing) as AmazonListingPayload;
+  const recommendation = analyzeAmazonExistingListing(listingPayload as never);
+  const productType = listingPayload.summaries?.[0]?.productType;
+  const marketplaceId = auth.marketplaceIds[0];
+  if (!productType || !marketplaceId || !recommendation.optimizedTitle || !recommendation.optimizedBullets || !recommendation.optimizedDescription || !recommendation.optimizedBackendSearchTerms) {
+    throw new ShopWeaverError("AMAZON_LISTING_OPTIMIZED_COPY_UNAVAILABLE", "ShopWeaver could not generate optimized copy for this Amazon listing yet.");
+  }
+  return {
+    sku,
+    patch: buildAmazonListingCopyPatch({
+      marketplaceId,
+      productType,
+      title: recommendation.optimizedTitle,
+      bullets: recommendation.optimizedBullets,
+      description: recommendation.optimizedDescription,
+      backendSearchTerms: recommendation.optimizedBackendSearchTerms
+    })
+  };
+}
+
+export function registerAmazonTools(server: McpServer, store: CredentialStore, amazon: AmazonSpApiClient, amazonAds?: AmazonAdsClient, amazonListingWrites?: AmazonListingWriteService): void {
   server.registerTool("amazon_connection_status", {
     description: "Report whether ShopWeaver has Amazon SP-API credentials and seller authorization without revealing secrets.",
     inputSchema: {}
@@ -63,33 +139,29 @@ export function registerAmazonTools(server: McpServer, store: CredentialStore, a
     description: "Build optimized copy for one existing Amazon listing and submit an SP-API validation preview. This does not apply listing changes.",
     inputSchema: { sku: z.string().min(1) }
   }, async ({ sku }) => {
-    const auth = await store.get("amazonSpApiAuth");
-    if (!auth) throw new ShopWeaverError("AMAZON_SP_API_AUTH_REQUIRED", "Connect Amazon SP-API before using Amazon seller tools.");
-    const listing = await amazon.getListingItem(sku) as { payload?: AmazonListingPayload };
-    const listingPayload = (listing.payload ?? listing) as AmazonListingPayload;
-    const recommendation = analyzeAmazonExistingListing(listingPayload as never);
-    const productType = listingPayload.summaries?.[0]?.productType;
-    const marketplaceId = auth.marketplaceIds[0];
-    if (!productType || !recommendation.optimizedTitle || !recommendation.optimizedBullets || !recommendation.optimizedDescription || !recommendation.optimizedBackendSearchTerms) {
-      throw new ShopWeaverError("AMAZON_LISTING_OPTIMIZED_COPY_UNAVAILABLE", "ShopWeaver could not generate optimized copy for this Amazon listing yet.");
-    }
-    const patch = buildAmazonListingCopyPatch({
-      marketplaceId,
-      productType,
-      title: recommendation.optimizedTitle,
-      bullets: recommendation.optimizedBullets,
-      description: recommendation.optimizedDescription,
-      backendSearchTerms: recommendation.optimizedBackendSearchTerms
-    });
+    const preview = await buildListingCopyPreview(store, amazon, sku);
     return result({
       operation: "validate_listing_copy_update",
       sku,
-      productType,
-      patch,
-      validation: await amazon.patchListingItem(sku, patch, { validationPreview: true }),
+      productType: preview.patch.productType,
+      patch: preview.patch,
+      validation: await amazon.patchListingItem(sku, preview.patch, { validationPreview: true }),
       applied: false
     });
   });
+
+  if (amazonListingWrites) {
+    server.registerTool("amazon_update_listing_copy", {
+      description: "Preview or confirm applying optimized title, bullets, description, and backend search terms to an existing Amazon listing.",
+      inputSchema: {
+        mode: z.enum(["preview", "confirm"]).default("preview"),
+        sku: z.string().min(1),
+        confirmationToken: z.string().min(20).optional()
+      }
+    }, async ({ mode, sku, confirmationToken }) => result(mode === "preview"
+      ? await amazonListingWrites.previewListingCopyUpdate(sku)
+      : await amazonListingWrites.confirmListingCopyUpdate(sku, confirmationToken ?? "")));
+  }
 
   server.registerTool("amazon_optimize_campaign_metrics", {
     description: "Return review-only Amazon campaign optimization recommendations from provided campaign metrics. This does not change campaigns, bids, budgets, keywords, negatives, or ads.",

@@ -9,6 +9,7 @@ import { OrderService } from "../src/etsy/orders.js";
 import { DriveImageUploadService } from "../src/import/drive-image-upload.js";
 import { DriveImportService } from "../src/import/drive-import.js";
 import { createServer } from "../src/server.js";
+import { AmazonListingWriteService } from "../src/tools/amazon-tools.js";
 import { GoogleFolderToolService } from "../src/tools/google-tools.js";
 import { DraftWriteService } from "../src/tools/write-tools.js";
 import { ConfirmationStore } from "../src/writes/confirmations.js";
@@ -26,7 +27,8 @@ describe("MCP integration", () => {
     const driveImageUploads = new DriveImageUploadService(clientApi, listings, {} as never, store, new ConfirmationStore());
     const amazonAds = new AmazonAdsClient(store, vi.fn());
     const amazonSpApi = new AmazonSpApiClient(store, vi.fn());
-    const server = createServer({ store, listings, orders, writes, googleFolders, driveImports, driveImageUploads, amazonAds, amazonSpApi });
+    const amazonListingWrites = new AmazonListingWriteService(store, amazonSpApi, new ConfirmationStore());
+    const server = createServer({ store, listings, orders, writes, googleFolders, driveImports, driveImageUploads, amazonAds, amazonSpApi, amazonListingWrites });
     const client = new Client({ name: "test", version: "1" });
     const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
     await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
@@ -46,6 +48,7 @@ describe("MCP integration", () => {
       "amazon_get_marketplace_participations",
       "amazon_optimize_campaign_metrics",
       "amazon_optimize_existing_listing",
+      "amazon_update_listing_copy",
       "amazon_validate_listing_copy_update",
       "etsy_connection_status",
       "etsy_create_draft_listing",

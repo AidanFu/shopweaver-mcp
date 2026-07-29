@@ -6,7 +6,7 @@ import type { ListingService } from "./etsy/listings.js";
 import type { OrderService } from "./etsy/orders.js";
 import type { DriveImageUploadService } from "./import/drive-image-upload.js";
 import type { DriveImportService } from "./import/drive-import.js";
-import { registerAmazonTools } from "./tools/amazon-tools.js";
+import { registerAmazonTools, type AmazonListingWriteService } from "./tools/amazon-tools.js";
 import { registerDriveImageTools } from "./tools/drive-image-tools.js";
 import { registerGoogleTools, type GoogleFolderToolService } from "./tools/google-tools.js";
 import { registerImportTools } from "./tools/import-tools.js";
@@ -24,6 +24,7 @@ export interface ServerDependencies {
   driveImageUploads?: DriveImageUploadService;
   amazonAds?: AmazonAdsClient;
   amazonSpApi?: AmazonSpApiClient;
+  amazonListingWrites?: AmazonListingWriteService;
 }
 
 export function createServer(dependencies: ServerDependencies): McpServer {
@@ -31,7 +32,7 @@ export function createServer(dependencies: ServerDependencies): McpServer {
   if (dependencies.store && dependencies.listings) registerReadTools(server, dependencies.store, dependencies.listings, dependencies.orders);
   if (dependencies.writes) registerWriteTools(server, dependencies.writes);
   if (dependencies.store && dependencies.googleFolders) registerGoogleTools(server, dependencies.store, dependencies.googleFolders);
-  if (dependencies.store && dependencies.amazonSpApi) registerAmazonTools(server, dependencies.store, dependencies.amazonSpApi, dependencies.amazonAds);
+  if (dependencies.store && dependencies.amazonSpApi) registerAmazonTools(server, dependencies.store, dependencies.amazonSpApi, dependencies.amazonAds, dependencies.amazonListingWrites);
   if (dependencies.driveImports) registerImportTools(server, dependencies.driveImports);
   if (dependencies.driveImageUploads) registerDriveImageTools(server, dependencies.driveImageUploads);
   return server;

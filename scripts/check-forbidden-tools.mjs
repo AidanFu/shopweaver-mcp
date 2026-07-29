@@ -15,6 +15,7 @@ const allowed = [
   "amazon_get_marketplace_participations",
   "amazon_optimize_campaign_metrics",
   "amazon_optimize_existing_listing",
+  "amazon_update_listing_copy",
   "amazon_validate_listing_copy_update",
   "etsy_connection_status",
   "etsy_create_draft_listing",
