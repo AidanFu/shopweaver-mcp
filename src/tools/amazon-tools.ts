@@ -1,7 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { analyzeAmazonAplusContent, buildOptimizedAmazonAplusContentDocument } from "../amazon/aplus-optimization.js";
-import { analyzeAmazonSearchTermReportFile } from "../amazon/campaign-report-file.js";
+import { analyzeAmazonSearchTermReportFile, writeAmazonSearchTermOptimizationWorkbook } from "../amazon/campaign-report-file.js";
 import { analyzeAmazonCampaignMetrics, analyzeAmazonSearchTermReportRows } from "../amazon/campaign-optimization.js";
 import { analyzeAmazonExistingListing, buildAmazonListingCopyPatch } from "../amazon/listing-optimization.js";
 import type { AmazonAdsClient } from "../amazon/ads-client.js";
@@ -274,6 +274,14 @@ export function registerAmazonTools(server: McpServer, store: CredentialStore, a
       filePath: z.string().min(1)
     }
   }, async ({ filePath }) => result(await analyzeAmazonSearchTermReportFile(filePath)));
+
+  server.registerTool("amazon_ads_write_sp_search_term_optimization_workbook", {
+    description: "Analyze a local exported Sponsored Products search-term report file and write an actionable optimization workbook. This does not change campaigns, bids, budgets, keywords, negatives, or ads.",
+    inputSchema: {
+      reportFilePath: z.string().min(1),
+      outputPath: z.string().min(1)
+    }
+  }, async ({ reportFilePath, outputPath }) => result(await writeAmazonSearchTermOptimizationWorkbook(reportFilePath, outputPath)));
 
   if (amazonAds) {
     server.registerTool("amazon_ads_list_profiles", {
