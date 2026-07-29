@@ -159,23 +159,25 @@ export async function readAmazonAdsActionDecisions(filePath: string) {
   const sheet = workbook.Sheets["Action Plan"];
   if (!sheet) throw new ShopWeaverError("AMAZON_ADS_ACTION_PLAN_MISSING", "Amazon Ads reviewed workbook must include an Action Plan sheet.");
   const rows = XLSX.utils.sheet_to_json(sheet, { defval: "" }) as Array<Record<string, unknown>>;
-  const decisions = rows
+  const reviewedRows = rows
+    .map(reviewedDecision)
+    .filter(row => row.decision);
+  const decisions = reviewedRows.filter(row => ["approve", "reject", "defer"].includes(row.decision));
+  const invalidDecisions = reviewedRows
+    .filter(row => !["approve", "reject", "defer"].includes(row.decision))
     .map(row => ({
-      actionId: text(row["Action ID"]),
-      action: text(row.Action),
-      scope: text(row.Scope),
-      campaignId: text(row["Campaign ID"]),
-      adGroupId: text(row["Ad Group ID"]),
-      searchTerm: text(row["Search Term"]),
-      decision: text(row.Decision).toLowerCase(),
-      reviewedBy: text(row["Reviewed By"]),
-      reviewNotes: text(row["Review Notes"])
-    }))
-    .filter(row => ["approve", "reject", "defer"].includes(row.decision));
+      actionId: row.actionId,
+      action: row.action,
+      decision: row.decision,
+      reviewNotes: row.reviewNotes,
+      error: "Decision must be approve, reject, or defer."
+    }));
   return {
     operation: "read_amazon_ads_action_decisions" as const,
     reviewedActionCount: decisions.length,
-    decisions
+    invalidDecisionCount: invalidDecisions.length,
+    decisions,
+    invalidDecisions
   };
 }
 
@@ -222,4 +224,18 @@ function slug(value: string): string {
 
 function text(value: unknown): string {
   return String(value ?? "").trim();
+}
+
+function reviewedDecision(row: Record<string, unknown>) {
+  return {
+    actionId: text(row["Action ID"]),
+    action: text(row.Action),
+    scope: text(row.Scope),
+    campaignId: text(row["Campaign ID"]),
+    adGroupId: text(row["Ad Group ID"]),
+    searchTerm: text(row["Search Term"]),
+    decision: text(row.Decision).toLowerCase(),
+    reviewedBy: text(row["Reviewed By"]),
+    reviewNotes: text(row["Review Notes"])
+  };
 }

@@ -159,7 +159,8 @@ describe("analyzeAmazonSearchTermReportFile", () => {
       {
         "Action ID": "exact_match_or_bid_review:ad_group:campaign-2:adgroup-2:electric-towel-warmer-gold",
         "Action": "exact_match_or_bid_review",
-        "Decision": ""
+        "Decision": "approved",
+        "Review Notes": "Typo"
       }
     ]), "Action Plan");
     XLSX.writeFile(workbook, file);
@@ -167,6 +168,7 @@ describe("analyzeAmazonSearchTermReportFile", () => {
     await expect(readAmazonAdsActionDecisions(file)).resolves.toEqual({
       operation: "read_amazon_ads_action_decisions",
       reviewedActionCount: 2,
+      invalidDecisionCount: 1,
       decisions: [
         {
           actionId: "negative_exact_candidate:ad_group:campaign-1:adgroup-1:free-towel-warmer-manual",
@@ -189,6 +191,15 @@ describe("analyzeAmazonSearchTermReportFile", () => {
           decision: "defer",
           reviewedBy: "Aidan",
           reviewNotes: "Wait for next week"
+        }
+      ],
+      invalidDecisions: [
+        {
+          actionId: "exact_match_or_bid_review:ad_group:campaign-2:adgroup-2:electric-towel-warmer-gold",
+          action: "exact_match_or_bid_review",
+          decision: "approved",
+          reviewNotes: "Typo",
+          error: "Decision must be approve, reject, or defer."
         }
       ]
     });
