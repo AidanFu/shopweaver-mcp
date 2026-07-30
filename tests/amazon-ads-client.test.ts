@@ -214,6 +214,51 @@ describe("AmazonAdsClient", () => {
     }));
   });
 
+  it("updates Sponsored Products ad group default bids for approved profile actions", async () => {
+    const store = new MemoryCredentialStore();
+    await store.set("amazonAdsApp", { clientId: "ads-client", clientSecret: "ads-secret" });
+    await store.set("amazonAdsAuth", {
+      refreshToken: "ads-refresh",
+      region: "na",
+      accessToken: "ads-access",
+      expiresAt: Date.now() + 3_600_000
+    });
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      adGroups: {
+        success: [{ index: 0, adGroupId: "456" }],
+        error: []
+      }
+    }), { status: 207, headers: { "content-type": "application/json" } }));
+    const client = new AmazonAdsClient(store, fetchMock);
+
+    await expect(client.updateSponsoredProductsAdGroups("987654321", [{
+      adGroupId: "456",
+      defaultBid: 0.3
+    }])).resolves.toEqual({
+      adGroups: {
+        success: [{ index: 0, adGroupId: "456" }],
+        error: []
+      }
+    });
+    expect(fetchMock).toHaveBeenCalledWith("https://advertising-api.amazon.com/sp/adGroups", expect.objectContaining({
+      method: "PUT",
+      headers: {
+        Authorization: "Bearer ads-access",
+        "Amazon-Advertising-API-ClientId": "ads-client",
+        "Amazon-Advertising-API-Scope": "987654321",
+        Accept: "application/vnd.spAdGroup.v3+json",
+        "Content-Type": "application/vnd.spAdGroup.v3+json",
+        "user-agent": "ShopWeaver/0.1.0 (Language=TypeScript)"
+      },
+      body: JSON.stringify({
+        adGroups: [{
+          adGroupId: "456",
+          defaultBid: 0.3
+        }]
+      })
+    }));
+  });
+
   it("lists Sponsored Products keywords for an ad group without changing bids", async () => {
     const store = new MemoryCredentialStore();
     await store.set("amazonAdsApp", { clientId: "ads-client", clientSecret: "ads-secret" });

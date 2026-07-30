@@ -45,6 +45,12 @@ interface SponsoredProductsKeywordUpdateInput {
   state?: "ENABLED" | "PAUSED" | "ARCHIVED";
 }
 
+interface SponsoredProductsAdGroupUpdateInput {
+  adGroupId: string;
+  defaultBid?: number;
+  state?: "ENABLED" | "PAUSED" | "ARCHIVED";
+}
+
 const ADS_ENDPOINTS = {
   na: "https://advertising-api.amazon.com",
   eu: "https://advertising-api-eu.amazon.com",
@@ -99,6 +105,16 @@ export class AmazonAdsClient {
       accept: "application/vnd.spAdGroup.v3+json",
       contentType: "application/vnd.spAdGroup.v3+json",
       body
+    });
+  }
+
+  async updateSponsoredProductsAdGroups(profileId: string, adGroups: SponsoredProductsAdGroupUpdateInput[]) {
+    return this.request("/sp/adGroups", {
+      method: "PUT",
+      profileId,
+      accept: "application/vnd.spAdGroup.v3+json",
+      contentType: "application/vnd.spAdGroup.v3+json",
+      body: { adGroups }
     });
   }
 

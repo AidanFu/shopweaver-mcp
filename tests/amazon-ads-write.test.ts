@@ -253,4 +253,49 @@ describe("AmazonAdsWriteService", () => {
       bid: 0.25
     }]);
   });
+
+  it("previews and confirms ad group default bid updates", async () => {
+    const amazonAds = {
+      createSponsoredProductsNegativeKeywords: vi.fn(),
+      updateSponsoredProductsCampaigns: vi.fn(),
+      createSponsoredProductsCampaigns: vi.fn(),
+      updateSponsoredProductsKeywords: vi.fn(),
+      updateSponsoredProductsAdGroups: vi.fn().mockResolvedValue({
+        adGroups: { success: [{ index: 0, adGroupId: "adgroup-1" }], error: [] }
+      })
+    };
+    const service = new AmazonAdsWriteService(amazonAds, new ConfirmationStore(() => 1_000));
+
+    const preview = await service.previewAdGroupBidUpdates("profile-1", [{
+      adGroupId: "adgroup-1",
+      defaultBid: 0.3,
+      reason: "Lower ad group bid after broad spend runs ahead of orders."
+    }]);
+
+    expect(preview).toMatchObject({
+      operation: "amazon_ads_update_ad_group_bids",
+      profileId: "profile-1",
+      adGroupBidUpdateCount: 1,
+      applied: false,
+      adGroups: [{
+        adGroupId: "adgroup-1",
+        defaultBid: 0.3,
+        reason: "Lower ad group bid after broad spend runs ahead of orders."
+      }]
+    });
+    expect(amazonAds.updateSponsoredProductsAdGroups).not.toHaveBeenCalled();
+
+    await expect(service.confirmAdGroupBidUpdates("profile-1", preview.adGroups, preview.confirmationToken))
+      .resolves.toMatchObject({
+        operation: "amazon_ads_update_ad_group_bids",
+        profileId: "profile-1",
+        adGroupBidUpdateCount: 1,
+        applied: true,
+        result: { adGroups: { success: [{ index: 0, adGroupId: "adgroup-1" }], error: [] } }
+      });
+    expect(amazonAds.updateSponsoredProductsAdGroups).toHaveBeenCalledWith("profile-1", [{
+      adGroupId: "adgroup-1",
+      defaultBid: 0.3
+    }]);
+  });
 });

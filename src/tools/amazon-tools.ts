@@ -43,6 +43,11 @@ type AmazonAdsKeywordBidUpdate = {
   bid: number;
   reason?: string;
 };
+type AmazonAdsAdGroupBidUpdate = {
+  adGroupId: string;
+  defaultBid: number;
+  reason?: string;
+};
 type AmazonAdsCampaignCreate = {
   name: string;
   targetingType: "AUTO" | "MANUAL";
@@ -125,7 +130,7 @@ export class AmazonListingWriteService {
 
 export class AmazonAdsWriteService {
   constructor(
-    private readonly amazonAds: Pick<AmazonAdsClient, "createSponsoredProductsNegativeKeywords" | "updateSponsoredProductsCampaigns" | "createSponsoredProductsCampaigns" | "updateSponsoredProductsKeywords">,
+    private readonly amazonAds: Pick<AmazonAdsClient, "createSponsoredProductsNegativeKeywords" | "updateSponsoredProductsCampaigns" | "createSponsoredProductsCampaigns" | "updateSponsoredProductsKeywords" | "updateSponsoredProductsAdGroups">,
     private readonly confirmations: ConfirmationStore
   ) {}
 
@@ -226,6 +231,31 @@ export class AmazonAdsWriteService {
     };
   }
 
+  async previewAdGroupBidUpdates(profileId: string, adGroups: AmazonAdsAdGroupBidUpdate[]) {
+    const preview = buildAdGroupBidPreview(profileId, adGroups);
+    return {
+      operation: "amazon_ads_update_ad_group_bids" as const,
+      ...preview,
+      applied: false,
+      ...this.confirmations.issue("amazon_ads_update_ad_group_bids", 0, preview),
+      warning: "This preview did not change Amazon Ads. Confirm with the returned token to apply the exact ad group bid updates."
+    };
+  }
+
+  async confirmAdGroupBidUpdates(profileId: string, adGroups: AmazonAdsAdGroupBidUpdate[], confirmationToken: string) {
+    const preview = buildAdGroupBidPreview(profileId, adGroups);
+    this.confirmations.consume(confirmationToken, "amazon_ads_update_ad_group_bids", 0, preview);
+    return {
+      operation: "amazon_ads_update_ad_group_bids" as const,
+      ...preview,
+      result: await this.amazonAds.updateSponsoredProductsAdGroups(profileId, preview.adGroups.map(adGroup => ({
+        adGroupId: adGroup.adGroupId,
+        defaultBid: adGroup.defaultBid
+      }))),
+      applied: true
+    };
+  }
+
   async previewCampaignCreations(profileId: string, campaigns: AmazonAdsCampaignCreate[]) {
     const preview = buildCampaignCreatePreview(profileId, campaigns);
     return {
@@ -288,6 +318,18 @@ function buildKeywordBidPreview(profileId: string, keywords: AmazonAdsKeywordBid
       keywordId: keyword.keywordId,
       bid: keyword.bid,
       ...(keyword.reason ? { reason: keyword.reason } : {})
+    }))
+  };
+}
+
+function buildAdGroupBidPreview(profileId: string, adGroups: AmazonAdsAdGroupBidUpdate[]) {
+  return {
+    profileId,
+    adGroupBidUpdateCount: adGroups.length,
+    adGroups: adGroups.map(adGroup => ({
+      adGroupId: adGroup.adGroupId,
+      defaultBid: adGroup.defaultBid,
+      ...(adGroup.reason ? { reason: adGroup.reason } : {})
     }))
   };
 }
@@ -587,6 +629,22 @@ export function registerAmazonTools(server: McpServer, store: CredentialStore, a
     }, async ({ mode, profileId, keywords, confirmationToken }) => result(mode === "preview"
       ? await amazonAdsWrites.previewKeywordBidUpdates(profileId, keywords)
       : await amazonAdsWrites.confirmKeywordBidUpdates(profileId, keywords, confirmationToken ?? "")));
+
+    server.registerTool("amazon_ads_update_ad_group_bids", {
+      description: "Preview or confirm Sponsored Products ad group default bid updates. This changes ad group bids only after confirmation.",
+      inputSchema: {
+        mode: z.enum(["preview", "confirm"]).default("preview"),
+        profileId: z.string().min(1),
+        adGroups: z.array(z.object({
+          adGroupId: z.string().min(1),
+          defaultBid: z.number().positive(),
+          reason: z.string().optional()
+        })).min(1),
+        confirmationToken: z.string().min(20).optional()
+      }
+    }, async ({ mode, profileId, adGroups, confirmationToken }) => result(mode === "preview"
+      ? await amazonAdsWrites.previewAdGroupBidUpdates(profileId, adGroups)
+      : await amazonAdsWrites.confirmAdGroupBidUpdates(profileId, adGroups, confirmationToken ?? "")));
 
     server.registerTool("amazon_ads_create_campaigns", {
       description: "Preview or confirm creating Sponsored Products campaigns. This creates campaigns only after confirmation.",
