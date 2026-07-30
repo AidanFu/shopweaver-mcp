@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 const allowed = [
   "amazon_connection_status",
   "amazon_ads_connection_status",
+  "amazon_ads_create_negative_keywords_from_review",
   "amazon_ads_create_sp_search_term_report",
   "amazon_ads_download_report",
   "amazon_ads_get_report",

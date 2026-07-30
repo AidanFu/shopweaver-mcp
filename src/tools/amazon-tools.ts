@@ -20,6 +20,13 @@ type AmazonListingCopyPreview = {
   sku: string;
   patch: ReturnType<typeof buildAmazonListingCopyPatch>;
 };
+type AmazonAdsNegativeKeywordInput = {
+  campaignId: string;
+  adGroupId: string;
+  keywordText: string;
+  matchType: "NEGATIVE_EXACT";
+  state: "ENABLED";
+};
 
 export async function amazonConnectionStatus(store: CredentialStore) {
   const [app, auth] = await Promise.all([store.get("amazonSpApiApp"), store.get("amazonSpApiAuth")]);
@@ -88,6 +95,57 @@ export class AmazonListingWriteService {
   }
 }
 
+export class AmazonAdsWriteService {
+  constructor(
+    private readonly amazonAds: Pick<AmazonAdsClient, "createSponsoredProductsNegativeKeywords">,
+    private readonly confirmations: ConfirmationStore
+  ) {}
+
+  async previewApprovedNegativeKeywords(profileId: string, filePath: string) {
+    const preview = await buildNegativeKeywordPreview(profileId, filePath);
+    return {
+      operation: "amazon_ads_create_negative_keywords" as const,
+      ...preview,
+      applied: false,
+      ...this.confirmations.issue("amazon_ads_create_negative_keywords", 0, preview),
+      warning: "This preview did not change Amazon Ads. Confirm with the returned token to create the exact negative keywords."
+    };
+  }
+
+  async confirmApprovedNegativeKeywords(profileId: string, filePath: string, confirmationToken: string) {
+    const preview = await buildNegativeKeywordPreview(profileId, filePath);
+    this.confirmations.consume(confirmationToken, "amazon_ads_create_negative_keywords", 0, preview);
+    return {
+      operation: "amazon_ads_create_negative_keywords" as const,
+      ...preview,
+      result: await this.amazonAds.createSponsoredProductsNegativeKeywords(profileId, preview.negativeKeywords),
+      applied: true
+    };
+  }
+}
+
+async function buildNegativeKeywordPreview(profileId: string, filePath: string) {
+  const review = await previewAmazonAdsApprovedActions(filePath);
+  const negativeKeywords = review.actions
+    .filter(action => action.operation === "create_sp_negative_keyword")
+    .map(action => ({
+      campaignId: action.campaignId,
+      adGroupId: action.adGroupId,
+      keywordText: action.keywordText,
+      matchType: action.matchType,
+      state: action.state
+    })) as AmazonAdsNegativeKeywordInput[];
+  return {
+    profileId,
+    negativeKeywordCount: negativeKeywords.length,
+    negativeKeywords,
+    invalidDecisionCount: review.invalidDecisionCount,
+    invalidActionCount: review.invalidActionCount,
+    invalidDecisions: review.invalidDecisions,
+    invalidActions: review.invalidActions
+  };
+}
+
 async function buildListingCopyPreview(store: CredentialStore, amazon: Pick<AmazonSpApiClient, "getListingItem">, sku: string): Promise<AmazonListingCopyPreview> {
   const auth = await store.get("amazonSpApiAuth");
   if (!auth) throw new ShopWeaverError("AMAZON_SP_API_AUTH_REQUIRED", "Connect Amazon SP-API before using Amazon seller tools.");
@@ -112,7 +170,7 @@ async function buildListingCopyPreview(store: CredentialStore, amazon: Pick<Amaz
   };
 }
 
-export function registerAmazonTools(server: McpServer, store: CredentialStore, amazon: AmazonSpApiClient, amazonAds?: AmazonAdsClient, amazonListingWrites?: AmazonListingWriteService): void {
+export function registerAmazonTools(server: McpServer, store: CredentialStore, amazon: AmazonSpApiClient, amazonAds?: AmazonAdsClient, amazonListingWrites?: AmazonListingWriteService, amazonAdsWrites?: AmazonAdsWriteService): void {
   server.registerTool("amazon_connection_status", {
     description: "Report whether ShopWeaver has Amazon SP-API credentials and seller authorization without revealing secrets.",
     inputSchema: {}
@@ -280,6 +338,20 @@ export function registerAmazonTools(server: McpServer, store: CredentialStore, a
     }, async ({ mode, sku, confirmationToken }) => result(mode === "preview"
       ? await amazonListingWrites.previewListingCopyUpdate(sku)
       : await amazonListingWrites.confirmListingCopyUpdate(sku, confirmationToken ?? "")));
+  }
+
+  if (amazonAdsWrites) {
+    server.registerTool("amazon_ads_create_negative_keywords_from_review", {
+      description: "Preview or confirm creating Sponsored Products negative exact keywords from approved rows in a reviewed Amazon Ads optimization workbook.",
+      inputSchema: {
+        mode: z.enum(["preview", "confirm"]).default("preview"),
+        profileId: z.string().min(1),
+        filePath: z.string().min(1),
+        confirmationToken: z.string().min(20).optional()
+      }
+    }, async ({ mode, profileId, filePath, confirmationToken }) => result(mode === "preview"
+      ? await amazonAdsWrites.previewApprovedNegativeKeywords(profileId, filePath)
+      : await amazonAdsWrites.confirmApprovedNegativeKeywords(profileId, filePath, confirmationToken ?? "")));
   }
 
   server.registerTool("amazon_optimize_campaign_metrics", {
