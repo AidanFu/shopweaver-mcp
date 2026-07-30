@@ -16,6 +16,7 @@
     "google:setup": "tsx src/google-setup.ts",
     "amazon:setup": "tsx src/amazon-setup.ts",
     "amazon:ads:setup": "tsx src/amazon-ads-setup.ts",
+    "amazon:ads:optimize": "tsx src/amazon-ads-optimize.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "check:safety": "node scripts/check-forbidden-tools.mjs",
