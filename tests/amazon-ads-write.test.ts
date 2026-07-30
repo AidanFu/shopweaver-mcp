@@ -209,4 +209,48 @@ describe("AmazonAdsWriteService", () => {
       budget: { budgetType: "DAILY", budget: 5 }
     }]);
   });
+
+  it("previews and confirms keyword bid updates", async () => {
+    const amazonAds = {
+      createSponsoredProductsNegativeKeywords: vi.fn(),
+      updateSponsoredProductsCampaigns: vi.fn(),
+      createSponsoredProductsCampaigns: vi.fn(),
+      updateSponsoredProductsKeywords: vi.fn().mockResolvedValue({
+        keywords: { success: [{ index: 0, keywordId: "keyword-1" }], error: [] }
+      })
+    };
+    const service = new AmazonAdsWriteService(amazonAds, new ConfirmationStore(() => 1_000));
+
+    const preview = await service.previewKeywordBidUpdates("profile-1", [{
+      keywordId: "keyword-1",
+      bid: 0.25,
+      reason: "Lower bid after report shows spend without orders."
+    }]);
+
+    expect(preview).toMatchObject({
+      operation: "amazon_ads_update_keyword_bids",
+      profileId: "profile-1",
+      keywordBidUpdateCount: 1,
+      applied: false,
+      keywords: [{
+        keywordId: "keyword-1",
+        bid: 0.25,
+        reason: "Lower bid after report shows spend without orders."
+      }]
+    });
+    expect(amazonAds.updateSponsoredProductsKeywords).not.toHaveBeenCalled();
+
+    await expect(service.confirmKeywordBidUpdates("profile-1", preview.keywords, preview.confirmationToken))
+      .resolves.toMatchObject({
+        operation: "amazon_ads_update_keyword_bids",
+        profileId: "profile-1",
+        keywordBidUpdateCount: 1,
+        applied: true,
+        result: { keywords: { success: [{ index: 0, keywordId: "keyword-1" }], error: [] } }
+      });
+    expect(amazonAds.updateSponsoredProductsKeywords).toHaveBeenCalledWith("profile-1", [{
+      keywordId: "keyword-1",
+      bid: 0.25
+    }]);
+  });
 });

@@ -259,6 +259,51 @@ describe("AmazonAdsClient", () => {
     }));
   });
 
+  it("updates Sponsored Products keyword bids for approved profile actions", async () => {
+    const store = new MemoryCredentialStore();
+    await store.set("amazonAdsApp", { clientId: "ads-client", clientSecret: "ads-secret" });
+    await store.set("amazonAdsAuth", {
+      refreshToken: "ads-refresh",
+      region: "na",
+      accessToken: "ads-access",
+      expiresAt: Date.now() + 3_600_000
+    });
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      keywords: {
+        success: [{ index: 0, keywordId: "789" }],
+        error: []
+      }
+    }), { status: 207, headers: { "content-type": "application/json" } }));
+    const client = new AmazonAdsClient(store, fetchMock);
+
+    await expect(client.updateSponsoredProductsKeywords("987654321", [{
+      keywordId: "789",
+      bid: 0.25
+    }])).resolves.toEqual({
+      keywords: {
+        success: [{ index: 0, keywordId: "789" }],
+        error: []
+      }
+    });
+    expect(fetchMock).toHaveBeenCalledWith("https://advertising-api.amazon.com/sp/keywords", expect.objectContaining({
+      method: "PUT",
+      headers: {
+        Authorization: "Bearer ads-access",
+        "Amazon-Advertising-API-ClientId": "ads-client",
+        "Amazon-Advertising-API-Scope": "987654321",
+        Accept: "application/vnd.spKeyword.v3+json",
+        "Content-Type": "application/vnd.spKeyword.v3+json",
+        "user-agent": "ShopWeaver/0.1.0 (Language=TypeScript)"
+      },
+      body: JSON.stringify({
+        keywords: [{
+          keywordId: "789",
+          bid: 0.25
+        }]
+      })
+    }));
+  });
+
   it("creates Sponsored Products negative keywords for an approved profile action", async () => {
     const store = new MemoryCredentialStore();
     await store.set("amazonAdsApp", { clientId: "ads-client", clientSecret: "ads-secret" });

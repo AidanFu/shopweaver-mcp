@@ -39,6 +39,12 @@ interface SponsoredProductsCampaignCreateInput {
   };
 }
 
+interface SponsoredProductsKeywordUpdateInput {
+  keywordId: string;
+  bid?: number;
+  state?: "ENABLED" | "PAUSED" | "ARCHIVED";
+}
+
 const ADS_ENDPOINTS = {
   na: "https://advertising-api.amazon.com",
   eu: "https://advertising-api-eu.amazon.com",
@@ -103,6 +109,16 @@ export class AmazonAdsClient {
       accept: "application/vnd.spKeyword.v3+json",
       contentType: "application/vnd.spKeyword.v3+json",
       body
+    });
+  }
+
+  async updateSponsoredProductsKeywords(profileId: string, keywords: SponsoredProductsKeywordUpdateInput[]) {
+    return this.request("/sp/keywords", {
+      method: "PUT",
+      profileId,
+      accept: "application/vnd.spKeyword.v3+json",
+      contentType: "application/vnd.spKeyword.v3+json",
+      body: { keywords }
     });
   }
 

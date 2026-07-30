@@ -38,6 +38,11 @@ type AmazonAdsCampaignBudgetUpdate = {
   budget: { budgetType: "DAILY"; budget: number };
   reason?: string;
 };
+type AmazonAdsKeywordBidUpdate = {
+  keywordId: string;
+  bid: number;
+  reason?: string;
+};
 type AmazonAdsCampaignCreate = {
   name: string;
   targetingType: "AUTO" | "MANUAL";
@@ -120,7 +125,7 @@ export class AmazonListingWriteService {
 
 export class AmazonAdsWriteService {
   constructor(
-    private readonly amazonAds: Pick<AmazonAdsClient, "createSponsoredProductsNegativeKeywords" | "updateSponsoredProductsCampaigns" | "createSponsoredProductsCampaigns">,
+    private readonly amazonAds: Pick<AmazonAdsClient, "createSponsoredProductsNegativeKeywords" | "updateSponsoredProductsCampaigns" | "createSponsoredProductsCampaigns" | "updateSponsoredProductsKeywords">,
     private readonly confirmations: ConfirmationStore
   ) {}
 
@@ -196,6 +201,31 @@ export class AmazonAdsWriteService {
     };
   }
 
+  async previewKeywordBidUpdates(profileId: string, keywords: AmazonAdsKeywordBidUpdate[]) {
+    const preview = buildKeywordBidPreview(profileId, keywords);
+    return {
+      operation: "amazon_ads_update_keyword_bids" as const,
+      ...preview,
+      applied: false,
+      ...this.confirmations.issue("amazon_ads_update_keyword_bids", 0, preview),
+      warning: "This preview did not change Amazon Ads. Confirm with the returned token to apply the exact keyword bid updates."
+    };
+  }
+
+  async confirmKeywordBidUpdates(profileId: string, keywords: AmazonAdsKeywordBidUpdate[], confirmationToken: string) {
+    const preview = buildKeywordBidPreview(profileId, keywords);
+    this.confirmations.consume(confirmationToken, "amazon_ads_update_keyword_bids", 0, preview);
+    return {
+      operation: "amazon_ads_update_keyword_bids" as const,
+      ...preview,
+      result: await this.amazonAds.updateSponsoredProductsKeywords(profileId, preview.keywords.map(keyword => ({
+        keywordId: keyword.keywordId,
+        bid: keyword.bid
+      }))),
+      applied: true
+    };
+  }
+
   async previewCampaignCreations(profileId: string, campaigns: AmazonAdsCampaignCreate[]) {
     const preview = buildCampaignCreatePreview(profileId, campaigns);
     return {
@@ -246,6 +276,18 @@ function buildCampaignBudgetPreview(profileId: string, campaigns: AmazonAdsCampa
       campaignId: campaign.campaignId,
       budget: campaign.budget,
       ...(campaign.reason ? { reason: campaign.reason } : {})
+    }))
+  };
+}
+
+function buildKeywordBidPreview(profileId: string, keywords: AmazonAdsKeywordBidUpdate[]) {
+  return {
+    profileId,
+    keywordBidUpdateCount: keywords.length,
+    keywords: keywords.map(keyword => ({
+      keywordId: keyword.keywordId,
+      bid: keyword.bid,
+      ...(keyword.reason ? { reason: keyword.reason } : {})
     }))
   };
 }
@@ -529,6 +571,22 @@ export function registerAmazonTools(server: McpServer, store: CredentialStore, a
     }, async ({ mode, profileId, campaigns, confirmationToken }) => result(mode === "preview"
       ? await amazonAdsWrites.previewCampaignBudgetUpdates(profileId, campaigns)
       : await amazonAdsWrites.confirmCampaignBudgetUpdates(profileId, campaigns, confirmationToken ?? "")));
+
+    server.registerTool("amazon_ads_update_keyword_bids", {
+      description: "Preview or confirm Sponsored Products keyword bid updates. This changes keyword bids only after confirmation.",
+      inputSchema: {
+        mode: z.enum(["preview", "confirm"]).default("preview"),
+        profileId: z.string().min(1),
+        keywords: z.array(z.object({
+          keywordId: z.string().min(1),
+          bid: z.number().positive(),
+          reason: z.string().optional()
+        })).min(1),
+        confirmationToken: z.string().min(20).optional()
+      }
+    }, async ({ mode, profileId, keywords, confirmationToken }) => result(mode === "preview"
+      ? await amazonAdsWrites.previewKeywordBidUpdates(profileId, keywords)
+      : await amazonAdsWrites.confirmKeywordBidUpdates(profileId, keywords, confirmationToken ?? "")));
 
     server.registerTool("amazon_ads_create_campaigns", {
       description: "Preview or confirm creating Sponsored Products campaigns. This creates campaigns only after confirmation.",
