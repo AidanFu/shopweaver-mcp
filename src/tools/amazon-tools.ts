@@ -27,6 +27,11 @@ type AmazonAdsNegativeKeywordInput = {
   matchType: "NEGATIVE_EXACT";
   state: "ENABLED";
 };
+type AmazonAdsCampaignStateUpdate = {
+  campaignId: string;
+  state: "ENABLED" | "PAUSED" | "ARCHIVED";
+  reason?: string;
+};
 
 export async function amazonConnectionStatus(store: CredentialStore) {
   const [app, auth] = await Promise.all([store.get("amazonSpApiApp"), store.get("amazonSpApiAuth")]);
@@ -97,7 +102,7 @@ export class AmazonListingWriteService {
 
 export class AmazonAdsWriteService {
   constructor(
-    private readonly amazonAds: Pick<AmazonAdsClient, "createSponsoredProductsNegativeKeywords">,
+    private readonly amazonAds: Pick<AmazonAdsClient, "createSponsoredProductsNegativeKeywords" | "updateSponsoredProductsCampaigns">,
     private readonly confirmations: ConfirmationStore
   ) {}
 
@@ -122,6 +127,43 @@ export class AmazonAdsWriteService {
       applied: true
     };
   }
+
+  async previewCampaignStateUpdates(profileId: string, campaigns: AmazonAdsCampaignStateUpdate[]) {
+    const preview = buildCampaignStatePreview(profileId, campaigns);
+    return {
+      operation: "amazon_ads_update_campaign_states" as const,
+      ...preview,
+      applied: false,
+      ...this.confirmations.issue("amazon_ads_update_campaign_states", 0, preview),
+      warning: "This preview did not change Amazon Ads. Confirm with the returned token to apply the exact campaign state updates."
+    };
+  }
+
+  async confirmCampaignStateUpdates(profileId: string, campaigns: AmazonAdsCampaignStateUpdate[], confirmationToken: string) {
+    const preview = buildCampaignStatePreview(profileId, campaigns);
+    this.confirmations.consume(confirmationToken, "amazon_ads_update_campaign_states", 0, preview);
+    return {
+      operation: "amazon_ads_update_campaign_states" as const,
+      ...preview,
+      result: await this.amazonAds.updateSponsoredProductsCampaigns(profileId, preview.campaigns.map(campaign => ({
+        campaignId: campaign.campaignId,
+        state: campaign.state
+      }))),
+      applied: true
+    };
+  }
+}
+
+function buildCampaignStatePreview(profileId: string, campaigns: AmazonAdsCampaignStateUpdate[]) {
+  return {
+    profileId,
+    campaignUpdateCount: campaigns.length,
+    campaigns: campaigns.map(campaign => ({
+      campaignId: campaign.campaignId,
+      state: campaign.state,
+      ...(campaign.reason ? { reason: campaign.reason } : {})
+    }))
+  };
 }
 
 async function buildNegativeKeywordPreview(profileId: string, filePath: string) {
@@ -352,6 +394,22 @@ export function registerAmazonTools(server: McpServer, store: CredentialStore, a
     }, async ({ mode, profileId, filePath, confirmationToken }) => result(mode === "preview"
       ? await amazonAdsWrites.previewApprovedNegativeKeywords(profileId, filePath)
       : await amazonAdsWrites.confirmApprovedNegativeKeywords(profileId, filePath, confirmationToken ?? "")));
+
+    server.registerTool("amazon_ads_update_campaign_states", {
+      description: "Preview or confirm pausing, enabling, or archiving Sponsored Products campaigns. This can change campaign delivery only after confirmation.",
+      inputSchema: {
+        mode: z.enum(["preview", "confirm"]).default("preview"),
+        profileId: z.string().min(1),
+        campaigns: z.array(z.object({
+          campaignId: z.string().min(1),
+          state: z.enum(["ENABLED", "PAUSED", "ARCHIVED"]),
+          reason: z.string().optional()
+        })).min(1),
+        confirmationToken: z.string().min(20).optional()
+      }
+    }, async ({ mode, profileId, campaigns, confirmationToken }) => result(mode === "preview"
+      ? await amazonAdsWrites.previewCampaignStateUpdates(profileId, campaigns)
+      : await amazonAdsWrites.confirmCampaignStateUpdates(profileId, campaigns, confirmationToken ?? "")));
   }
 
   server.registerTool("amazon_optimize_campaign_metrics", {

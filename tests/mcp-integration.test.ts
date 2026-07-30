@@ -48,6 +48,7 @@ describe("MCP integration", () => {
       "amazon_ads_optimize_sp_search_term_report_file",
       "amazon_ads_preview_approved_actions",
       "amazon_ads_read_action_decisions",
+      "amazon_ads_update_campaign_states",
       "amazon_ads_write_sp_search_term_optimization_workbook",
       "amazon_connection_status",
       "amazon_get_aplus_content_document",

@@ -70,4 +70,46 @@ describe("AmazonAdsWriteService", () => {
       state: "ENABLED"
     }]);
   });
+
+  it("previews and confirms campaign state updates", async () => {
+    const amazonAds = {
+      createSponsoredProductsNegativeKeywords: vi.fn(),
+      updateSponsoredProductsCampaigns: vi.fn().mockResolvedValue({
+        campaigns: { success: [{ index: 0, campaignId: "campaign-1" }], error: [] }
+      })
+    };
+    const service = new AmazonAdsWriteService(amazonAds, new ConfirmationStore(() => 1_000));
+
+    const preview = await service.previewCampaignStateUpdates("profile-1", [{
+      campaignId: "campaign-1",
+      state: "PAUSED",
+      reason: "Active campaign is unrelated to current handmade charm products."
+    }]);
+
+    expect(preview).toMatchObject({
+      operation: "amazon_ads_update_campaign_states",
+      profileId: "profile-1",
+      campaignUpdateCount: 1,
+      applied: false,
+      campaigns: [{
+        campaignId: "campaign-1",
+        state: "PAUSED",
+        reason: "Active campaign is unrelated to current handmade charm products."
+      }]
+    });
+    expect(amazonAds.updateSponsoredProductsCampaigns).not.toHaveBeenCalled();
+
+    await expect(service.confirmCampaignStateUpdates("profile-1", preview.campaigns, preview.confirmationToken))
+      .resolves.toMatchObject({
+        operation: "amazon_ads_update_campaign_states",
+        profileId: "profile-1",
+        campaignUpdateCount: 1,
+        applied: true,
+        result: { campaigns: { success: [{ index: 0, campaignId: "campaign-1" }], error: [] } }
+      });
+    expect(amazonAds.updateSponsoredProductsCampaigns).toHaveBeenCalledWith("profile-1", [{
+      campaignId: "campaign-1",
+      state: "PAUSED"
+    }]);
+  });
 });

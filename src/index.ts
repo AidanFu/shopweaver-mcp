@@ -11,7 +11,7 @@ import { DriveImageUploadService } from "./import/drive-image-upload.js";
 import { DriveImportService } from "./import/drive-import.js";
 import { LocalConfigStore } from "./local-config.js";
 import { createServer } from "./server.js";
-import { AmazonListingWriteService } from "./tools/amazon-tools.js";
+import { AmazonAdsWriteService, AmazonListingWriteService } from "./tools/amazon-tools.js";
 import { GoogleFolderToolService } from "./tools/google-tools.js";
 import { DraftWriteService } from "./tools/write-tools.js";
 import { ConfirmationStore } from "./writes/confirmations.js";
@@ -30,5 +30,6 @@ const driveImageUploads = new DriveImageUploadService(client, listings, googleDr
 const amazonAds = new AmazonAdsClient(store);
 const amazonSpApi = new AmazonSpApiClient(store);
 const amazonListingWrites = new AmazonListingWriteService(store, amazonSpApi, new ConfirmationStore());
-const server = createServer({ store, listings, orders, writes, googleFolders, driveImports, driveImageUploads, amazonAds, amazonSpApi, amazonListingWrites });
+const amazonAdsWrites = new AmazonAdsWriteService(amazonAds, new ConfirmationStore());
+const server = createServer({ store, listings, orders, writes, googleFolders, driveImports, driveImageUploads, amazonAds, amazonSpApi, amazonListingWrites, amazonAdsWrites });
 await server.connect(new StdioServerTransport());

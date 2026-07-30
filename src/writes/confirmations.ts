@@ -9,7 +9,8 @@ export type WriteAction =
   | "upload_drive_images"
   | "update_draft_inventory"
   | "amazon_update_listing_copy"
-  | "amazon_ads_create_negative_keywords";
+  | "amazon_ads_create_negative_keywords"
+  | "amazon_ads_update_campaign_states";
 
 type PreviewRecord = {
   action: WriteAction;
