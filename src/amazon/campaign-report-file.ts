@@ -187,6 +187,60 @@ export async function readAmazonAdsActionDecisions(filePath: string) {
   };
 }
 
+export async function previewAmazonAdsApprovedActions(filePath: string) {
+  const review = await readAmazonAdsActionDecisions(filePath);
+  const actions = review.decisions
+    .filter(row => row.decision === "approve")
+    .map(approvedActionPreview)
+    .filter(action => action !== undefined);
+  return {
+    operation: "preview_amazon_ads_approved_actions" as const,
+    approvedActionCount: actions.length,
+    applied: false,
+    warning: "Preview only. No campaigns, ad groups, bids, budgets, keywords, negatives, or ads were changed.",
+    actions,
+    invalidDecisionCount: review.invalidDecisionCount,
+    invalidActionCount: review.invalidActionCount,
+    invalidDecisions: review.invalidDecisions,
+    invalidActions: review.invalidActions
+  };
+}
+
+function approvedActionPreview(row: ReturnType<typeof reviewedDecision>) {
+  if (row.action === "negative_exact_candidate") {
+    return {
+      actionId: row.actionId,
+      operation: "create_sp_negative_keyword" as const,
+      campaignId: row.campaignId,
+      adGroupId: row.adGroupId,
+      keywordText: row.searchTerm,
+      matchType: "NEGATIVE_EXACT" as const,
+      state: "ENABLED" as const,
+      applied: false
+    };
+  }
+  if (row.action === "exact_match_or_bid_review") {
+    return {
+      actionId: row.actionId,
+      operation: "review_sp_exact_keyword_or_bid" as const,
+      campaignId: row.campaignId,
+      adGroupId: row.adGroupId,
+      keywordText: row.searchTerm,
+      matchType: "EXACT" as const,
+      applied: false
+    };
+  }
+  if (row.action === "budget_watch") {
+    return {
+      actionId: row.actionId,
+      operation: "review_sp_campaign_budget" as const,
+      campaignId: row.campaignId,
+      applied: false
+    };
+  }
+  return undefined;
+}
+
 export async function readAmazonSearchTermReportRows(filePath: string): Promise<Array<Record<string, unknown>>> {
   if (!isAbsolute(filePath)) throw new ShopWeaverError("AMAZON_ADS_REPORT_PATH_INVALID", "Amazon Ads report path must be absolute.");
   const extension = extname(filePath).toLowerCase();

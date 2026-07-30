@@ -2,7 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { analyzeAmazonAplusContent, buildOptimizedAmazonAplusContentDocument } from "../amazon/aplus-optimization.js";
 import { writeAmazonAplusOptimizationWorkbook } from "../amazon/aplus-workbook.js";
-import { analyzeAmazonSearchTermReportFile, readAmazonAdsActionDecisions, writeAmazonSearchTermOptimizationWorkbook } from "../amazon/campaign-report-file.js";
+import { analyzeAmazonSearchTermReportFile, previewAmazonAdsApprovedActions, readAmazonAdsActionDecisions, writeAmazonSearchTermOptimizationWorkbook } from "../amazon/campaign-report-file.js";
 import { analyzeAmazonCampaignMetrics, analyzeAmazonSearchTermReportRows } from "../amazon/campaign-optimization.js";
 import { analyzeAmazonExistingListing, buildAmazonListingCopyPatch } from "../amazon/listing-optimization.js";
 import type { AmazonAdsClient } from "../amazon/ads-client.js";
@@ -317,6 +317,13 @@ export function registerAmazonTools(server: McpServer, store: CredentialStore, a
       filePath: z.string().min(1)
     }
   }, async ({ filePath }) => result(await readAmazonAdsActionDecisions(filePath)));
+
+  server.registerTool("amazon_ads_preview_approved_actions", {
+    description: "Convert approved rows from a reviewed local Amazon Ads optimization workbook into a non-mutating execution preview. This does not change campaigns, bids, budgets, keywords, negatives, or ads.",
+    inputSchema: {
+      filePath: z.string().min(1)
+    }
+  }, async ({ filePath }) => result(await previewAmazonAdsApprovedActions(filePath)));
 
   if (amazonAds) {
     server.registerTool("amazon_ads_list_profiles", {

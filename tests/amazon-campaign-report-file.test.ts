@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { describe, expect, it } from "vitest";
 import * as XLSX from "xlsx";
-import { analyzeAmazonSearchTermReportFile, readAmazonAdsActionDecisions, writeAmazonSearchTermOptimizationWorkbook } from "../src/amazon/campaign-report-file.js";
+import { analyzeAmazonSearchTermReportFile, previewAmazonAdsApprovedActions, readAmazonAdsActionDecisions, writeAmazonSearchTermOptimizationWorkbook } from "../src/amazon/campaign-report-file.js";
 
 describe("analyzeAmazonSearchTermReportFile", () => {
   it("optimizes a Seller Central exported CSV search-term report", async () => {
@@ -263,6 +263,87 @@ describe("analyzeAmazonSearchTermReportFile", () => {
           error: "Approved ad group actions require Campaign ID, Ad Group ID, and Search Term."
         }
       ]
+    });
+  });
+
+  it("previews approved Ads actions without applying campaign changes", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "shopweaver-amazon-ads-"));
+    const file = join(dir, "reviewed-optimization.xlsx");
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet([
+      {
+        "Action ID": "negative_exact_candidate:ad_group:campaign-1:adgroup-1:free-crochet-pattern",
+        "Action": "negative_exact_candidate",
+        "Scope": "ad_group",
+        "Campaign ID": "campaign-1",
+        "Ad Group ID": "adgroup-1",
+        "Search Term": "free crochet pattern",
+        "Decision": "approve"
+      },
+      {
+        "Action ID": "exact_match_or_bid_review:ad_group:campaign-2:adgroup-2:crochet-bag-charm",
+        "Action": "exact_match_or_bid_review",
+        "Scope": "ad_group",
+        "Campaign ID": "campaign-2",
+        "Ad Group ID": "adgroup-2",
+        "Search Term": "crochet bag charm",
+        "Decision": "approve"
+      },
+      {
+        "Action ID": "budget_watch:campaign:campaign-3",
+        "Action": "budget_watch",
+        "Scope": "campaign",
+        "Campaign ID": "campaign-3",
+        "Decision": "approve"
+      },
+      {
+        "Action ID": "negative_exact_candidate:ad_group:campaign-4:adgroup-4:maybe-later",
+        "Action": "negative_exact_candidate",
+        "Scope": "ad_group",
+        "Campaign ID": "campaign-4",
+        "Ad Group ID": "adgroup-4",
+        "Search Term": "maybe later",
+        "Decision": "defer"
+      }
+    ]), "Action Plan");
+    XLSX.writeFile(workbook, file);
+
+    await expect(previewAmazonAdsApprovedActions(file)).resolves.toEqual({
+      operation: "preview_amazon_ads_approved_actions",
+      approvedActionCount: 3,
+      applied: false,
+      warning: "Preview only. No campaigns, ad groups, bids, budgets, keywords, negatives, or ads were changed.",
+      actions: [
+        {
+          actionId: "negative_exact_candidate:ad_group:campaign-1:adgroup-1:free-crochet-pattern",
+          operation: "create_sp_negative_keyword",
+          campaignId: "campaign-1",
+          adGroupId: "adgroup-1",
+          keywordText: "free crochet pattern",
+          matchType: "NEGATIVE_EXACT",
+          state: "ENABLED",
+          applied: false
+        },
+        {
+          actionId: "exact_match_or_bid_review:ad_group:campaign-2:adgroup-2:crochet-bag-charm",
+          operation: "review_sp_exact_keyword_or_bid",
+          campaignId: "campaign-2",
+          adGroupId: "adgroup-2",
+          keywordText: "crochet bag charm",
+          matchType: "EXACT",
+          applied: false
+        },
+        {
+          actionId: "budget_watch:campaign:campaign-3",
+          operation: "review_sp_campaign_budget",
+          campaignId: "campaign-3",
+          applied: false
+        }
+      ],
+      invalidDecisionCount: 0,
+      invalidActionCount: 0,
+      invalidDecisions: [],
+      invalidActions: []
     });
   });
 });
