@@ -13,6 +13,14 @@ interface SponsoredProductsSearchTermReportInput {
   keywordType: Array<"BROAD" | "PHRASE" | "EXACT" | "TARGETING_EXPRESSION" | "TARGETING_EXPRESSION_PREDEFINED">;
 }
 
+interface SponsoredProductsNegativeKeywordInput {
+  campaignId: string;
+  adGroupId: string;
+  keywordText: string;
+  matchType: "NEGATIVE_EXACT" | "NEGATIVE_PHRASE" | "NEGATIVE_BROAD";
+  state: "ENABLED";
+}
+
 const ADS_ENDPOINTS = {
   na: "https://advertising-api.amazon.com",
   eu: "https://advertising-api-eu.amazon.com",
@@ -57,6 +65,16 @@ export class AmazonAdsClient {
       accept: "application/vnd.spKeyword.v3+json",
       contentType: "application/vnd.spKeyword.v3+json",
       body
+    });
+  }
+
+  async createSponsoredProductsNegativeKeywords(profileId: string, negativeKeywords: SponsoredProductsNegativeKeywordInput[]) {
+    return this.request("/sp/negativeKeywords", {
+      method: "POST",
+      profileId,
+      accept: "application/vnd.spNegativeKeyword.v3+json",
+      contentType: "application/vnd.spNegativeKeyword.v3+json",
+      body: { negativeKeywords }
     });
   }
 
