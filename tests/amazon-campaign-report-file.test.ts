@@ -169,6 +169,7 @@ describe("analyzeAmazonSearchTermReportFile", () => {
       operation: "read_amazon_ads_action_decisions",
       reviewedActionCount: 2,
       invalidDecisionCount: 1,
+      invalidActionCount: 0,
       decisions: [
         {
           actionId: "negative_exact_candidate:ad_group:campaign-1:adgroup-1:free-towel-warmer-manual",
@@ -200,6 +201,66 @@ describe("analyzeAmazonSearchTermReportFile", () => {
           decision: "approved",
           reviewNotes: "Typo",
           error: "Decision must be approve, reject, or defer."
+        }
+      ],
+      invalidActions: []
+    });
+  });
+
+  it("reports approved Ads actions that are missing execution identifiers", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "shopweaver-amazon-ads-"));
+    const file = join(dir, "reviewed-optimization.xlsx");
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet([
+      {
+        "Action ID": "negative_exact_candidate:ad_group:campaign-1:free-towel-warmer-manual",
+        "Action": "negative_exact_candidate",
+        "Scope": "ad_group",
+        "Campaign ID": "campaign-1",
+        "Ad Group ID": "",
+        "Search Term": "free towel warmer manual",
+        "Decision": "approve",
+        "Reviewed By": "Aidan",
+        "Review Notes": "Missing ad group"
+      },
+      {
+        "Action ID": "budget_watch:campaign:campaign-1",
+        "Action": "budget_watch",
+        "Scope": "campaign",
+        "Campaign ID": "campaign-1",
+        "Decision": "approve",
+        "Reviewed By": "Aidan",
+        "Review Notes": "Budget check"
+      }
+    ]), "Action Plan");
+    XLSX.writeFile(workbook, file);
+
+    await expect(readAmazonAdsActionDecisions(file)).resolves.toEqual({
+      operation: "read_amazon_ads_action_decisions",
+      reviewedActionCount: 1,
+      invalidDecisionCount: 0,
+      invalidActionCount: 1,
+      decisions: [
+        {
+          actionId: "budget_watch:campaign:campaign-1",
+          action: "budget_watch",
+          scope: "campaign",
+          campaignId: "campaign-1",
+          adGroupId: "",
+          searchTerm: "",
+          decision: "approve",
+          reviewedBy: "Aidan",
+          reviewNotes: "Budget check"
+        }
+      ],
+      invalidDecisions: [],
+      invalidActions: [
+        {
+          actionId: "negative_exact_candidate:ad_group:campaign-1:free-towel-warmer-manual",
+          action: "negative_exact_candidate",
+          decision: "approve",
+          reviewNotes: "Missing ad group",
+          error: "Approved ad group actions require Campaign ID, Ad Group ID, and Search Term."
         }
       ]
     });

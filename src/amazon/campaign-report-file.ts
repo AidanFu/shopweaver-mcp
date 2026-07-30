@@ -172,12 +172,18 @@ export async function readAmazonAdsActionDecisions(filePath: string) {
       reviewNotes: row.reviewNotes,
       error: "Decision must be approve, reject, or defer."
     }));
+  const invalidActions = decisions
+    .map(invalidApprovedAction)
+    .filter(action => action !== undefined);
+  const validDecisions = decisions.filter(row => !invalidActions.some(action => action.actionId === row.actionId));
   return {
     operation: "read_amazon_ads_action_decisions" as const,
-    reviewedActionCount: decisions.length,
+    reviewedActionCount: validDecisions.length,
     invalidDecisionCount: invalidDecisions.length,
-    decisions,
-    invalidDecisions
+    invalidActionCount: invalidActions.length,
+    decisions: validDecisions,
+    invalidDecisions,
+    invalidActions
   };
 }
 
@@ -238,4 +244,27 @@ function reviewedDecision(row: Record<string, unknown>) {
     reviewedBy: text(row["Reviewed By"]),
     reviewNotes: text(row["Review Notes"])
   };
+}
+
+function invalidApprovedAction(row: ReturnType<typeof reviewedDecision>) {
+  if (row.decision !== "approve") return undefined;
+  if ((row.action === "negative_exact_candidate" || row.action === "exact_match_or_bid_review") && (!row.campaignId || !row.adGroupId || !row.searchTerm)) {
+    return {
+      actionId: row.actionId,
+      action: row.action,
+      decision: row.decision,
+      reviewNotes: row.reviewNotes,
+      error: "Approved ad group actions require Campaign ID, Ad Group ID, and Search Term."
+    };
+  }
+  if (row.action === "budget_watch" && !row.campaignId) {
+    return {
+      actionId: row.actionId,
+      action: row.action,
+      decision: row.decision,
+      reviewNotes: row.reviewNotes,
+      error: "Approved campaign actions require Campaign ID."
+    };
+  }
+  return undefined;
 }
