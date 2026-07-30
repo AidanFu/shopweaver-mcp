@@ -4,6 +4,7 @@ import { analyzeAmazonAplusContent, buildOptimizedAmazonAplusContentDocument } f
 import { writeAmazonAplusOptimizationWorkbook } from "../amazon/aplus-workbook.js";
 import { buildAmazonAdsCostControlPlanFromReportUrl } from "../amazon/ads-cost-control-plan.js";
 import { runAmazonAdsCampaignOptimizationCycle } from "../amazon/ads-optimization-cycle.js";
+import { compareAmazonAdsOptimizationReportFiles } from "../amazon/ads-optimization-history.js";
 import { analyzeAmazonSearchTermReportFile, previewAmazonAdsApprovedActions, readAmazonAdsActionDecisions, writeAmazonSearchTermOptimizationWorkbook } from "../amazon/campaign-report-file.js";
 import { analyzeAmazonCampaignMetrics, analyzeAmazonSearchTermReportRows } from "../amazon/campaign-optimization.js";
 import { analyzeAmazonExistingListing, buildAmazonListingCopyPatch } from "../amazon/listing-optimization.js";
@@ -719,6 +720,20 @@ export function registerAmazonTools(server: McpServer, store: CredentialStore, a
       filePath: z.string().min(1)
     }
   }, async ({ filePath }) => result(await previewAmazonAdsApprovedActions(filePath)));
+
+  server.registerTool("amazon_ads_compare_report_files", {
+    description: "Compare two local Sponsored Products search-term report files to evaluate whether spend, sales, orders, and ACOS improved. This is read-only and does not change ads.",
+    inputSchema: {
+      beforeLabel: z.string().min(1),
+      beforeStartDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      beforeEndDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      beforeFilePath: z.string().min(1),
+      afterLabel: z.string().min(1),
+      afterStartDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      afterEndDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      afterFilePath: z.string().min(1)
+    }
+  }, async (input) => result(await compareAmazonAdsOptimizationReportFiles(input)));
 
   if (amazonAds) {
     server.registerTool("amazon_ads_list_profiles", {
