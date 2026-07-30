@@ -9,8 +9,12 @@ export async function analyzeAmazonSearchTermReportFile(filePath: string) {
 }
 
 export async function writeAmazonSearchTermOptimizationWorkbook(reportFilePath: string, outputPath: string) {
+  return writeAmazonSearchTermOptimizationWorkbookFromRows(await readAmazonSearchTermReportRows(reportFilePath), outputPath);
+}
+
+export async function writeAmazonSearchTermOptimizationWorkbookFromRows(rows: Array<Record<string, unknown>>, outputPath: string) {
   if (!isAbsolute(outputPath)) throw new ShopWeaverError("AMAZON_ADS_OUTPUT_PATH_INVALID", "Amazon Ads optimization workbook output path must be absolute.");
-  const analysis = await analyzeAmazonSearchTermReportFile(reportFilePath);
+  const analysis = analyzeAmazonSearchTermReportRows(rows);
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet([{
     "Report Rows": analysis.rowCount,

@@ -2,6 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { analyzeAmazonAplusContent, buildOptimizedAmazonAplusContentDocument } from "../amazon/aplus-optimization.js";
 import { writeAmazonAplusOptimizationWorkbook } from "../amazon/aplus-workbook.js";
+import { runAmazonAdsCampaignOptimizationCycle } from "../amazon/ads-optimization-cycle.js";
 import { analyzeAmazonSearchTermReportFile, previewAmazonAdsApprovedActions, readAmazonAdsActionDecisions, writeAmazonSearchTermOptimizationWorkbook } from "../amazon/campaign-report-file.js";
 import { analyzeAmazonCampaignMetrics, analyzeAmazonSearchTermReportRows } from "../amazon/campaign-optimization.js";
 import { analyzeAmazonExistingListing, buildAmazonListingCopyPatch } from "../amazon/listing-optimization.js";
@@ -503,6 +504,23 @@ export function registerAmazonTools(server: McpServer, store: CredentialStore, a
         url: z.string().url()
       }
     }, async ({ url }) => result(analyzeAmazonSearchTermReportRows(await amazonAds.downloadReportRows(url))));
+
+    server.registerTool("amazon_ads_run_campaign_optimization_cycle", {
+      description: "Create or poll a Sponsored Products search-term report, download it when complete, analyze campaign waste and winners, and write a local optimization workbook. This is read-only and does not change campaigns, bids, budgets, keywords, negatives, or ads.",
+      inputSchema: {
+        profileId: z.string().min(1),
+        startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        outputPath: z.string().min(1),
+        reportId: z.string().min(1).optional()
+      }
+    }, async ({ profileId, startDate, endDate, outputPath, reportId }) => result(await runAmazonAdsCampaignOptimizationCycle(amazonAds, {
+      profileId,
+      startDate,
+      endDate,
+      outputPath,
+      reportId
+    })));
 
     server.registerTool("amazon_ads_list_sp_campaigns", {
       description: "Read Sponsored Products campaigns for one Amazon Ads profile. This is read-only and does not change campaigns, bids, budgets, keywords, negatives, or ads.",
