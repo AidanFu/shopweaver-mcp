@@ -112,4 +112,58 @@ describe("AmazonAdsWriteService", () => {
       state: "PAUSED"
     }]);
   });
+
+  it("previews and confirms campaign creation", async () => {
+    const campaign = {
+      name: "ShopWeaver Exact | Towel Warmer Winners",
+      targetingType: "MANUAL" as const,
+      state: "PAUSED" as const,
+      startDate: "2026-07-30",
+      budget: { budgetType: "DAILY" as const, budget: 5 },
+      dynamicBidding: {
+        strategy: "AUTO_FOR_SALES" as const,
+        placementBidding: []
+      },
+      reason: "Launch paused until keywords and product targets are reviewed."
+    };
+    const amazonAds = {
+      createSponsoredProductsNegativeKeywords: vi.fn(),
+      updateSponsoredProductsCampaigns: vi.fn(),
+      createSponsoredProductsCampaigns: vi.fn().mockResolvedValue({
+        campaigns: { success: [{ index: 0, campaignId: "campaign-2" }], error: [] }
+      })
+    };
+    const service = new AmazonAdsWriteService(amazonAds, new ConfirmationStore(() => 1_000));
+
+    const preview = await service.previewCampaignCreations("profile-1", [campaign]);
+
+    expect(preview).toMatchObject({
+      operation: "amazon_ads_create_campaigns",
+      profileId: "profile-1",
+      campaignCreateCount: 1,
+      applied: false,
+      campaigns: [campaign]
+    });
+    expect(amazonAds.createSponsoredProductsCampaigns).not.toHaveBeenCalled();
+
+    await expect(service.confirmCampaignCreations("profile-1", preview.campaigns, preview.confirmationToken))
+      .resolves.toMatchObject({
+        operation: "amazon_ads_create_campaigns",
+        profileId: "profile-1",
+        campaignCreateCount: 1,
+        applied: true,
+        result: { campaigns: { success: [{ index: 0, campaignId: "campaign-2" }], error: [] } }
+      });
+    expect(amazonAds.createSponsoredProductsCampaigns).toHaveBeenCalledWith("profile-1", [{
+      name: "ShopWeaver Exact | Towel Warmer Winners",
+      targetingType: "MANUAL",
+      state: "PAUSED",
+      startDate: "2026-07-30",
+      budget: { budgetType: "DAILY", budget: 5 },
+      dynamicBidding: {
+        strategy: "AUTO_FOR_SALES",
+        placementBidding: []
+      }
+    }]);
+  });
 });

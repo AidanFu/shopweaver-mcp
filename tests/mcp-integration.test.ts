@@ -36,6 +36,7 @@ describe("MCP integration", () => {
     const tools = await client.listTools();
     expect(tools.tools.map(tool => tool.name).sort()).toEqual([
       "amazon_ads_connection_status",
+      "amazon_ads_create_campaigns",
       "amazon_ads_create_negative_keywords_from_review",
       "amazon_ads_create_sp_search_term_report",
       "amazon_ads_download_report",

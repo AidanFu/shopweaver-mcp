@@ -33,6 +33,18 @@ type AmazonAdsCampaignStateUpdate = {
   state: "ENABLED" | "PAUSED" | "ARCHIVED";
   reason?: string;
 };
+type AmazonAdsCampaignCreate = {
+  name: string;
+  targetingType: "AUTO" | "MANUAL";
+  state: "ENABLED" | "PAUSED";
+  startDate: string;
+  budget: { budgetType: "DAILY"; budget: number };
+  dynamicBidding: {
+    strategy: "AUTO_FOR_SALES" | "LEGACY_FOR_SALES" | "MANUAL";
+    placementBidding: Array<{ placement: string; percentage: number }>;
+  };
+  reason?: string;
+};
 
 export async function amazonConnectionStatus(store: CredentialStore) {
   const [app, auth] = await Promise.all([store.get("amazonSpApiApp"), store.get("amazonSpApiAuth")]);
@@ -103,7 +115,7 @@ export class AmazonListingWriteService {
 
 export class AmazonAdsWriteService {
   constructor(
-    private readonly amazonAds: Pick<AmazonAdsClient, "createSponsoredProductsNegativeKeywords" | "updateSponsoredProductsCampaigns">,
+    private readonly amazonAds: Pick<AmazonAdsClient, "createSponsoredProductsNegativeKeywords" | "updateSponsoredProductsCampaigns" | "createSponsoredProductsCampaigns">,
     private readonly confirmations: ConfirmationStore
   ) {}
 
@@ -153,6 +165,35 @@ export class AmazonAdsWriteService {
       applied: true
     };
   }
+
+  async previewCampaignCreations(profileId: string, campaigns: AmazonAdsCampaignCreate[]) {
+    const preview = buildCampaignCreatePreview(profileId, campaigns);
+    return {
+      operation: "amazon_ads_create_campaigns" as const,
+      ...preview,
+      applied: false,
+      ...this.confirmations.issue("amazon_ads_create_campaigns", 0, preview),
+      warning: "This preview did not change Amazon Ads. Confirm with the returned token to create the exact campaigns."
+    };
+  }
+
+  async confirmCampaignCreations(profileId: string, campaigns: AmazonAdsCampaignCreate[], confirmationToken: string) {
+    const preview = buildCampaignCreatePreview(profileId, campaigns);
+    this.confirmations.consume(confirmationToken, "amazon_ads_create_campaigns", 0, preview);
+    return {
+      operation: "amazon_ads_create_campaigns" as const,
+      ...preview,
+      result: await this.amazonAds.createSponsoredProductsCampaigns(profileId, preview.campaigns.map(campaign => ({
+        name: campaign.name,
+        targetingType: campaign.targetingType,
+        state: campaign.state,
+        startDate: campaign.startDate,
+        budget: campaign.budget,
+        dynamicBidding: campaign.dynamicBidding
+      }))),
+      applied: true
+    };
+  }
 }
 
 function buildCampaignStatePreview(profileId: string, campaigns: AmazonAdsCampaignStateUpdate[]) {
@@ -162,6 +203,22 @@ function buildCampaignStatePreview(profileId: string, campaigns: AmazonAdsCampai
     campaigns: campaigns.map(campaign => ({
       campaignId: campaign.campaignId,
       state: campaign.state,
+      ...(campaign.reason ? { reason: campaign.reason } : {})
+    }))
+  };
+}
+
+function buildCampaignCreatePreview(profileId: string, campaigns: AmazonAdsCampaignCreate[]) {
+  return {
+    profileId,
+    campaignCreateCount: campaigns.length,
+    campaigns: campaigns.map(campaign => ({
+      name: campaign.name,
+      targetingType: campaign.targetingType,
+      state: campaign.state,
+      startDate: campaign.startDate,
+      budget: campaign.budget,
+      dynamicBidding: campaign.dynamicBidding,
       ...(campaign.reason ? { reason: campaign.reason } : {})
     }))
   };
@@ -411,6 +468,35 @@ export function registerAmazonTools(server: McpServer, store: CredentialStore, a
     }, async ({ mode, profileId, campaigns, confirmationToken }) => result(mode === "preview"
       ? await amazonAdsWrites.previewCampaignStateUpdates(profileId, campaigns)
       : await amazonAdsWrites.confirmCampaignStateUpdates(profileId, campaigns, confirmationToken ?? "")));
+
+    server.registerTool("amazon_ads_create_campaigns", {
+      description: "Preview or confirm creating Sponsored Products campaigns. This creates campaigns only after confirmation.",
+      inputSchema: {
+        mode: z.enum(["preview", "confirm"]).default("preview"),
+        profileId: z.string().min(1),
+        campaigns: z.array(z.object({
+          name: z.string().min(1),
+          targetingType: z.enum(["AUTO", "MANUAL"]),
+          state: z.enum(["ENABLED", "PAUSED"]),
+          startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+          budget: z.object({
+            budgetType: z.literal("DAILY"),
+            budget: z.number().positive()
+          }),
+          dynamicBidding: z.object({
+            strategy: z.enum(["AUTO_FOR_SALES", "LEGACY_FOR_SALES", "MANUAL"]),
+            placementBidding: z.array(z.object({
+              placement: z.string().min(1),
+              percentage: z.number().int().min(0).max(900)
+            }))
+          }),
+          reason: z.string().optional()
+        })).min(1),
+        confirmationToken: z.string().min(20).optional()
+      }
+    }, async ({ mode, profileId, campaigns, confirmationToken }) => result(mode === "preview"
+      ? await amazonAdsWrites.previewCampaignCreations(profileId, campaigns)
+      : await amazonAdsWrites.confirmCampaignCreations(profileId, campaigns, confirmationToken ?? "")));
   }
 
   server.registerTool("amazon_optimize_campaign_metrics", {
