@@ -73,6 +73,51 @@ describe("AmazonAdsClient", () => {
     }));
   });
 
+  it("updates Sponsored Products campaign state for pause or archive actions", async () => {
+    const store = new MemoryCredentialStore();
+    await store.set("amazonAdsApp", { clientId: "ads-client", clientSecret: "ads-secret" });
+    await store.set("amazonAdsAuth", {
+      refreshToken: "ads-refresh",
+      region: "na",
+      accessToken: "ads-access",
+      expiresAt: Date.now() + 3_600_000
+    });
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      campaigns: {
+        success: [{ index: 0, campaignId: "123" }],
+        error: []
+      }
+    }), { status: 207, headers: { "content-type": "application/json" } }));
+    const client = new AmazonAdsClient(store, fetchMock);
+
+    await expect(client.updateSponsoredProductsCampaigns("987654321", [{
+      campaignId: "123",
+      state: "ARCHIVED"
+    }])).resolves.toEqual({
+      campaigns: {
+        success: [{ index: 0, campaignId: "123" }],
+        error: []
+      }
+    });
+    expect(fetchMock).toHaveBeenCalledWith("https://advertising-api.amazon.com/sp/campaigns", expect.objectContaining({
+      method: "PUT",
+      headers: {
+        Authorization: "Bearer ads-access",
+        "Amazon-Advertising-API-ClientId": "ads-client",
+        "Amazon-Advertising-API-Scope": "987654321",
+        Accept: "application/vnd.spCampaign.v3+json",
+        "Content-Type": "application/vnd.spCampaign.v3+json",
+        "user-agent": "ShopWeaver/0.1.0 (Language=TypeScript)"
+      },
+      body: JSON.stringify({
+        campaigns: [{
+          campaignId: "123",
+          state: "ARCHIVED"
+        }]
+      })
+    }));
+  });
+
   it("lists Sponsored Products ad groups for a campaign without changing bids", async () => {
     const store = new MemoryCredentialStore();
     await store.set("amazonAdsApp", { clientId: "ads-client", clientSecret: "ads-secret" });

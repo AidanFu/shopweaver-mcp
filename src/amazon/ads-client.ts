@@ -21,6 +21,11 @@ interface SponsoredProductsNegativeKeywordInput {
   state: "ENABLED";
 }
 
+interface SponsoredProductsCampaignUpdateInput {
+  campaignId: string;
+  state: "ENABLED" | "PAUSED" | "ARCHIVED";
+}
+
 const ADS_ENDPOINTS = {
   na: "https://advertising-api.amazon.com",
   eu: "https://advertising-api-eu.amazon.com",
@@ -45,6 +50,16 @@ export class AmazonAdsClient {
       accept: "application/vnd.spCampaign.v3+json",
       contentType: "application/vnd.spCampaign.v3+json",
       body
+    });
+  }
+
+  async updateSponsoredProductsCampaigns(profileId: string, campaigns: SponsoredProductsCampaignUpdateInput[]) {
+    return this.request("/sp/campaigns", {
+      method: "PUT",
+      profileId,
+      accept: "application/vnd.spCampaign.v3+json",
+      contentType: "application/vnd.spCampaign.v3+json",
+      body: { campaigns }
     });
   }
 
@@ -114,7 +129,7 @@ export class AmazonAdsClient {
   }
 
   private async request(path: string, options: {
-    method?: "GET" | "POST";
+    method?: "GET" | "POST" | "PUT";
     profileId?: string;
     accept?: string;
     contentType?: string;
