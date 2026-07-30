@@ -2,6 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { analyzeAmazonAplusContent, buildOptimizedAmazonAplusContentDocument } from "../amazon/aplus-optimization.js";
 import { writeAmazonAplusOptimizationWorkbook } from "../amazon/aplus-workbook.js";
+import { buildAmazonAdsCostControlPlanFromReportUrl } from "../amazon/ads-cost-control-plan.js";
 import { runAmazonAdsCampaignOptimizationCycle } from "../amazon/ads-optimization-cycle.js";
 import { analyzeAmazonSearchTermReportFile, previewAmazonAdsApprovedActions, readAmazonAdsActionDecisions, writeAmazonSearchTermOptimizationWorkbook } from "../amazon/campaign-report-file.js";
 import { analyzeAmazonCampaignMetrics, analyzeAmazonSearchTermReportRows } from "../amazon/campaign-optimization.js";
@@ -767,6 +768,14 @@ export function registerAmazonTools(server: McpServer, store: CredentialStore, a
         url: z.string().url()
       }
     }, async ({ url }) => result(analyzeAmazonSearchTermReportRows(await amazonAds.downloadReportRows(url))));
+
+    server.registerTool("amazon_ads_build_cost_control_plan", {
+      description: "Download a completed Sponsored Products search-term report URL, read current campaign budgets, and return concrete negative-keyword and budget-reduction payloads for review. This is read-only and does not change ads.",
+      inputSchema: {
+        profileId: z.string().min(1),
+        url: z.string().url()
+      }
+    }, async ({ profileId, url }) => result(await buildAmazonAdsCostControlPlanFromReportUrl(amazonAds, { profileId, url })));
 
     server.registerTool("amazon_ads_run_campaign_optimization_cycle", {
       description: "Create or poll a Sponsored Products search-term report, download it when complete, analyze campaign waste and winners, and write a local optimization workbook. This is read-only and does not change campaigns, bids, budgets, keywords, negatives, or ads.",
