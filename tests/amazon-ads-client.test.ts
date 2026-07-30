@@ -118,6 +118,59 @@ describe("AmazonAdsClient", () => {
     }));
   });
 
+  it("creates Sponsored Products campaigns for approved launch plans", async () => {
+    const store = new MemoryCredentialStore();
+    await store.set("amazonAdsApp", { clientId: "ads-client", clientSecret: "ads-secret" });
+    await store.set("amazonAdsAuth", {
+      refreshToken: "ads-refresh",
+      region: "na",
+      accessToken: "ads-access",
+      expiresAt: Date.now() + 3_600_000
+    });
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      campaigns: {
+        success: [{ index: 0, campaignId: "campaign-1" }],
+        error: []
+      }
+    }), { status: 207, headers: { "content-type": "application/json" } }));
+    const client = new AmazonAdsClient(store, fetchMock);
+
+    await expect(client.createSponsoredProductsCampaigns("987654321", [{
+      name: "ShopWeaver | Charms | Auto Discovery",
+      targetingType: "AUTO",
+      state: "PAUSED",
+      startDate: "2026-07-30",
+      budget: { budgetType: "DAILY", budget: 5 },
+      dynamicBidding: { strategy: "AUTO_FOR_SALES", placementBidding: [] }
+    }])).resolves.toEqual({
+      campaigns: {
+        success: [{ index: 0, campaignId: "campaign-1" }],
+        error: []
+      }
+    });
+    expect(fetchMock).toHaveBeenCalledWith("https://advertising-api.amazon.com/sp/campaigns", expect.objectContaining({
+      method: "POST",
+      headers: {
+        Authorization: "Bearer ads-access",
+        "Amazon-Advertising-API-ClientId": "ads-client",
+        "Amazon-Advertising-API-Scope": "987654321",
+        Accept: "application/vnd.spCampaign.v3+json",
+        "Content-Type": "application/vnd.spCampaign.v3+json",
+        "user-agent": "ShopWeaver/0.1.0 (Language=TypeScript)"
+      },
+      body: JSON.stringify({
+        campaigns: [{
+          name: "ShopWeaver | Charms | Auto Discovery",
+          targetingType: "AUTO",
+          state: "PAUSED",
+          startDate: "2026-07-30",
+          budget: { budgetType: "DAILY", budget: 5 },
+          dynamicBidding: { strategy: "AUTO_FOR_SALES", placementBidding: [] }
+        }]
+      })
+    }));
+  });
+
   it("lists Sponsored Products ad groups for a campaign without changing bids", async () => {
     const store = new MemoryCredentialStore();
     await store.set("amazonAdsApp", { clientId: "ads-client", clientSecret: "ads-secret" });

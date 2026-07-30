@@ -26,6 +26,18 @@ interface SponsoredProductsCampaignUpdateInput {
   state: "ENABLED" | "PAUSED" | "ARCHIVED";
 }
 
+interface SponsoredProductsCampaignCreateInput {
+  name: string;
+  targetingType: "AUTO" | "MANUAL";
+  state: "ENABLED" | "PAUSED";
+  startDate: string;
+  budget: { budgetType: "DAILY"; budget: number };
+  dynamicBidding: {
+    strategy: "AUTO_FOR_SALES" | "LEGACY_FOR_SALES" | "MANUAL";
+    placementBidding: Array<{ placement: string; percentage: number }>;
+  };
+}
+
 const ADS_ENDPOINTS = {
   na: "https://advertising-api.amazon.com",
   eu: "https://advertising-api-eu.amazon.com",
@@ -56,6 +68,16 @@ export class AmazonAdsClient {
   async updateSponsoredProductsCampaigns(profileId: string, campaigns: SponsoredProductsCampaignUpdateInput[]) {
     return this.request("/sp/campaigns", {
       method: "PUT",
+      profileId,
+      accept: "application/vnd.spCampaign.v3+json",
+      contentType: "application/vnd.spCampaign.v3+json",
+      body: { campaigns }
+    });
+  }
+
+  async createSponsoredProductsCampaigns(profileId: string, campaigns: SponsoredProductsCampaignCreateInput[]) {
+    return this.request("/sp/campaigns", {
+      method: "POST",
       profileId,
       accept: "application/vnd.spCampaign.v3+json",
       contentType: "application/vnd.spCampaign.v3+json",
