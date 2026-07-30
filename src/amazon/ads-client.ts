@@ -23,7 +23,8 @@ interface SponsoredProductsNegativeKeywordInput {
 
 interface SponsoredProductsCampaignUpdateInput {
   campaignId: string;
-  state: "ENABLED" | "PAUSED" | "ARCHIVED";
+  state?: "ENABLED" | "PAUSED" | "ARCHIVED";
+  budget?: { budgetType: "DAILY"; budget: number };
 }
 
 interface SponsoredProductsCampaignCreateInput {

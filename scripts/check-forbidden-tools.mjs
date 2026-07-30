@@ -17,6 +17,7 @@ const allowed = [
   "amazon_ads_preview_approved_actions",
   "amazon_ads_read_action_decisions",
   "amazon_ads_run_campaign_optimization_cycle",
+  "amazon_ads_update_campaign_budgets",
   "amazon_ads_update_campaign_states",
   "amazon_ads_write_sp_search_term_optimization_workbook",
   "amazon_get_aplus_content_document",

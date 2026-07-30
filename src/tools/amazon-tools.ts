@@ -33,6 +33,11 @@ type AmazonAdsCampaignStateUpdate = {
   state: "ENABLED" | "PAUSED" | "ARCHIVED";
   reason?: string;
 };
+type AmazonAdsCampaignBudgetUpdate = {
+  campaignId: string;
+  budget: { budgetType: "DAILY"; budget: number };
+  reason?: string;
+};
 type AmazonAdsCampaignCreate = {
   name: string;
   targetingType: "AUTO" | "MANUAL";
@@ -166,6 +171,31 @@ export class AmazonAdsWriteService {
     };
   }
 
+  async previewCampaignBudgetUpdates(profileId: string, campaigns: AmazonAdsCampaignBudgetUpdate[]) {
+    const preview = buildCampaignBudgetPreview(profileId, campaigns);
+    return {
+      operation: "amazon_ads_update_campaign_budgets" as const,
+      ...preview,
+      applied: false,
+      ...this.confirmations.issue("amazon_ads_update_campaign_budgets", 0, preview),
+      warning: "This preview did not change Amazon Ads. Confirm with the returned token to apply the exact budget updates."
+    };
+  }
+
+  async confirmCampaignBudgetUpdates(profileId: string, campaigns: AmazonAdsCampaignBudgetUpdate[], confirmationToken: string) {
+    const preview = buildCampaignBudgetPreview(profileId, campaigns);
+    this.confirmations.consume(confirmationToken, "amazon_ads_update_campaign_budgets", 0, preview);
+    return {
+      operation: "amazon_ads_update_campaign_budgets" as const,
+      ...preview,
+      result: await this.amazonAds.updateSponsoredProductsCampaigns(profileId, preview.campaigns.map(campaign => ({
+        campaignId: campaign.campaignId,
+        budget: campaign.budget
+      }))),
+      applied: true
+    };
+  }
+
   async previewCampaignCreations(profileId: string, campaigns: AmazonAdsCampaignCreate[]) {
     const preview = buildCampaignCreatePreview(profileId, campaigns);
     return {
@@ -203,6 +233,18 @@ function buildCampaignStatePreview(profileId: string, campaigns: AmazonAdsCampai
     campaigns: campaigns.map(campaign => ({
       campaignId: campaign.campaignId,
       state: campaign.state,
+      ...(campaign.reason ? { reason: campaign.reason } : {})
+    }))
+  };
+}
+
+function buildCampaignBudgetPreview(profileId: string, campaigns: AmazonAdsCampaignBudgetUpdate[]) {
+  return {
+    profileId,
+    campaignBudgetUpdateCount: campaigns.length,
+    campaigns: campaigns.map(campaign => ({
+      campaignId: campaign.campaignId,
+      budget: campaign.budget,
       ...(campaign.reason ? { reason: campaign.reason } : {})
     }))
   };
@@ -468,6 +510,25 @@ export function registerAmazonTools(server: McpServer, store: CredentialStore, a
     }, async ({ mode, profileId, campaigns, confirmationToken }) => result(mode === "preview"
       ? await amazonAdsWrites.previewCampaignStateUpdates(profileId, campaigns)
       : await amazonAdsWrites.confirmCampaignStateUpdates(profileId, campaigns, confirmationToken ?? "")));
+
+    server.registerTool("amazon_ads_update_campaign_budgets", {
+      description: "Preview or confirm reducing or changing Sponsored Products campaign daily budgets. This changes budgets only after confirmation.",
+      inputSchema: {
+        mode: z.enum(["preview", "confirm"]).default("preview"),
+        profileId: z.string().min(1),
+        campaigns: z.array(z.object({
+          campaignId: z.string().min(1),
+          budget: z.object({
+            budgetType: z.literal("DAILY"),
+            budget: z.number().positive()
+          }),
+          reason: z.string().optional()
+        })).min(1),
+        confirmationToken: z.string().min(20).optional()
+      }
+    }, async ({ mode, profileId, campaigns, confirmationToken }) => result(mode === "preview"
+      ? await amazonAdsWrites.previewCampaignBudgetUpdates(profileId, campaigns)
+      : await amazonAdsWrites.confirmCampaignBudgetUpdates(profileId, campaigns, confirmationToken ?? "")));
 
     server.registerTool("amazon_ads_create_campaigns", {
       description: "Preview or confirm creating Sponsored Products campaigns. This creates campaigns only after confirmation.",
