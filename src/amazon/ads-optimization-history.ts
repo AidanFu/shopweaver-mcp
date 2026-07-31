@@ -1,5 +1,6 @@
 import { analyzeAmazonSearchTermReportRows, type AmazonCampaignMetrics } from "./campaign-optimization.js";
 import { readAmazonSearchTermReportRows } from "./campaign-report-file.js";
+import type { AmazonAdsChangeLog, AmazonAdsChangeLogRecord } from "./ads-change-log.js";
 
 interface AmazonAdsOptimizationSnapshotInput {
   label: string;
@@ -33,6 +34,10 @@ interface AmazonAdsOptimizationCampaignSnapshot {
   acos: number;
 }
 
+interface AmazonAdsOptimizationComparisonInput {
+  appliedActions?: AmazonAdsChangeLogRecord[];
+}
+
 export function buildAmazonAdsOptimizationSnapshot(input: AmazonAdsOptimizationSnapshotInput): AmazonAdsOptimizationSnapshot {
   const analysis = analyzeAmazonSearchTermReportRows(input.rows);
   return {
@@ -51,7 +56,8 @@ export function buildAmazonAdsOptimizationSnapshot(input: AmazonAdsOptimizationS
   };
 }
 
-export function compareAmazonAdsOptimizationSnapshots(before: AmazonAdsOptimizationSnapshot, after: AmazonAdsOptimizationSnapshot) {
+export function compareAmazonAdsOptimizationSnapshots(before: AmazonAdsOptimizationSnapshot, after: AmazonAdsOptimizationSnapshot, input: AmazonAdsOptimizationComparisonInput = {}) {
+  const appliedActions = input.appliedActions ?? [];
   const afterCampaigns = new Map(after.campaigns.map(campaign => [campaign.campaignId, campaign]));
   const campaignChanges = before.campaigns.map(beforeCampaign => {
     const afterCampaign = afterCampaigns.get(beforeCampaign.campaignId) ?? emptyCampaign(beforeCampaign);
@@ -59,6 +65,7 @@ export function compareAmazonAdsOptimizationSnapshots(before: AmazonAdsOptimizat
     const salesChange = round(afterCampaign.sales - beforeCampaign.sales);
     const orderChange = afterCampaign.orders - beforeCampaign.orders;
     const acosChange = round(afterCampaign.acos - beforeCampaign.acos);
+    const campaignActions = appliedActions.filter(action => actionHasCampaign(action, beforeCampaign.campaignId));
     return {
       campaignId: beforeCampaign.campaignId,
       campaignName: beforeCampaign.campaignName,
@@ -66,7 +73,11 @@ export function compareAmazonAdsOptimizationSnapshots(before: AmazonAdsOptimizat
       salesChange,
       orderChange,
       acosChange,
-      verdict: verdict(spendChange, salesChange, orderChange, acosChange)
+      verdict: verdict(spendChange, salesChange, orderChange, acosChange),
+      ...(campaignActions.length ? {
+        appliedActionCount: campaignActions.length,
+        appliedActions: campaignActions.map(actionSummary)
+      } : {})
     };
   });
   const spendChange = round(after.totalSpend - before.totalSpend);
@@ -82,6 +93,10 @@ export function compareAmazonAdsOptimizationSnapshots(before: AmazonAdsOptimizat
     orderChange,
     blendedAcosChange,
     verdict: verdict(spendChange, salesChange, orderChange, blendedAcosChange),
+    ...(appliedActions.length ? {
+      appliedActionCount: appliedActions.length,
+      appliedActions: appliedActions.map(actionSummary)
+    } : {}),
     campaignChanges
   };
 }
@@ -95,10 +110,15 @@ export async function compareAmazonAdsOptimizationReportFiles(input: {
   afterStartDate: string;
   afterEndDate: string;
   afterFilePath: string;
+  profileId?: string;
+  changeLog?: Pick<AmazonAdsChangeLog, "read">;
 }) {
-  const [beforeRows, afterRows] = await Promise.all([
+  const [beforeRows, afterRows, appliedActions] = await Promise.all([
     readAmazonSearchTermReportRows(input.beforeFilePath),
-    readAmazonSearchTermReportRows(input.afterFilePath)
+    readAmazonSearchTermReportRows(input.afterFilePath),
+    input.profileId && input.changeLog
+      ? input.changeLog.read({ profileId: input.profileId, limit: 500 }).then(result => result.records)
+      : Promise.resolve([])
   ]);
   return compareAmazonAdsOptimizationSnapshots(
     buildAmazonAdsOptimizationSnapshot({
@@ -112,7 +132,8 @@ export async function compareAmazonAdsOptimizationReportFiles(input: {
       startDate: input.afterStartDate,
       endDate: input.afterEndDate,
       rows: afterRows
-    })
+    }),
+    { appliedActions }
   );
 }
 
@@ -155,6 +176,20 @@ function totalOrders(rows: Array<Record<string, unknown>>): number {
 
 function emptyCampaign(campaign: AmazonAdsOptimizationCampaignSnapshot): AmazonAdsOptimizationCampaignSnapshot {
   return { ...campaign, spend: 0, sales: 0, clicks: 0, orders: 0, acos: 0 };
+}
+
+function actionHasCampaign(action: AmazonAdsChangeLogRecord, campaignId: string): boolean {
+  const campaigns = (action.payload as { campaigns?: Array<{ campaignId?: string }> }).campaigns ?? [];
+  return campaigns.some(campaign => campaign.campaignId === campaignId);
+}
+
+function actionSummary(action: AmazonAdsChangeLogRecord) {
+  return {
+    createdAt: action.createdAt,
+    operation: action.operation,
+    profileId: action.profileId,
+    payload: action.payload
+  };
 }
 
 function verdict(spendChange: number, salesChange: number, orderChange: number, acosChange: number): "improved" | "regressed" | "mixed" {

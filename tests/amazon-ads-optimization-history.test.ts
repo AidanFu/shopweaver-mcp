@@ -84,6 +84,42 @@ describe("Amazon Ads optimization history", () => {
     });
   });
 
+  it("connects applied campaign actions to later campaign metric changes", () => {
+    const before = buildAmazonAdsOptimizationSnapshot({
+      label: "before",
+      startDate: "2026-07-16",
+      endDate: "2026-07-29",
+      rows: [{ campaignId: "campaign-1", campaignName: "Exact Waste", clicks: 55, cost: 72.73, sales7d: 0, purchases7d: 0, searchTerm: "bad term" }]
+    });
+    const after = buildAmazonAdsOptimizationSnapshot({
+      label: "after",
+      startDate: "2026-07-30",
+      endDate: "2026-08-05",
+      rows: [{ campaignId: "campaign-1", campaignName: "Exact Waste", clicks: 15, cost: 18, sales7d: 89.99, purchases7d: 1, searchTerm: "good term" }]
+    });
+
+    expect(compareAmazonAdsOptimizationSnapshots(before, after, {
+      appliedActions: [{
+        createdAt: "2026-07-30T20:45:00.000Z",
+        operation: "amazon_ads_update_campaign_bidding",
+        profileId: "profile-1",
+        applied: true,
+        payload: { campaigns: [{ campaignId: "campaign-1" }] },
+        result: { campaigns: { success: [{ campaignId: "campaign-1" }], error: [] } }
+      }]
+    })).toMatchObject({
+      appliedActionCount: 1,
+      campaignChanges: [{
+        campaignId: "campaign-1",
+        appliedActionCount: 1,
+        appliedActions: [{
+          createdAt: "2026-07-30T20:45:00.000Z",
+          operation: "amazon_ads_update_campaign_bidding"
+        }]
+      }]
+    });
+  });
+
   it("compares two local search-term report files", async () => {
     const dir = await mkdtemp(join(tmpdir(), "shopweaver-amazon-ads-history-"));
     const beforeFile = join(dir, "before.csv");
@@ -111,6 +147,54 @@ describe("Amazon Ads optimization history", () => {
       verdict: "improved",
       spendChange: -54.73,
       orderChange: 1
+    });
+  });
+
+  it("includes matching change-log actions when comparing local report files", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "shopweaver-amazon-ads-history-"));
+    const beforeFile = join(dir, "before.csv");
+    const afterFile = join(dir, "after.csv");
+    await writeFile(beforeFile, [
+      "Campaign ID,Campaign Name,Customer Search Term,Clicks,Spend,7 Day Total Sales,7 Day Total Orders (#)",
+      "campaign-1,Exact Waste,bad term,55,$72.73,$0,0"
+    ].join("\n"));
+    await writeFile(afterFile, [
+      "Campaign ID,Campaign Name,Customer Search Term,Clicks,Spend,7 Day Total Sales,7 Day Total Orders (#)",
+      "campaign-1,Exact Waste,good term,15,$18,$89.99,1"
+    ].join("\n"));
+    const changeLog = {
+      read: async () => ({
+        operation: "read_amazon_ads_change_log" as const,
+        recordCount: 1,
+        records: [{
+          createdAt: "2026-07-30T20:45:00.000Z",
+          operation: "amazon_ads_update_campaign_bidding",
+          profileId: "profile-1",
+          applied: true as const,
+          payload: { campaigns: [{ campaignId: "campaign-1" }] },
+          result: { campaigns: { success: [{ campaignId: "campaign-1" }], error: [] } }
+        }]
+      })
+    };
+
+    await expect(compareAmazonAdsOptimizationReportFiles({
+      beforeLabel: "before",
+      beforeStartDate: "2026-07-16",
+      beforeEndDate: "2026-07-29",
+      beforeFilePath: beforeFile,
+      afterLabel: "after",
+      afterStartDate: "2026-07-30",
+      afterEndDate: "2026-08-05",
+      afterFilePath: afterFile,
+      profileId: "profile-1",
+      changeLog
+    })).resolves.toMatchObject({
+      appliedActionCount: 1,
+      campaignChanges: [{
+        campaignId: "campaign-1",
+        appliedActionCount: 1,
+        appliedActions: [{ operation: "amazon_ads_update_campaign_bidding" }]
+      }]
     });
   });
 });

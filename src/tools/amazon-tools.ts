@@ -810,7 +810,7 @@ export function registerAmazonTools(server: McpServer, store: CredentialStore, a
   }
 
   server.registerTool("amazon_ads_compare_report_files", {
-    description: "Compare two local Sponsored Products search-term report files to evaluate whether spend, sales, orders, and ACOS improved. This is read-only and does not change ads.",
+    description: "Compare two local Sponsored Products search-term report files to evaluate whether spend, sales, orders, and ACOS improved, optionally including local confirmed Ads write history for one profile. This is read-only and does not change ads.",
     inputSchema: {
       beforeLabel: z.string().min(1),
       beforeStartDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
@@ -819,9 +819,13 @@ export function registerAmazonTools(server: McpServer, store: CredentialStore, a
       afterLabel: z.string().min(1),
       afterStartDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
       afterEndDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-      afterFilePath: z.string().min(1)
+      afterFilePath: z.string().min(1),
+      profileId: z.string().min(1).optional()
     }
-  }, async (input) => result(await compareAmazonAdsOptimizationReportFiles(input)));
+  }, async (input) => result(await compareAmazonAdsOptimizationReportFiles({
+    ...input,
+    ...(input.profileId && amazonAdsChangeLog ? { changeLog: amazonAdsChangeLog } : {})
+  })));
 
   if (amazonAds) {
     server.registerTool("amazon_ads_list_profiles", {
