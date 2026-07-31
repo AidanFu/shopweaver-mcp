@@ -210,6 +210,58 @@ describe("AmazonAdsWriteService", () => {
     }]);
   });
 
+  it("previews and confirms campaign dynamic bidding updates", async () => {
+    const amazonAds = {
+      createSponsoredProductsNegativeKeywords: vi.fn(),
+      updateSponsoredProductsCampaigns: vi.fn().mockResolvedValue({
+        campaigns: { success: [{ index: 0, campaignId: "campaign-1" }], error: [] }
+      }),
+      createSponsoredProductsCampaigns: vi.fn()
+    };
+    const service = new AmazonAdsWriteService(amazonAds, new ConfirmationStore(() => 1_000));
+
+    const preview = await service.previewCampaignBiddingUpdates("profile-1", [{
+      campaignId: "campaign-1",
+      dynamicBidding: {
+        strategy: "AUTO_FOR_SALES",
+        placementBidding: [{ placement: "PLACEMENT_TOP", percentage: 0 }]
+      },
+      reason: "Remove top-of-search boost after cost-control review."
+    }]);
+
+    expect(preview).toMatchObject({
+      operation: "amazon_ads_update_campaign_bidding",
+      profileId: "profile-1",
+      campaignBiddingUpdateCount: 1,
+      applied: false,
+      campaigns: [{
+        campaignId: "campaign-1",
+        dynamicBidding: {
+          strategy: "AUTO_FOR_SALES",
+          placementBidding: [{ placement: "PLACEMENT_TOP", percentage: 0 }]
+        },
+        reason: "Remove top-of-search boost after cost-control review."
+      }]
+    });
+    expect(amazonAds.updateSponsoredProductsCampaigns).not.toHaveBeenCalled();
+
+    await expect(service.confirmCampaignBiddingUpdates("profile-1", preview.campaigns, preview.confirmationToken))
+      .resolves.toMatchObject({
+        operation: "amazon_ads_update_campaign_bidding",
+        profileId: "profile-1",
+        campaignBiddingUpdateCount: 1,
+        applied: true,
+        result: { campaigns: { success: [{ index: 0, campaignId: "campaign-1" }], error: [] } }
+      });
+    expect(amazonAds.updateSponsoredProductsCampaigns).toHaveBeenCalledWith("profile-1", [{
+      campaignId: "campaign-1",
+      dynamicBidding: {
+        strategy: "AUTO_FOR_SALES",
+        placementBidding: [{ placement: "PLACEMENT_TOP", percentage: 0 }]
+      }
+    }]);
+  });
+
   it("previews and confirms keyword bid updates", async () => {
     const amazonAds = {
       createSponsoredProductsNegativeKeywords: vi.fn(),

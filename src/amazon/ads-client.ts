@@ -25,6 +25,10 @@ interface SponsoredProductsCampaignUpdateInput {
   campaignId: string;
   state?: "ENABLED" | "PAUSED" | "ARCHIVED";
   budget?: { budgetType: "DAILY"; budget: number };
+  dynamicBidding?: {
+    strategy: "AUTO_FOR_SALES" | "LEGACY_FOR_SALES" | "MANUAL";
+    placementBidding: Array<{ placement: string; percentage: number }>;
+  };
 }
 
 interface SponsoredProductsCampaignCreateInput {

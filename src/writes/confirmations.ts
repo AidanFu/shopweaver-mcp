@@ -12,6 +12,7 @@ export type WriteAction =
   | "amazon_ads_create_campaigns"
   | "amazon_ads_create_negative_keywords"
   | "amazon_ads_update_ad_group_bids"
+  | "amazon_ads_update_campaign_bidding"
   | "amazon_ads_update_campaign_budgets"
   | "amazon_ads_update_campaign_states"
   | "amazon_ads_update_keyword_bids";

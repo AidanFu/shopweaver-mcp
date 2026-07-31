@@ -20,6 +20,7 @@ const allowed = [
   "amazon_ads_read_action_decisions",
   "amazon_ads_run_campaign_optimization_cycle",
   "amazon_ads_update_ad_group_bids",
+  "amazon_ads_update_campaign_bidding",
   "amazon_ads_update_campaign_budgets",
   "amazon_ads_update_campaign_states",
   "amazon_ads_update_keyword_bids",

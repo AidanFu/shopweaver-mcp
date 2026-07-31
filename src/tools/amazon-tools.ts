@@ -40,6 +40,14 @@ type AmazonAdsCampaignBudgetUpdate = {
   budget: { budgetType: "DAILY"; budget: number };
   reason?: string;
 };
+type AmazonAdsCampaignBiddingUpdate = {
+  campaignId: string;
+  dynamicBidding: {
+    strategy: "AUTO_FOR_SALES" | "LEGACY_FOR_SALES" | "MANUAL";
+    placementBidding: Array<{ placement: string; percentage: number }>;
+  };
+  reason?: string;
+};
 type AmazonAdsKeywordBidUpdate = {
   keywordId: string;
   bid: number;
@@ -208,6 +216,31 @@ export class AmazonAdsWriteService {
     };
   }
 
+  async previewCampaignBiddingUpdates(profileId: string, campaigns: AmazonAdsCampaignBiddingUpdate[]) {
+    const preview = buildCampaignBiddingPreview(profileId, campaigns);
+    return {
+      operation: "amazon_ads_update_campaign_bidding" as const,
+      ...preview,
+      applied: false,
+      ...this.confirmations.issue("amazon_ads_update_campaign_bidding", 0, preview),
+      warning: "This preview did not change Amazon Ads. Confirm with the returned token to apply the exact campaign bidding updates."
+    };
+  }
+
+  async confirmCampaignBiddingUpdates(profileId: string, campaigns: AmazonAdsCampaignBiddingUpdate[], confirmationToken: string) {
+    const preview = buildCampaignBiddingPreview(profileId, campaigns);
+    this.confirmations.consume(confirmationToken, "amazon_ads_update_campaign_bidding", 0, preview);
+    return {
+      operation: "amazon_ads_update_campaign_bidding" as const,
+      ...preview,
+      result: await this.amazonAds.updateSponsoredProductsCampaigns(profileId, preview.campaigns.map(campaign => ({
+        campaignId: campaign.campaignId,
+        dynamicBidding: campaign.dynamicBidding
+      }))),
+      applied: true
+    };
+  }
+
   async previewKeywordBidUpdates(profileId: string, keywords: AmazonAdsKeywordBidUpdate[]) {
     const preview = buildKeywordBidPreview(profileId, keywords);
     return {
@@ -307,6 +340,18 @@ function buildCampaignBudgetPreview(profileId: string, campaigns: AmazonAdsCampa
     campaigns: campaigns.map(campaign => ({
       campaignId: campaign.campaignId,
       budget: campaign.budget,
+      ...(campaign.reason ? { reason: campaign.reason } : {})
+    }))
+  };
+}
+
+function buildCampaignBiddingPreview(profileId: string, campaigns: AmazonAdsCampaignBiddingUpdate[]) {
+  return {
+    profileId,
+    campaignBiddingUpdateCount: campaigns.length,
+    campaigns: campaigns.map(campaign => ({
+      campaignId: campaign.campaignId,
+      dynamicBidding: campaign.dynamicBidding,
       ...(campaign.reason ? { reason: campaign.reason } : {})
     }))
   };
@@ -615,6 +660,28 @@ export function registerAmazonTools(server: McpServer, store: CredentialStore, a
     }, async ({ mode, profileId, campaigns, confirmationToken }) => result(mode === "preview"
       ? await amazonAdsWrites.previewCampaignBudgetUpdates(profileId, campaigns)
       : await amazonAdsWrites.confirmCampaignBudgetUpdates(profileId, campaigns, confirmationToken ?? "")));
+
+    server.registerTool("amazon_ads_update_campaign_bidding", {
+      description: "Preview or confirm Sponsored Products campaign dynamic bidding strategy and placement multiplier updates. This changes campaign bidding only after confirmation.",
+      inputSchema: {
+        mode: z.enum(["preview", "confirm"]).default("preview"),
+        profileId: z.string().min(1),
+        campaigns: z.array(z.object({
+          campaignId: z.string().min(1),
+          dynamicBidding: z.object({
+            strategy: z.enum(["AUTO_FOR_SALES", "LEGACY_FOR_SALES", "MANUAL"]),
+            placementBidding: z.array(z.object({
+              placement: z.string().min(1),
+              percentage: z.number().int().min(0).max(900)
+            }))
+          }),
+          reason: z.string().optional()
+        })).min(1),
+        confirmationToken: z.string().min(20).optional()
+      }
+    }, async ({ mode, profileId, campaigns, confirmationToken }) => result(mode === "preview"
+      ? await amazonAdsWrites.previewCampaignBiddingUpdates(profileId, campaigns)
+      : await amazonAdsWrites.confirmCampaignBiddingUpdates(profileId, campaigns, confirmationToken ?? "")));
 
     server.registerTool("amazon_ads_update_keyword_bids", {
       description: "Preview or confirm Sponsored Products keyword bid updates. This changes keyword bids only after confirmation.",

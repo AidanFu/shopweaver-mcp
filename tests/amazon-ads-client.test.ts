@@ -118,6 +118,49 @@ describe("AmazonAdsClient", () => {
     }));
   });
 
+  it("updates Sponsored Products campaign dynamic bidding for approved placement controls", async () => {
+    const store = new MemoryCredentialStore();
+    await store.set("amazonAdsApp", { clientId: "ads-client", clientSecret: "ads-secret" });
+    await store.set("amazonAdsAuth", {
+      refreshToken: "ads-refresh",
+      region: "na",
+      accessToken: "ads-access",
+      expiresAt: Date.now() + 3_600_000
+    });
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      campaigns: {
+        success: [{ index: 0, campaignId: "123" }],
+        error: []
+      }
+    }), { status: 207, headers: { "content-type": "application/json" } }));
+    const client = new AmazonAdsClient(store, fetchMock);
+
+    await expect(client.updateSponsoredProductsCampaigns("987654321", [{
+      campaignId: "123",
+      dynamicBidding: {
+        strategy: "AUTO_FOR_SALES",
+        placementBidding: [{ placement: "PLACEMENT_TOP", percentage: 0 }]
+      }
+    }])).resolves.toEqual({
+      campaigns: {
+        success: [{ index: 0, campaignId: "123" }],
+        error: []
+      }
+    });
+    expect(fetchMock).toHaveBeenCalledWith("https://advertising-api.amazon.com/sp/campaigns", expect.objectContaining({
+      method: "PUT",
+      body: JSON.stringify({
+        campaigns: [{
+          campaignId: "123",
+          dynamicBidding: {
+            strategy: "AUTO_FOR_SALES",
+            placementBidding: [{ placement: "PLACEMENT_TOP", percentage: 0 }]
+          }
+        }]
+      })
+    }));
+  });
+
   it("creates Sponsored Products campaigns for approved launch plans", async () => {
     const store = new MemoryCredentialStore();
     await store.set("amazonAdsApp", { clientId: "ads-client", clientSecret: "ads-secret" });
