@@ -452,7 +452,7 @@ async function buildListingCopyPreview(store: CredentialStore, amazon: Pick<Amaz
   };
 }
 
-export function registerAmazonTools(server: McpServer, store: CredentialStore, amazon: AmazonSpApiClient, amazonAds?: AmazonAdsClient, amazonListingWrites?: AmazonListingWriteService, amazonAdsWrites?: AmazonAdsWriteService): void {
+export function registerAmazonTools(server: McpServer, store: CredentialStore, amazon: AmazonSpApiClient, amazonAds?: AmazonAdsClient, amazonListingWrites?: AmazonListingWriteService, amazonAdsWrites?: AmazonAdsWriteService, amazonAdsChangeLog?: AmazonAdsChangeLog): void {
   server.registerTool("amazon_connection_status", {
     description: "Report whether ShopWeaver has Amazon SP-API credentials and seller authorization without revealing secrets.",
     inputSchema: {}
@@ -796,6 +796,18 @@ export function registerAmazonTools(server: McpServer, store: CredentialStore, a
       filePath: z.string().min(1)
     }
   }, async ({ filePath }) => result(await previewAmazonAdsApprovedActions(filePath)));
+
+  if (amazonAdsChangeLog) {
+    server.registerTool("amazon_ads_read_change_log", {
+      description: "Read the local append-only history of confirmed Amazon Ads write actions. This is read-only and does not change campaigns, bids, budgets, keywords, negatives, or ads.",
+      inputSchema: {
+        profileId: z.string().min(1).optional(),
+        operation: z.string().min(1).optional(),
+        campaignId: z.string().min(1).optional(),
+        limit: z.number().int().min(1).max(500).optional()
+      }
+    }, async (input) => result(await amazonAdsChangeLog.read(input)));
+  }
 
   server.registerTool("amazon_ads_compare_report_files", {
     description: "Compare two local Sponsored Products search-term report files to evaluate whether spend, sales, orders, and ACOS improved. This is read-only and does not change ads.",

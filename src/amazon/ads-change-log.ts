@@ -1,4 +1,4 @@
-import { appendFile, mkdir } from "node:fs/promises";
+import { appendFile, mkdir, readFile } from "node:fs/promises";
 import { dirname } from "node:path";
 
 export interface AmazonAdsChangeLogRecord {
@@ -10,8 +10,20 @@ export interface AmazonAdsChangeLogRecord {
   result: unknown;
 }
 
+export interface AmazonAdsChangeLogReadInput {
+  profileId?: string;
+  operation?: string;
+  campaignId?: string;
+  limit?: number;
+}
+
 export interface AmazonAdsChangeLog {
   record(entry: AmazonAdsChangeLogRecord): Promise<void>;
+  read(input?: AmazonAdsChangeLogReadInput): Promise<{
+    operation: "read_amazon_ads_change_log";
+    recordCount: number;
+    records: AmazonAdsChangeLogRecord[];
+  }>;
 }
 
 export class FileAmazonAdsChangeLog implements AmazonAdsChangeLog {
@@ -24,4 +36,37 @@ export class FileAmazonAdsChangeLog implements AmazonAdsChangeLog {
     await mkdir(dirname(this.path), { recursive: true });
     await appendFile(this.path, `${JSON.stringify({ ...entry, createdAt: entry.createdAt ?? this.now().toISOString() })}\n`, "utf8");
   }
+
+  async read(input: AmazonAdsChangeLogReadInput = {}) {
+    const limit = input.limit ?? 50;
+    const records = (await this.readRecords())
+      .filter(record => !input.profileId || record.profileId === input.profileId)
+      .filter(record => !input.operation || record.operation === input.operation)
+      .filter(record => !input.campaignId || recordHasCampaign(record, input.campaignId))
+      .slice(-limit)
+      .reverse();
+    return {
+      operation: "read_amazon_ads_change_log" as const,
+      recordCount: records.length,
+      records
+    };
+  }
+
+  private async readRecords(): Promise<AmazonAdsChangeLogRecord[]> {
+    try {
+      return (await readFile(this.path, "utf8"))
+        .split("\n")
+        .map(line => line.trim())
+        .filter(Boolean)
+        .map(line => JSON.parse(line) as AmazonAdsChangeLogRecord);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
+      throw error;
+    }
+  }
+}
+
+function recordHasCampaign(record: AmazonAdsChangeLogRecord, campaignId: string): boolean {
+  const campaigns = (record.payload as { campaigns?: Array<{ campaignId?: string }> }).campaigns ?? [];
+  return campaigns.some(campaign => campaign.campaignId === campaignId);
 }

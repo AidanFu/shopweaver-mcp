@@ -18,6 +18,7 @@ const allowed = [
   "amazon_ads_optimize_sp_search_term_report_file",
   "amazon_ads_preview_approved_actions",
   "amazon_ads_read_action_decisions",
+  "amazon_ads_read_change_log",
   "amazon_ads_run_campaign_optimization_cycle",
   "amazon_ads_update_ad_group_bids",
   "amazon_ads_update_campaign_bidding",

@@ -31,6 +31,7 @@ const driveImageUploads = new DriveImageUploadService(client, listings, googleDr
 const amazonAds = new AmazonAdsClient(store);
 const amazonSpApi = new AmazonSpApiClient(store);
 const amazonListingWrites = new AmazonListingWriteService(store, amazonSpApi, new ConfirmationStore());
-const amazonAdsWrites = new AmazonAdsWriteService(amazonAds, new ConfirmationStore(), new FileAmazonAdsChangeLog());
-const server = createServer({ store, listings, orders, writes, googleFolders, driveImports, driveImageUploads, amazonAds, amazonSpApi, amazonListingWrites, amazonAdsWrites });
+const amazonAdsChangeLog = new FileAmazonAdsChangeLog();
+const amazonAdsWrites = new AmazonAdsWriteService(amazonAds, new ConfirmationStore(), amazonAdsChangeLog);
+const server = createServer({ store, listings, orders, writes, googleFolders, driveImports, driveImageUploads, amazonAds, amazonSpApi, amazonListingWrites, amazonAdsWrites, amazonAdsChangeLog });
 await server.connect(new StdioServerTransport());

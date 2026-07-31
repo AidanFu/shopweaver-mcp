@@ -1,4 +1,5 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { AmazonAdsChangeLog } from "./amazon/ads-change-log.js";
 import type { AmazonAdsClient } from "./amazon/ads-client.js";
 import type { AmazonSpApiClient } from "./amazon/sp-api-client.js";
 import type { CredentialStore } from "./credentials/types.js";
@@ -26,6 +27,7 @@ export interface ServerDependencies {
   amazonSpApi?: AmazonSpApiClient;
   amazonListingWrites?: AmazonListingWriteService;
   amazonAdsWrites?: AmazonAdsWriteService;
+  amazonAdsChangeLog?: AmazonAdsChangeLog;
 }
 
 export function createServer(dependencies: ServerDependencies): McpServer {
@@ -33,7 +35,7 @@ export function createServer(dependencies: ServerDependencies): McpServer {
   if (dependencies.store && dependencies.listings) registerReadTools(server, dependencies.store, dependencies.listings, dependencies.orders);
   if (dependencies.writes) registerWriteTools(server, dependencies.writes);
   if (dependencies.store && dependencies.googleFolders) registerGoogleTools(server, dependencies.store, dependencies.googleFolders);
-  if (dependencies.store && dependencies.amazonSpApi) registerAmazonTools(server, dependencies.store, dependencies.amazonSpApi, dependencies.amazonAds, dependencies.amazonListingWrites, dependencies.amazonAdsWrites);
+  if (dependencies.store && dependencies.amazonSpApi) registerAmazonTools(server, dependencies.store, dependencies.amazonSpApi, dependencies.amazonAds, dependencies.amazonListingWrites, dependencies.amazonAdsWrites, dependencies.amazonAdsChangeLog);
   if (dependencies.driveImports) registerImportTools(server, dependencies.driveImports);
   if (dependencies.driveImageUploads) registerDriveImageTools(server, dependencies.driveImageUploads);
   return server;
