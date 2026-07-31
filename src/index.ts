@@ -1,4 +1,5 @@
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { FileAmazonAdsChangeLog } from "./amazon/ads-change-log.js";
 import { AmazonAdsClient } from "./amazon/ads-client.js";
 import { AmazonSpApiClient } from "./amazon/sp-api-client.js";
 import { KeychainCredentialStore } from "./credentials/keychain.js";
@@ -30,6 +31,6 @@ const driveImageUploads = new DriveImageUploadService(client, listings, googleDr
 const amazonAds = new AmazonAdsClient(store);
 const amazonSpApi = new AmazonSpApiClient(store);
 const amazonListingWrites = new AmazonListingWriteService(store, amazonSpApi, new ConfirmationStore());
-const amazonAdsWrites = new AmazonAdsWriteService(amazonAds, new ConfirmationStore());
+const amazonAdsWrites = new AmazonAdsWriteService(amazonAds, new ConfirmationStore(), new FileAmazonAdsChangeLog());
 const server = createServer({ store, listings, orders, writes, googleFolders, driveImports, driveImageUploads, amazonAds, amazonSpApi, amazonListingWrites, amazonAdsWrites });
 await server.connect(new StdioServerTransport());

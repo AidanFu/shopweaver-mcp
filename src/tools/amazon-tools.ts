@@ -8,6 +8,7 @@ import { compareAmazonAdsOptimizationReportFiles } from "../amazon/ads-optimizat
 import { analyzeAmazonSearchTermReportFile, previewAmazonAdsApprovedActions, readAmazonAdsActionDecisions, writeAmazonSearchTermOptimizationWorkbook } from "../amazon/campaign-report-file.js";
 import { analyzeAmazonCampaignMetrics, analyzeAmazonSearchTermReportRows } from "../amazon/campaign-optimization.js";
 import { analyzeAmazonExistingListing, buildAmazonListingCopyPatch } from "../amazon/listing-optimization.js";
+import type { AmazonAdsChangeLog } from "../amazon/ads-change-log.js";
 import type { AmazonAdsClient } from "../amazon/ads-client.js";
 import type { AmazonSpApiClient } from "../amazon/sp-api-client.js";
 import type { CredentialStore } from "../credentials/types.js";
@@ -141,7 +142,8 @@ export class AmazonListingWriteService {
 export class AmazonAdsWriteService {
   constructor(
     private readonly amazonAds: Pick<AmazonAdsClient, "createSponsoredProductsNegativeKeywords" | "updateSponsoredProductsCampaigns" | "createSponsoredProductsCampaigns" | "updateSponsoredProductsKeywords" | "updateSponsoredProductsAdGroups">,
-    private readonly confirmations: ConfirmationStore
+    private readonly confirmations: ConfirmationStore,
+    private readonly changeLog?: AmazonAdsChangeLog
   ) {}
 
   async previewApprovedNegativeKeywords(profileId: string, filePath: string) {
@@ -230,15 +232,22 @@ export class AmazonAdsWriteService {
   async confirmCampaignBiddingUpdates(profileId: string, campaigns: AmazonAdsCampaignBiddingUpdate[], confirmationToken: string) {
     const preview = buildCampaignBiddingPreview(profileId, campaigns);
     this.confirmations.consume(confirmationToken, "amazon_ads_update_campaign_bidding", 0, preview);
-    return {
+    const result = await this.amazonAds.updateSponsoredProductsCampaigns(profileId, preview.campaigns.map(campaign => ({
+      campaignId: campaign.campaignId,
+      dynamicBidding: campaign.dynamicBidding
+    })));
+    const applied = {
       operation: "amazon_ads_update_campaign_bidding" as const,
       ...preview,
-      result: await this.amazonAds.updateSponsoredProductsCampaigns(profileId, preview.campaigns.map(campaign => ({
-        campaignId: campaign.campaignId,
-        dynamicBidding: campaign.dynamicBidding
-      }))),
-      applied: true
+      result,
+      applied: true as const
     };
+    await this.recordChange(applied.operation, profileId, { campaigns: preview.campaigns }, result);
+    return applied;
+  }
+
+  private async recordChange(operation: string, profileId: string, payload: Record<string, unknown>, result: unknown) {
+    await this.changeLog?.record({ createdAt: new Date().toISOString(), operation, profileId, applied: true, payload, result });
   }
 
   async previewKeywordBidUpdates(profileId: string, keywords: AmazonAdsKeywordBidUpdate[]) {

@@ -262,6 +262,46 @@ describe("AmazonAdsWriteService", () => {
     }]);
   });
 
+  it("records confirmed campaign bidding updates for later optimization analysis", async () => {
+    const amazonAds = {
+      createSponsoredProductsNegativeKeywords: vi.fn(),
+      updateSponsoredProductsCampaigns: vi.fn().mockResolvedValue({
+        campaigns: { success: [{ index: 0, campaignId: "campaign-1" }], error: [] }
+      }),
+      createSponsoredProductsCampaigns: vi.fn()
+    };
+    const auditLog = { record: vi.fn().mockResolvedValue(undefined) };
+    const service = new AmazonAdsWriteService(amazonAds, new ConfirmationStore(() => 1_000), auditLog);
+    const preview = await service.previewCampaignBiddingUpdates("profile-1", [{
+      campaignId: "campaign-1",
+      dynamicBidding: {
+        strategy: "AUTO_FOR_SALES",
+        placementBidding: [{ placement: "PLACEMENT_TOP", percentage: 0 }]
+      },
+      reason: "Remove top-of-search boost after cost-control review."
+    }]);
+
+    await service.confirmCampaignBiddingUpdates("profile-1", preview.campaigns, preview.confirmationToken);
+
+    expect(auditLog.record).toHaveBeenCalledWith(expect.objectContaining({
+      operation: "amazon_ads_update_campaign_bidding",
+      profileId: "profile-1",
+      applied: true,
+      payload: {
+        campaigns: [{
+          campaignId: "campaign-1",
+          dynamicBidding: {
+            strategy: "AUTO_FOR_SALES",
+            placementBidding: [{ placement: "PLACEMENT_TOP", percentage: 0 }]
+          },
+          reason: "Remove top-of-search boost after cost-control review."
+        }]
+      },
+      result: { campaigns: { success: [{ index: 0, campaignId: "campaign-1" }], error: [] } }
+    }));
+    expect(auditLog.record.mock.calls[0][0].createdAt).toEqual(expect.any(String));
+  });
+
   it("previews and confirms keyword bid updates", async () => {
     const amazonAds = {
       createSponsoredProductsNegativeKeywords: vi.fn(),
