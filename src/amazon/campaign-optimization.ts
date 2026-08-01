@@ -98,6 +98,27 @@ export interface AmazonCampaignSkuActionPlan {
   }>;
 }
 
+export interface AmazonCampaignSkuControlPreview {
+  operation: "preview_amazon_ads_sku_spend_reviews";
+  applied: false;
+  warning: string;
+  reviewCount: number;
+  skuSpendReviews: Array<{
+    sku: string;
+    campaignId: string;
+    campaignName: string;
+    adGroupIds: string[];
+    spend: number;
+    sales: number;
+    orders: number;
+    signal: AmazonCampaignSkuSignalAnalysis["skuCampaigns"][number]["signal"];
+    priority: "high" | "normal";
+    actionType: AmazonCampaignSkuActionPlan["skuCampaignActions"][number]["actionType"];
+    recommendedNextStep: string;
+    sellerApprovalRequired: true;
+  }>;
+}
+
 export function analyzeAmazonCampaignMetrics(metrics: AmazonCampaignMetrics): AmazonCampaignRecommendation {
   if (metrics.spend >= 25 && metrics.clicks >= 30 && metrics.orders === 0) {
     return {
@@ -312,6 +333,34 @@ export function buildAmazonCampaignSkuActionPlan(analysis: AmazonCampaignSkuSign
   };
 }
 
+export function buildAmazonCampaignSkuControlPreview(actionPlan: AmazonCampaignSkuActionPlan): AmazonCampaignSkuControlPreview {
+  const skuSpendReviews = actionPlan.skuCampaignActions
+    .filter(action => action.priority === "high")
+    .flatMap(action => action.campaignBreakdowns
+      .filter(breakdown => breakdown.spend > 0 && breakdown.sales === 0 && breakdown.orders === 0)
+      .map(breakdown => ({
+        sku: action.sku,
+        campaignId: breakdown.campaignId,
+        campaignName: breakdown.campaignName,
+        adGroupIds: breakdown.adGroupIds,
+        spend: breakdown.spend,
+        sales: breakdown.sales,
+        orders: breakdown.orders,
+        signal: action.signal,
+        priority: action.priority,
+        actionType: action.actionType,
+        recommendedNextStep: campaignSkuSpendReviewStep(action.actionType),
+        sellerApprovalRequired: true as const
+      })));
+  return {
+    operation: "preview_amazon_ads_sku_spend_reviews",
+    applied: false,
+    warning: "Preview only. No campaigns, ad groups, bids, budgets, keywords, negatives, product ads, or listings were changed.",
+    reviewCount: skuSpendReviews.length,
+    skuSpendReviews
+  };
+}
+
 function campaignSkuSignal(sku: string, spend: number, orders: number, signals: AmazonCampaignSkuSignalInput): AmazonCampaignSkuSignalAnalysis["skuCampaigns"][number]["signal"] {
   if (signals.targetSkusWithSales.includes(sku)) return "target_sold";
   if (signals.targetSkusWithoutSales.includes(sku) && spend > 0 && orders === 0) return "target_spend_no_sales";
@@ -337,6 +386,11 @@ function campaignSkuActionRecommendation(sku: string, signal: AmazonCampaignSkuS
   if (highSpendNoSales) return `Review ${sku} because non-target spend is high with no recent attributed orders.`;
   if (signal === "target_sold") return `Keep ${sku} active, but do not scale blindly until seller-order sales and Ads attribution agree.`;
   return fallback;
+}
+
+function campaignSkuSpendReviewStep(actionType: AmazonCampaignSkuActionPlan["skuCampaignActions"][number]["actionType"]): string {
+  if (actionType === "non_target_waste_review") return "Review SKU, campaign fit, and ad group targeting before reducing spend; this non-target SKU has high spend with no attributed orders.";
+  return "Review listing conversion, product ad state, ad group bid, and campaign budget pressure before applying any spend reduction.";
 }
 
 function text(value: unknown): string {
