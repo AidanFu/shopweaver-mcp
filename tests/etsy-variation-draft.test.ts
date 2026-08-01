@@ -73,6 +73,22 @@ describe("Etsy variation draft preview", () => {
     expect(preview.inventory.quantityOnProperty).toEqual([200]);
   });
 
+  it("rejects duplicate variation option values", () => {
+    expect(() => buildEtsyVariationDraftPreview([
+      rows[0],
+      { ...rows[1], variation1Value: "Purple" }
+    ] as never, "郁金香兔", { propertyId: 200 })).toThrow("Variation option values must be unique");
+  });
+
+  it("falls back to English title and description when parent fields are empty", () => {
+    const preview = buildEtsyVariationDraftPreview([
+      { ...rows[0], parentListingTitle: " ", parentListingDescription: "" },
+      { ...rows[1], parentListingTitle: " ", parentListingDescription: "" }
+    ] as never, "郁金香兔", { propertyId: 200 });
+    expect(preview.draft.title).toBe("Handmade Crochet Tulip Bunny");
+    expect(preview.draft.description).toBe("A soft handmade crochet bunny.");
+  });
+
   it("rejects rows that still need grouping review", () => {
     expect(() => buildEtsyVariationDraftPreview([{ ...rows[0], variationValidationStatus: "needs_review" }] as never, "郁金香兔", { propertyId: 200 })).toThrow("Variation rows must be reviewed");
   });

@@ -13,15 +13,20 @@ export function buildEtsyVariationDraftPreview(rows: EnrichedDraftRow[], listing
     throw new ShopWeaverError("VARIATION_GROUP_NEEDS_REVIEW", "Variation rows must be reviewed before Etsy draft creation.");
   }
   const first = groupRows[0];
-  if (!first.parentListingTitle && !first.englishTitle) throw new ShopWeaverError("VARIATION_TITLE_REQUIRED", "Parent Listing Title or English Title is required.");
-  if (!first.parentListingDescription && !first.englishDescription) throw new ShopWeaverError("VARIATION_DESCRIPTION_REQUIRED", "Parent Listing Description or English Description is required.");
+  const title = first.parentListingTitle?.trim() || first.englishTitle?.trim();
+  const description = first.parentListingDescription?.trim() || first.englishDescription?.trim();
+  if (!title) throw new ShopWeaverError("VARIATION_TITLE_REQUIRED", "Parent Listing Title or English Title is required.");
+  if (!description) throw new ShopWeaverError("VARIATION_DESCRIPTION_REQUIRED", "Parent Listing Description or English Description is required.");
   if (first.taxonomyId === undefined) throw new ShopWeaverError("VARIATION_TAXONOMY_REQUIRED", "Taxonomy ID is required.");
   if (!first.whoMade || !first.whenMade || first.type !== "physical" || first.readinessStateId === undefined) {
     throw new ShopWeaverError("VARIATION_PHYSICAL_FIELDS_REQUIRED", "Who Made, When Made, physical Type, and Readiness State ID are required.");
   }
+  const seenValues = new Set<string>();
   const variants = groupRows.map(row => {
-    const value = row.variation1Value;
+    const value = row.variation1Value?.trim();
     if (!value) throw new ShopWeaverError("VARIATION_VALUE_REQUIRED", "Variation 1 Value is required for each variant row.");
+    if (seenValues.has(value)) throw new ShopWeaverError("VARIATION_VALUE_DUPLICATE", "Variation option values must be unique within a listing group.");
+    seenValues.add(value);
     return {
       row,
       value,
@@ -57,8 +62,8 @@ export function buildEtsyVariationDraftPreview(rows: EnrichedDraftRow[], listing
     operation: "preview_etsy_variation_draft" as const,
     listingGroup,
     draft: {
-      title: first.parentListingTitle ?? first.englishTitle,
-      description: first.parentListingDescription ?? first.englishDescription,
+      title,
+      description,
       quantity: inventory.products.reduce((sum, product) => sum + product.offerings[0].quantity, 0),
       price: first.price ?? groupRows[0].variantPrice ?? "1.00",
       whoMade: first.whoMade,
