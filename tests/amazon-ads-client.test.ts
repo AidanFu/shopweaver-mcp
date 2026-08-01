@@ -582,7 +582,8 @@ describe("AmazonAdsClient", () => {
     const client = new AmazonAdsClient(store, fetchMock);
 
     await expect(client.downloadReportRows("https://example.com/report.gz")).resolves.toEqual(reportRows);
-    expect(fetchMock).toHaveBeenCalledWith("https://example.com/report.gz", { method: "GET" });
+    expect(fetchMock).toHaveBeenCalledWith("https://example.com/report.gz", expect.objectContaining({ method: "GET" }));
+    expect(fetchMock.mock.calls[0][1]).not.toHaveProperty("headers");
   });
 
   it("parses gzipped newline-delimited Amazon Ads report rows", async () => {
@@ -597,5 +598,55 @@ describe("AmazonAdsClient", () => {
       { campaignId: "123", searchTerm: "crochet bag charm" },
       { campaignId: "123", searchTerm: "cute keychain" }
     ]);
+  });
+
+  it("fails Ads API requests cleanly when Amazon does not respond before the timeout", async () => {
+    vi.useFakeTimers();
+    const store = new MemoryCredentialStore();
+    await store.set("amazonAdsApp", { clientId: "ads-client", clientSecret: "ads-secret" });
+    await store.set("amazonAdsAuth", {
+      refreshToken: "ads-refresh",
+      region: "na",
+      accessToken: "ads-access",
+      expiresAt: Date.now() + 3_600_000
+    });
+    const fetchMock = vi.fn((_input, init?: RequestInit) => new Promise((_resolve, reject) => {
+      init?.signal?.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")));
+    }));
+    const client = new AmazonAdsClient(store, fetchMock as never, undefined, 1000);
+
+    const promise = expect(client.getReport("987654321", "report-1")).rejects.toMatchObject({ code: "AMAZON_ADS_REQUEST_TIMEOUT" });
+    await vi.advanceTimersByTimeAsync(1000);
+    await promise;
+    vi.useRealTimers();
+  });
+
+  it("fails Ads report downloads cleanly when Amazon does not respond before the timeout", async () => {
+    vi.useFakeTimers();
+    const store = new MemoryCredentialStore();
+    const fetchMock = vi.fn((_input, init?: RequestInit) => new Promise((_resolve, reject) => {
+      init?.signal?.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")));
+    }));
+    const client = new AmazonAdsClient(store, fetchMock as never, undefined, 1000);
+
+    const promise = expect(client.downloadReportRows("https://example.com/report.gz")).rejects.toMatchObject({ code: "AMAZON_ADS_REPORT_DOWNLOAD_TIMEOUT" });
+    await vi.advanceTimersByTimeAsync(1000);
+    await promise;
+    vi.useRealTimers();
+  });
+
+  it("fails Ads report body reads cleanly when the download response stalls", async () => {
+    vi.useFakeTimers();
+    const store = new MemoryCredentialStore();
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      arrayBuffer: () => new Promise(() => {})
+    });
+    const client = new AmazonAdsClient(store, fetchMock as never, undefined, 1000);
+
+    const promise = expect(client.downloadReportRows("https://example.com/report.gz")).rejects.toMatchObject({ code: "AMAZON_ADS_REPORT_DOWNLOAD_TIMEOUT" });
+    await vi.advanceTimersByTimeAsync(1000);
+    await promise;
+    vi.useRealTimers();
   });
 });

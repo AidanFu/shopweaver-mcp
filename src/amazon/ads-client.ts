@@ -72,7 +72,8 @@ export class AmazonAdsClient {
   constructor(
     private readonly store: CredentialStore,
     private readonly fetchImpl: FetchLike = fetch,
-    private readonly oauth = new AmazonAdsOAuth(store, fetchImpl)
+    private readonly oauth = new AmazonAdsOAuth(store, fetchImpl),
+    private readonly timeoutMs = 30_000
   ) {}
 
   async listProfiles() {
@@ -210,9 +211,18 @@ export class AmazonAdsClient {
   }
 
   async downloadReportRows(url: string): Promise<Array<Record<string, unknown>>> {
-    const response = await this.fetchImpl(url, { method: "GET" });
+    const controller = new AbortController();
+    let response: Response;
+    try {
+      response = await withTimeout(this.fetchImpl(url, { method: "GET", signal: controller.signal }), this.timeoutMs, "AMAZON_ADS_REPORT_DOWNLOAD_TIMEOUT", "Amazon Ads report download timed out.", controller);
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") {
+        throw new ShopWeaverError("AMAZON_ADS_REPORT_DOWNLOAD_TIMEOUT", "Amazon Ads report download timed out.", error);
+      }
+      throw error;
+    }
     if (!response.ok) throw new ShopWeaverError("AMAZON_ADS_REPORT_DOWNLOAD_FAILED", "Amazon Ads report download failed.");
-    return parseGzipJsonRows(new Uint8Array(await response.arrayBuffer()));
+    return parseGzipJsonRows(new Uint8Array(await withTimeout(response.arrayBuffer(), this.timeoutMs, "AMAZON_ADS_REPORT_DOWNLOAD_TIMEOUT", "Amazon Ads report download timed out.", controller)));
   }
 
   private async request(path: string, options: {
@@ -235,13 +245,40 @@ export class AmazonAdsClient {
     if (options.profileId) headers["Amazon-Advertising-API-Scope"] = options.profileId;
     if (options.accept) headers.Accept = options.accept;
     if (options.contentType) headers["Content-Type"] = options.contentType;
-    const response = await this.fetchImpl(`${ADS_ENDPOINTS[auth.region]}${path}`, {
-      method: options.method ?? "GET",
-      headers,
-      body: options.body ? JSON.stringify(options.body) : undefined
-    });
+    const controller = new AbortController();
+    let response: Response;
+    try {
+      response = await withTimeout(this.fetchImpl(`${ADS_ENDPOINTS[auth.region]}${path}`, {
+        method: options.method ?? "GET",
+        headers,
+        body: options.body ? JSON.stringify(options.body) : undefined,
+        signal: controller.signal
+      }), this.timeoutMs, "AMAZON_ADS_REQUEST_TIMEOUT", "Amazon Ads API request timed out.", controller);
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") {
+        throw new ShopWeaverError("AMAZON_ADS_REQUEST_TIMEOUT", "Amazon Ads API request timed out.", error);
+      }
+      throw error;
+    }
     if (!response.ok) throw new ShopWeaverError("AMAZON_ADS_REQUEST_FAILED", "Amazon Ads API request failed.");
-    return response.json();
+    return withTimeout(response.json(), this.timeoutMs, "AMAZON_ADS_REQUEST_TIMEOUT", "Amazon Ads API request timed out.", controller);
+  }
+}
+
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, code: string, message: string, controller: AbortController): Promise<T> {
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<never>((_resolve, reject) => {
+        timeout = setTimeout(() => {
+          controller.abort();
+          reject(new ShopWeaverError(code, message));
+        }, timeoutMs);
+      })
+    ]);
+  } finally {
+    if (timeout) clearTimeout(timeout);
   }
 }
 
