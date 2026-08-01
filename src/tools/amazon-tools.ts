@@ -473,6 +473,18 @@ export function registerAmazonTools(server: McpServer, store: CredentialStore, a
     inputSchema: { sku: z.string().min(1) }
   }, async ({ sku }) => result(await amazon.getListingItem(sku)));
 
+  server.registerTool("amazon_list_orders", {
+    description: "Read Amazon seller orders through SP-API for a created date window. This is read-only and does not change listings, ads, bids, budgets, inventory, fulfillment, or orders.",
+    inputSchema: {
+      createdAfter: z.string().min(1),
+      createdBefore: z.string().min(1).optional(),
+      marketplaceIds: z.array(z.string().min(1)).optional(),
+      orderStatuses: z.array(z.string().min(1)).optional(),
+      maxResultsPerPage: z.number().int().min(1).max(100).optional(),
+      nextToken: z.string().min(1).optional()
+    }
+  }, async (input) => result(await amazon.listOrders(input)));
+
   server.registerTool("amazon_get_aplus_publish_records", {
     description: "Read published A+ Content records for one ASIN through SP-API. This is read-only and does not change A+ content.",
     inputSchema: { asin: z.string().min(1) }

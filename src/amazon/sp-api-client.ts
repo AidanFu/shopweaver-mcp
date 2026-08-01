@@ -16,6 +16,15 @@ type RequestOptions = {
   body?: unknown;
 };
 
+type ListOrdersInput = {
+  createdAfter: string;
+  createdBefore?: string;
+  marketplaceIds?: string[];
+  orderStatuses?: string[];
+  maxResultsPerPage?: number;
+  nextToken?: string;
+};
+
 export class AmazonSpApiClient {
   constructor(
     private readonly store: CredentialStore,
@@ -35,6 +44,21 @@ export class AmazonSpApiClient {
       query: {
         marketplaceIds: auth.marketplaceIds.join(","),
         includedData: "summaries,attributes,issues,offers,fulfillmentAvailability"
+      }
+    });
+  }
+
+  async listOrders(input: ListOrdersInput) {
+    const auth = await this.store.get("amazonSpApiAuth");
+    if (!auth) throw new ShopWeaverError("AMAZON_SP_API_AUTH_REQUIRED", "Connect Amazon SP-API before using Amazon seller tools.");
+    return this.request("/orders/v0/orders", {
+      query: {
+        MarketplaceIds: (input.marketplaceIds ?? auth.marketplaceIds).join(","),
+        CreatedAfter: input.createdAfter,
+        ...(input.createdBefore ? { CreatedBefore: input.createdBefore } : {}),
+        ...(input.orderStatuses?.length ? { OrderStatuses: input.orderStatuses.join(",") } : {}),
+        ...(input.maxResultsPerPage ? { MaxResultsPerPage: String(input.maxResultsPerPage) } : {}),
+        ...(input.nextToken ? { NextToken: input.nextToken } : {})
       }
     });
   }
