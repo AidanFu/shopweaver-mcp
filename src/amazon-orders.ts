@@ -13,6 +13,7 @@ interface AmazonOrdersArgs {
   maxResultsPerPage?: number;
   nextToken?: string;
   includeItems?: boolean;
+  targetSkus?: string[];
 }
 
 type AmazonOrdersResponse = {
@@ -41,6 +42,16 @@ type AmazonOrderItemsResponse = {
   };
 };
 
+type AmazonOrdersSummary = {
+  skuSales: Array<{
+    sku: string;
+    asin?: string;
+    title?: string;
+    quantityOrdered: number;
+    totalAmountByCurrency: Record<string, number>;
+  }>;
+};
+
 export function parseAmazonOrdersArgs(args: string[]): AmazonOrdersArgs {
   const values = new Map<string, string>();
   for (let index = 0; index < args.length; index += 2) {
@@ -59,7 +70,8 @@ export function parseAmazonOrdersArgs(args: string[]): AmazonOrdersArgs {
     ...(values.get("--status") ? { orderStatuses: splitCsv(values.get("--status") ?? "") } : {}),
     ...(maxResults ? { maxResultsPerPage: Number(maxResults) } : {}),
     ...(values.get("--next-token") ? { nextToken: values.get("--next-token") } : {}),
-    ...(values.get("--include-items") === "true" ? { includeItems: true } : {})
+    ...(values.get("--include-items") === "true" ? { includeItems: true } : {}),
+    ...(values.get("--target-skus") ? { targetSkus: splitCsv(values.get("--target-skus") ?? "") } : {})
   };
 }
 
@@ -105,6 +117,20 @@ export function summarizeAmazonOrders(response: AmazonOrdersResponse, orderItems
   };
 }
 
+export function analyzeAmazonOrderSkuSignals(summary: AmazonOrdersSummary, targetSkus: string[]) {
+  const soldSkus = new Set(summary.skuSales.map(row => row.sku));
+  const targetSkusWithSales = targetSkus.filter(sku => soldSkus.has(sku));
+  const targetSkusWithoutSales = targetSkus.filter(sku => !soldSkus.has(sku));
+  const targetSet = new Set(targetSkus);
+  const nonTargetSkusWithSales = summary.skuSales.map(row => row.sku).filter(sku => !targetSet.has(sku));
+  const recommendations = [
+    ...(targetSkusWithSales.length ? [`Keep monitoring ${targetSkusWithSales.join(" and ")} because it produced recent sales after optimization.`] : []),
+    ...(targetSkusWithoutSales.length ? [`Review traffic, price, offer, images, and campaign targeting for ${targetSkusWithoutSales.join(" and ")} because they had no recent SKU-level sales.`] : []),
+    ...(nonTargetSkusWithSales.length ? [`Review ${nonTargetSkusWithSales.join(" and ")} as unexpected demand; decide whether to protect budget, improve listing copy, or separate campaign tracking.`] : [])
+  ];
+  return { targetSkus, targetSkusWithSales, targetSkusWithoutSales, nonTargetSkusWithSales, recommendations };
+}
+
 async function main(): Promise<void> {
   const store = new KeychainCredentialStore();
   const amazon = new AmazonSpApiClient(store);
@@ -116,7 +142,11 @@ async function main(): Promise<void> {
       if (order.AmazonOrderId) orderItemsByOrderId[order.AmazonOrderId] = await amazon.getOrderItems(order.AmazonOrderId) as AmazonOrderItemsResponse;
     }
   }
-  stdout.write(`${JSON.stringify(summarizeAmazonOrders(orders, orderItemsByOrderId), null, 2)}\n`);
+  const summary = summarizeAmazonOrders(orders, orderItemsByOrderId);
+  stdout.write(`${JSON.stringify({
+    ...summary,
+    ...(input.targetSkus ? { skuSignals: analyzeAmazonOrderSkuSignals(summary, input.targetSkus) } : {})
+  }, null, 2)}\n`);
 }
 
 function splitCsv(value: string): string[] {

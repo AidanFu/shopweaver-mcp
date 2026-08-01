@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseAmazonOrdersArgs, summarizeAmazonOrders } from "../src/amazon-orders.js";
+import { analyzeAmazonOrderSkuSignals, parseAmazonOrdersArgs, summarizeAmazonOrders } from "../src/amazon-orders.js";
 
 describe("parseAmazonOrdersArgs", () => {
   it("parses a read-only Amazon order lookup window", () => {
@@ -8,13 +8,15 @@ describe("parseAmazonOrdersArgs", () => {
       "--created-before", "2026-08-01T00:00:00Z",
       "--status", "Unshipped,Shipped",
       "--max-results", "50",
-      "--include-items", "true"
+      "--include-items", "true",
+      "--target-skus", "DH-E37S-W6DM,77-UM99-B96T"
     ])).toEqual({
       createdAfter: "2026-07-29T00:00:00Z",
       createdBefore: "2026-08-01T00:00:00Z",
       orderStatuses: ["Unshipped", "Shipped"],
       maxResultsPerPage: 50,
-      includeItems: true
+      includeItems: true,
+      targetSkus: ["DH-E37S-W6DM", "77-UM99-B96T"]
     });
   });
 
@@ -102,6 +104,25 @@ describe("parseAmazonOrdersArgs", () => {
           quantityOrdered: 1,
           totalAmountByCurrency: { USD: 189.9 }
         }
+      ]
+    });
+  });
+
+  it("flags optimized SKUs that sold, optimized SKUs without sales, and non-target demand", () => {
+    expect(analyzeAmazonOrderSkuSignals({
+      skuSales: [
+        { sku: "5H-2EH1-7H77", asin: "B0GD7T3YGK", title: "Silver towel warmer", quantityOrdered: 1, totalAmountByCurrency: { USD: 184.9 } },
+        { sku: "80-16Z5-E38T", asin: "B0GTJ594TN", title: "Hardware kit", quantityOrdered: 1, totalAmountByCurrency: { USD: 15 } }
+      ]
+    }, ["DH-E37S-W6DM", "77-UM99-B96T", "5H-2EH1-7H77"])).toEqual({
+      targetSkus: ["DH-E37S-W6DM", "77-UM99-B96T", "5H-2EH1-7H77"],
+      targetSkusWithSales: ["5H-2EH1-7H77"],
+      targetSkusWithoutSales: ["DH-E37S-W6DM", "77-UM99-B96T"],
+      nonTargetSkusWithSales: ["80-16Z5-E38T"],
+      recommendations: [
+        "Keep monitoring 5H-2EH1-7H77 because it produced recent sales after optimization.",
+        "Review traffic, price, offer, images, and campaign targeting for DH-E37S-W6DM and 77-UM99-B96T because they had no recent SKU-level sales.",
+        "Review 80-16Z5-E38T as unexpected demand; decide whether to protect budget, improve listing copy, or separate campaign tracking."
       ]
     });
   });
