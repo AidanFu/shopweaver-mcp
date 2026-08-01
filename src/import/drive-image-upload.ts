@@ -107,6 +107,7 @@ export class DriveImageUploadService {
         .filter(file => IMAGE_TYPES.has(file.mimeType))
         .sort((a, b) => a.name.localeCompare(b.name))
         .slice(0, input.maxImagesPerVariant);
+      if (supportedFiles.length === 0) throw new ShopWeaverError("DRIVE_PRODUCT_IMAGES_MISSING", "Product image folder must contain at least one supported image.");
       images.push(...supportedFiles.map((file, index) => ({
         driveFileId: file.id,
         filename: file.name,
