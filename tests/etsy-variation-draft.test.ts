@@ -60,7 +60,17 @@ describe("Etsy variation draft preview", () => {
       sku: "tulip-bunny-purple",
       propertyValues: [{ propertyId: 200, propertyName: "Color", valueIds: [], values: ["Purple"] }]
     });
+    expect(preview.inventory.skuOnProperty).toEqual([200]);
     expect(preview.imagePlan.variantFolders).toEqual(["郁金香兔-紫色", "郁金香兔-蓝色"]);
+  });
+
+  it("marks price and quantity as controlled by the variation property when variants differ", () => {
+    const preview = buildEtsyVariationDraftPreview([
+      rows[0],
+      { ...rows[1], variantPrice: "20.99", variantQuantity: 3 }
+    ] as never, "郁金香兔", { propertyId: 200 });
+    expect(preview.inventory.priceOnProperty).toEqual([200]);
+    expect(preview.inventory.quantityOnProperty).toEqual([200]);
   });
 
   it("rejects rows that still need grouping review", () => {

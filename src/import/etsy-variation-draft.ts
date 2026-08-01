@@ -19,12 +19,22 @@ export function buildEtsyVariationDraftPreview(rows: EnrichedDraftRow[], listing
   if (!first.whoMade || !first.whenMade || first.type !== "physical" || first.readinessStateId === undefined) {
     throw new ShopWeaverError("VARIATION_PHYSICAL_FIELDS_REQUIRED", "Who Made, When Made, physical Type, and Readiness State ID are required.");
   }
+  const variants = groupRows.map(row => {
+    const value = row.variation1Value;
+    if (!value) throw new ShopWeaverError("VARIATION_VALUE_REQUIRED", "Variation 1 Value is required for each variant row.");
+    return {
+      row,
+      value,
+      sku: row.sku || `${listingGroup}-${value}`.toLowerCase().replace(/\s+/g, "-"),
+      price: row.variantPrice ?? row.price ?? first.price ?? "1.00",
+      quantity: row.variantQuantity ?? row.quantity ?? 1
+    };
+  });
+  const differs = <T>(values: T[]) => new Set(values).size > 1;
   const inventory: InventoryInput = {
-    products: groupRows.map(row => {
-      const value = row.variation1Value;
-      if (!value) throw new ShopWeaverError("VARIATION_VALUE_REQUIRED", "Variation 1 Value is required for each variant row.");
+    products: variants.map(({ row, value, sku, price, quantity }) => {
       return {
-        sku: row.sku || `${listingGroup}-${value}`.toLowerCase().replace(/\s+/g, "-"),
+        sku,
         propertyValues: [{
           propertyId: property.propertyId,
           propertyName: row.variation1Name || "Color",
@@ -32,16 +42,16 @@ export function buildEtsyVariationDraftPreview(rows: EnrichedDraftRow[], listing
           values: [value]
         }],
         offerings: [{
-          quantity: row.variantQuantity ?? row.quantity ?? 1,
+          quantity,
           enabled: true,
-          price: row.variantPrice ?? row.price ?? first.price ?? "1.00",
+          price,
           readinessStateId: row.readinessStateId ?? first.readinessStateId
         }]
       };
     }),
-    priceOnProperty: [],
-    quantityOnProperty: [],
-    skuOnProperty: []
+    priceOnProperty: differs(variants.map(variant => variant.price)) ? [property.propertyId] : [],
+    quantityOnProperty: differs(variants.map(variant => variant.quantity)) ? [property.propertyId] : [],
+    skuOnProperty: differs(variants.map(variant => variant.sku)) ? [property.propertyId] : []
   };
   return {
     operation: "preview_etsy_variation_draft" as const,
