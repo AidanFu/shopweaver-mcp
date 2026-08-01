@@ -267,7 +267,7 @@ describe("analyzeAmazonCampaignMetrics", () => {
     });
   });
 
-  it("builds a combined budget-saving and sales-growth plan from search-term, SKU, and budget signals", () => {
+  it("builds a balanced sales-growth and budget-efficiency plan from search-term, SKU, and budget signals", () => {
     expect(buildAmazonCampaignBudgetSalesPlan({
       searchTermAnalysis: {
         rowCount: 3,
@@ -316,21 +316,21 @@ describe("analyzeAmazonCampaignMetrics", () => {
     })).toEqual({
       operation: "preview_amazon_ads_budget_sales_strategy",
       applied: false,
-      strategy: "protect_budget_then_scale_validated_demand",
+      strategy: "balance_sales_growth_and_budget_efficiency",
       budgetProtection: {
         priority: "high",
         wasteTermCount: 1,
         budgetReviewCount: 1,
         recommendedActions: [
           "Review and apply 1 negative exact candidate(s) from search terms with spend or clicks but no orders.",
-          "Review 1 campaign budget reduction payload(s) before applying them through the gated budget update flow."
+          "Review 1 campaign budget reduction payload(s) as spend reallocation candidates, not pure sales-limiting cuts."
         ]
       },
       salesGrowth: {
-        priority: "normal",
+        priority: "high",
         efficientTermCount: 1,
         recommendedActions: [
-          "Move 1 efficient search term(s) into controlled exact campaigns or protect them from budget cuts.",
+          "Move 1 efficient search term(s) into controlled exact campaigns or protect them from budget cuts so savings can be reinvested into demand.",
           "Keep 1 SKU(s) with recent sales active, but scale only after Ads attribution and seller orders agree."
         ]
       },

@@ -125,14 +125,14 @@ describe("runAmazonAdsSkuOptimizationCycle", () => {
       strategyPlan: {
         operation: "preview_amazon_ads_budget_sales_strategy",
         applied: false,
-        strategy: "protect_budget_then_scale_validated_demand",
+        strategy: "balance_sales_growth_and_budget_efficiency",
         budgetProtection: {
           priority: "high",
           wasteTermCount: 1,
           budgetReviewCount: 1
         },
         salesGrowth: {
-          priority: "normal",
+          priority: "high",
           efficientTermCount: 1
         },
         listingConversion: {

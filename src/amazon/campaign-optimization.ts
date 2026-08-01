@@ -162,7 +162,7 @@ export interface AmazonCampaignSkuBudgetReviewPreview {
 export interface AmazonCampaignBudgetSalesPlan {
   operation: "preview_amazon_ads_budget_sales_strategy";
   applied: false;
-  strategy: "protect_budget_then_scale_validated_demand";
+  strategy: "balance_sales_growth_and_budget_efficiency";
   budgetProtection: {
     priority: "high" | "normal";
     wasteTermCount: number;
@@ -512,10 +512,10 @@ export function buildAmazonCampaignBudgetSalesPlan(input: {
   const soldSkuCount = input.actionPlan.skuCampaignActions.filter(action => action.signal === "target_sold").length;
   const budgetActions = [
     ...(input.searchTermAnalysis.wasteSearchTerms.length > 0 ? [`Review and apply ${input.searchTermAnalysis.wasteSearchTerms.length} negative exact candidate(s) from search terms with spend or clicks but no orders.`] : []),
-    ...(input.budgetReviewPreview.budgetReviewCount > 0 ? [`Review ${input.budgetReviewPreview.budgetReviewCount} campaign budget reduction payload(s) before applying them through the gated budget update flow.`] : [])
+    ...(input.budgetReviewPreview.budgetReviewCount > 0 ? [`Review ${input.budgetReviewPreview.budgetReviewCount} campaign budget reduction payload(s) as spend reallocation candidates, not pure sales-limiting cuts.`] : [])
   ];
   const salesActions = [
-    ...(input.searchTermAnalysis.efficientSearchTerms.length > 0 ? [`Move ${input.searchTermAnalysis.efficientSearchTerms.length} efficient search term(s) into controlled exact campaigns or protect them from budget cuts.`] : []),
+    ...(input.searchTermAnalysis.efficientSearchTerms.length > 0 ? [`Move ${input.searchTermAnalysis.efficientSearchTerms.length} efficient search term(s) into controlled exact campaigns or protect them from budget cuts so savings can be reinvested into demand.`] : []),
     ...(soldSkuCount > 0 ? [`Keep ${soldSkuCount} SKU(s) with recent sales active, but scale only after Ads attribution and seller orders agree.`] : [])
   ];
   const listingActions = skuReviewCount > 0
@@ -524,7 +524,7 @@ export function buildAmazonCampaignBudgetSalesPlan(input: {
   return {
     operation: "preview_amazon_ads_budget_sales_strategy",
     applied: false,
-    strategy: "protect_budget_then_scale_validated_demand",
+    strategy: "balance_sales_growth_and_budget_efficiency",
     budgetProtection: {
       priority: budgetActions.length > 0 ? "high" : "normal",
       wasteTermCount: input.searchTermAnalysis.wasteSearchTerms.length,
@@ -532,7 +532,7 @@ export function buildAmazonCampaignBudgetSalesPlan(input: {
       recommendedActions: budgetActions
     },
     salesGrowth: {
-      priority: salesActions.length > 0 && budgetActions.length === 0 ? "high" : "normal",
+      priority: salesActions.length > 0 ? "high" : "normal",
       efficientTermCount: input.searchTermAnalysis.efficientSearchTerms.length,
       recommendedActions: salesActions
     },
