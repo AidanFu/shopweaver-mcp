@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import * as XLSX from "xlsx";
 import { DriveImportService } from "../src/import/drive-import.js";
-import { previewAmazonListingWorkbookWrite, previewAmazonOptimizationRefresh, previewDraftInputFromEnrichedRow } from "../src/tools/import-tools.js";
+import { previewAmazonListingWorkbookWrite, previewAmazonOptimizationRefresh, previewDraftInputFromEnrichedRow, previewEtsyVariationGroups, writeEtsyVariationWorkbook } from "../src/tools/import-tools.js";
 
 function workbookBytes() {
   const workbook = XLSX.utils.book_new();
@@ -178,6 +178,39 @@ describe("previewAmazonOptimizationRefresh", () => {
       filename: "Product Information - Amazon Listing.xlsx",
       warning: "This refreshes the workbook Optimization Recommendations sheet only. It does not call Amazon APIs or change listings, categories, bids, budgets, keywords, or ads."
     });
+  });
+});
+
+describe("Etsy variation workbook tools", () => {
+  it("previews Etsy variation groups from an allowed Drive folder", async () => {
+    const imports = {
+      importFolder: vi.fn().mockResolvedValue({
+        products: [
+          { productName: "郁金香兔-紫色", rawChineseDescription: "紫色兔子", imageFolderId: "p", imageFolderName: "郁金香兔-紫色", imageCount: 4, images: [] },
+          { productName: "郁金香兔-蓝色", rawChineseDescription: "蓝色兔子", imageFolderId: "b", imageFolderName: "郁金香兔-蓝色", imageCount: 5, images: [] }
+        ]
+      })
+    };
+    const preview = await previewEtsyVariationGroups(imports as never, "folder");
+    expect(preview.groups[0]).toMatchObject({ listingGroup: "郁金香兔", variation1Name: "Color" });
+    expect(preview.rowCount).toBe(2);
+  });
+
+  it("writes an Etsy variation workbook after confirm mode", async () => {
+    const imports = {
+      importFolder: vi.fn().mockResolvedValue({
+        products: [
+          { productName: "郁金香兔-紫色", rawChineseDescription: "紫色兔子", imageFolderId: "p", imageFolderName: "郁金香兔-紫色", imageCount: 4, images: [] },
+          { productName: "郁金香兔-蓝色", rawChineseDescription: "蓝色兔子", imageFolderId: "b", imageFolderName: "郁金香兔-蓝色", imageCount: 5, images: [] }
+        ]
+      }),
+      writeEnrichedWorkbook: vi.fn().mockResolvedValue({ id: "workbook", name: "Product Information - Etsy Draft.xlsx" })
+    };
+    const result = await writeEtsyVariationWorkbook(imports as never, "folder");
+    expect(imports.writeEnrichedWorkbook).toHaveBeenCalledWith("folder", expect.arrayContaining([
+      expect.objectContaining({ listingGroup: "郁金香兔", variation1Value: "Purple" })
+    ]));
+    expect(result.file.id).toBe("workbook");
   });
 });
 
