@@ -18,6 +18,7 @@
     "amazon:orders": "tsx src/amazon-orders.ts",
     "amazon:ads:setup": "tsx src/amazon-ads-setup.ts",
     "amazon:ads:optimize": "tsx src/amazon-ads-optimize.ts",
+    "amazon:ads:sku": "tsx src/amazon-ads-sku-optimize.ts",
     "amazon:ads:compare": "tsx src/amazon-ads-compare.ts",
     "test": "vitest run",
     "test:watch": "vitest",
