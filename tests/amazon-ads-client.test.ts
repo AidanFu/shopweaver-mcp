@@ -491,6 +491,51 @@ describe("AmazonAdsClient", () => {
     }));
   });
 
+  it("requests a Sponsored Products advertised-product report for SKU-level campaign analysis", async () => {
+    const store = new MemoryCredentialStore();
+    await store.set("amazonAdsApp", { clientId: "ads-client", clientSecret: "ads-secret" });
+    await store.set("amazonAdsAuth", {
+      refreshToken: "ads-refresh",
+      region: "na",
+      accessToken: "ads-access",
+      expiresAt: Date.now() + 3_600_000
+    });
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ reportId: "sku-report-1", status: "PENDING" }), {
+      status: 200,
+      headers: { "content-type": "application/json" }
+    }));
+    const client = new AmazonAdsClient(store, fetchMock);
+
+    await expect(client.createSponsoredProductsAdvertisedProductReport("987654321", {
+      name: "SP advertised products 2026-07-01 to 2026-07-07",
+      startDate: "2026-07-01",
+      endDate: "2026-07-07",
+      timeUnit: "SUMMARY"
+    })).resolves.toEqual({ reportId: "sku-report-1", status: "PENDING" });
+    expect(fetchMock).toHaveBeenCalledWith("https://advertising-api.amazon.com/reporting/reports", expect.objectContaining({
+      method: "POST",
+      headers: expect.objectContaining({
+        Authorization: "Bearer ads-access",
+        "Amazon-Advertising-API-ClientId": "ads-client",
+        "Amazon-Advertising-API-Scope": "987654321",
+        "Content-Type": "application/vnd.createasyncreportrequest.v3+json"
+      }),
+      body: JSON.stringify({
+        name: "SP advertised products 2026-07-01 to 2026-07-07",
+        startDate: "2026-07-01",
+        endDate: "2026-07-07",
+        configuration: {
+          adProduct: "SPONSORED_PRODUCTS",
+          groupBy: ["advertiser"],
+          columns: ["impressions", "clicks", "cost", "campaignId", "campaignName", "adGroupId", "adGroupName", "startDate", "endDate", "advertisedAsin", "advertisedSku", "sales7d", "purchases7d", "attributedSalesSameSku7d", "unitsSoldSameSku7d", "acosClicks7d", "roasClicks7d"],
+          reportTypeId: "spAdvertisedProduct",
+          timeUnit: "SUMMARY",
+          format: "GZIP_JSON"
+        }
+      })
+    }));
+  });
+
   it("gets Amazon Ads report status by report ID", async () => {
     const store = new MemoryCredentialStore();
     await store.set("amazonAdsApp", { clientId: "ads-client", clientSecret: "ads-secret" });

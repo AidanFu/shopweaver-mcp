@@ -13,6 +13,13 @@ interface SponsoredProductsSearchTermReportInput {
   keywordType: Array<"BROAD" | "PHRASE" | "EXACT" | "TARGETING_EXPRESSION" | "TARGETING_EXPRESSION_PREDEFINED">;
 }
 
+interface SponsoredProductsAdvertisedProductReportInput {
+  name: string;
+  startDate: string;
+  endDate: string;
+  timeUnit: "SUMMARY" | "DAILY";
+}
+
 interface SponsoredProductsNegativeKeywordInput {
   campaignId: string;
   adGroupId: string;
@@ -167,6 +174,27 @@ export class AmazonAdsClient {
           columns: ["impressions", "clicks", "cost", "campaignId", "campaignName", "adGroupId", "adGroupName", "startDate", "endDate", "keywordType", "keyword", "matchType", "keywordId", "searchTerm", "sales7d", "purchases7d", "acosClicks7d", "roasClicks7d"],
           filters: [{ field: "keywordType", values: input.keywordType }],
           reportTypeId: "spSearchTerm",
+          timeUnit: input.timeUnit,
+          format: "GZIP_JSON"
+        }
+      }
+    });
+  }
+
+  async createSponsoredProductsAdvertisedProductReport(profileId: string, input: SponsoredProductsAdvertisedProductReportInput) {
+    return this.request("/reporting/reports", {
+      method: "POST",
+      profileId,
+      contentType: "application/vnd.createasyncreportrequest.v3+json",
+      body: {
+        name: input.name,
+        startDate: input.startDate,
+        endDate: input.endDate,
+        configuration: {
+          adProduct: "SPONSORED_PRODUCTS",
+          groupBy: ["advertiser"],
+          columns: ["impressions", "clicks", "cost", "campaignId", "campaignName", "adGroupId", "adGroupName", "startDate", "endDate", "advertisedAsin", "advertisedSku", "sales7d", "purchases7d", "attributedSalesSameSku7d", "unitsSoldSameSku7d", "acosClicks7d", "roasClicks7d"],
+          reportTypeId: "spAdvertisedProduct",
           timeUnit: input.timeUnit,
           format: "GZIP_JSON"
         }
