@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import * as XLSX from "xlsx";
 import { DriveImportService } from "../src/import/drive-import.js";
-import { previewAmazonListingWorkbookWrite, previewAmazonOptimizationRefresh, previewDraftInputFromEnrichedRow, previewEtsyVariationGroups, writeEtsyVariationWorkbook } from "../src/tools/import-tools.js";
+import { previewAmazonListingWorkbookWrite, previewAmazonOptimizationRefresh, previewDraftInputFromEnrichedRow, previewEtsyVariationDraftFromRows, previewEtsyVariationGroups, writeEtsyVariationWorkbook } from "../src/tools/import-tools.js";
 
 function workbookBytes() {
   const workbook = XLSX.utils.book_new();
@@ -182,6 +182,32 @@ describe("previewAmazonOptimizationRefresh", () => {
 });
 
 describe("Etsy variation workbook tools", () => {
+  it("previews a reviewed Etsy variation draft from workbook rows", async () => {
+    const preview = previewEtsyVariationDraftFromRows([{
+      productName: "郁金香兔-紫色",
+      englishTitle: "Handmade Crochet Tulip Bunny",
+      englishDescription: "A soft handmade crochet bunny.",
+      quantity: 1,
+      price: "18.99",
+      taxonomyId: 2078,
+      whoMade: "i_did",
+      whenMade: "2020_2026",
+      type: "physical",
+      readinessStateId: 1,
+      listingGroup: "郁金香兔",
+      parentListingTitle: "Handmade Crochet Tulip Bunny",
+      parentListingDescription: "A soft handmade crochet bunny with color options.",
+      isVariant: "yes",
+      variation1Name: "Color",
+      variation1Value: "Purple",
+      sku: "tulip-bunny-purple",
+      variantPrice: "18.99",
+      variantQuantity: 1,
+      variantImageFolder: "郁金香兔-紫色"
+    } as never], "郁金香兔", 200);
+    expect(preview.inventory.products[0].propertyValues[0].propertyId).toBe(200);
+  });
+
   it("previews Etsy variation groups from an allowed Drive folder", async () => {
     const imports = {
       importFolder: vi.fn().mockResolvedValue({

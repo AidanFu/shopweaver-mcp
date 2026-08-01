@@ -3,6 +3,7 @@ import { z } from "zod";
 import { buildAmazonListingRows } from "../import/amazon-listing.js";
 import type { DriveImportService } from "../import/drive-import.js";
 import { EnrichedDraftRowSchema, validateEnrichedDraftRow } from "../import/enriched.js";
+import { buildEtsyVariationDraftPreview } from "../import/etsy-variation-draft.js";
 import { inferEtsyVariationGroups, toEtsyVariationWorkbookRows } from "../import/etsy-variations.js";
 
 function result(value: unknown) {
@@ -76,6 +77,11 @@ export async function writeEtsyVariationWorkbook(imports: DriveImportService, fo
   };
 }
 
+export function previewEtsyVariationDraftFromRows(rows: z.input<typeof EnrichedDraftRowSchema>[], listingGroup: string, variation1PropertyId: number) {
+  const parsed = rows.map(row => EnrichedDraftRowSchema.parse(row));
+  return buildEtsyVariationDraftPreview(parsed, listingGroup, { propertyId: variation1PropertyId });
+}
+
 export function registerImportTools(server: McpServer, imports: DriveImportService): void {
   server.registerTool("shopweaver_import_drive_folder", {
     description: "Import Product Information.xlsx and matched product images from one explicitly allowed Google Drive folder.",
@@ -108,6 +114,15 @@ export function registerImportTools(server: McpServer, imports: DriveImportServi
   }, async ({ mode, folderId }) => result(mode === "preview"
     ? { operation: "write_etsy_variation_workbook", folderId, warning: "This will write Product Information - Etsy Draft.xlsx to Google Drive only in confirm mode." }
     : await writeEtsyVariationWorkbook(imports, folderId)));
+
+  server.registerTool("shopweaver_preview_etsy_variation_draft", {
+    description: "Preview one Etsy grouped draft payload, image plan, and inventory payload from reviewed Etsy Draft workbook rows. This is read-only.",
+    inputSchema: {
+      listingGroup: z.string().min(1),
+      variation1PropertyId: z.number().int().positive(),
+      rows: z.array(EnrichedDraftRowSchema).min(1)
+    }
+  }, async ({ rows, listingGroup, variation1PropertyId }) => result(previewEtsyVariationDraftFromRows(rows, listingGroup, variation1PropertyId)));
 
   server.registerTool("shopweaver_write_amazon_listing_workbook", {
     description: "Create or update Product Information - Amazon Listing.xlsx in an allowed Google Drive folder. This is a workbook-only planning step and does not call Amazon APIs.",
