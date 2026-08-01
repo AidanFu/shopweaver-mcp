@@ -31,12 +31,18 @@ describe("enriched workbook", () => {
     const rows = parseEnrichedRows(bytes);
     expect(rows[0]).toMatchObject({
       listingGroup: "郁金香兔",
+      parentListingTitle: "Handmade Crochet Tulip Bunny",
+      parentListingDescription: "A handmade crochet tulip bunny with selectable colors.",
       isVariant: "yes",
       variation1Name: "Color",
       variation1Value: "Purple",
       sku: "tulip-bunny-purple",
       variantPrice: "18.99",
-      variantQuantity: 1
+      variantQuantity: 1,
+      variantImageFolder: "郁金香兔-紫色",
+      variantImageCount: 4,
+      variationValidationStatus: "ready",
+      variationValidationNotes: "Grouped by recognized color suffix."
     });
   });
 
