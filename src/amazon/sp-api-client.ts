@@ -146,11 +146,19 @@ export class AmazonSpApiClient {
     } finally {
       clearTimeout(timeout);
     }
-    if (!response.ok) throw new ShopWeaverError("AMAZON_SP_API_REQUEST_FAILED", "Amazon SP-API request failed.");
+    if (!response.ok) throw new ShopWeaverError("AMAZON_SP_API_REQUEST_FAILED", `Amazon SP-API request failed: ${await failureSummary(response)}`);
     const contentType = response.headers.get("content-type") ?? "";
     if (contentType.includes("application/json")) return response.json();
     return response.arrayBuffer();
   }
+}
+
+async function failureSummary(response: Response): Promise<string> {
+  const contentType = response.headers.get("content-type") ?? "";
+  if (!contentType.includes("application/json")) return String(response.status);
+  const body = await response.json() as { errors?: Array<{ code?: string; message?: string }> };
+  const first = body.errors?.[0];
+  return [String(response.status), first?.code, first?.message].filter(Boolean).join(" - ");
 }
 
 function amazonDate(date: Date): string {

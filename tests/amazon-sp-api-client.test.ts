@@ -97,6 +97,28 @@ describe("AmazonSpApiClient", () => {
     }));
   });
 
+  it("includes sanitized Amazon SP-API error details when a request fails", async () => {
+    const store = new MemoryCredentialStore();
+    await store.set("amazonSpApiApp", { clientId: "client", clientSecret: "secret" });
+    await store.set("amazonSpApiAuth", {
+      refreshToken: "refresh",
+      accessToken: "access",
+      expiresAt: Date.now() + 120_000,
+      sellingPartnerId: "A1SELLER",
+      region: "na",
+      marketplaceIds: ["ATVPDKIKX0DER"]
+    });
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      errors: [{ code: "Unauthorized", message: "Access to requested resource is denied." }]
+    }), {
+      status: 403,
+      headers: { "content-type": "application/json" }
+    }));
+    const client = new AmazonSpApiClient(store, fetchMock);
+
+    await expect(client.listOrders({ createdAfter: "2026-07-29T00:00:00Z" })).rejects.toThrow("Amazon SP-API request failed: 403 - Unauthorized - Access to requested resource is denied.");
+  });
+
   it("validates listing item patches without applying Amazon listing changes", async () => {
     const store = new MemoryCredentialStore();
     await store.set("amazonSpApiApp", { clientId: "client", clientSecret: "secret" });

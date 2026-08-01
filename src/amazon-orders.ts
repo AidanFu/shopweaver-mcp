@@ -14,6 +14,19 @@ interface AmazonOrdersArgs {
   nextToken?: string;
 }
 
+type AmazonOrdersResponse = {
+  payload?: {
+    CreatedBefore?: string;
+    Orders?: Array<{
+      PurchaseDate?: string;
+      OrderStatus?: string;
+      NumberOfItemsShipped?: number;
+      NumberOfItemsUnshipped?: number;
+      OrderTotal?: { CurrencyCode?: string; Amount?: string };
+    }>;
+  };
+};
+
 export function parseAmazonOrdersArgs(args: string[]): AmazonOrdersArgs {
   const values = new Map<string, string>();
   for (let index = 0; index < args.length; index += 2) {
@@ -35,14 +48,44 @@ export function parseAmazonOrdersArgs(args: string[]): AmazonOrdersArgs {
   };
 }
 
+export function summarizeAmazonOrders(response: AmazonOrdersResponse) {
+  const orders = response.payload?.Orders ?? [];
+  const statusCounts: Record<string, number> = {};
+  const totalAmountByCurrency: Record<string, number> = {};
+  const summaries = orders.map(order => {
+    const orderStatus = order.OrderStatus ?? "UNKNOWN";
+    statusCounts[orderStatus] = (statusCounts[orderStatus] ?? 0) + 1;
+    const currencyCode = order.OrderTotal?.CurrencyCode ?? "UNKNOWN";
+    const amount = Number(order.OrderTotal?.Amount ?? 0);
+    totalAmountByCurrency[currencyCode] = roundCurrency((totalAmountByCurrency[currencyCode] ?? 0) + amount);
+    return {
+      purchaseDate: order.PurchaseDate,
+      orderStatus,
+      itemCount: (order.NumberOfItemsShipped ?? 0) + (order.NumberOfItemsUnshipped ?? 0),
+      total: { currencyCode, amount }
+    };
+  });
+  return {
+    createdBefore: response.payload?.CreatedBefore,
+    orderCount: orders.length,
+    totalAmountByCurrency,
+    statusCounts,
+    orders: summaries
+  };
+}
+
 async function main(): Promise<void> {
   const store = new KeychainCredentialStore();
   const amazon = new AmazonSpApiClient(store);
-  stdout.write(`${JSON.stringify(await amazon.listOrders(parseAmazonOrdersArgs(process.argv.slice(2))), null, 2)}\n`);
+  stdout.write(`${JSON.stringify(summarizeAmazonOrders(await amazon.listOrders(parseAmazonOrdersArgs(process.argv.slice(2))) as AmazonOrdersResponse), null, 2)}\n`);
 }
 
 function splitCsv(value: string): string[] {
   return value.split(",").map(item => item.trim()).filter(Boolean);
+}
+
+function roundCurrency(value: number): number {
+  return Math.round(value * 100) / 100;
 }
 
 function usageError() {
