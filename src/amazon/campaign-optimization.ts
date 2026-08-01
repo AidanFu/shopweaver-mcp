@@ -61,6 +61,14 @@ export interface AmazonCampaignSkuSignalAnalysis {
     sku: string;
     campaignIds: string[];
     campaignNames: string[];
+    campaignBreakdowns: Array<{
+      campaignId: string;
+      campaignName: string;
+      adGroupIds: string[];
+      spend: number;
+      sales: number;
+      orders: number;
+    }>;
     spend: number;
     sales: number;
     orders: number;
@@ -78,6 +86,7 @@ export interface AmazonCampaignSkuActionPlan {
     sku: string;
     campaignIds: string[];
     campaignNames: string[];
+    campaignBreakdowns: AmazonCampaignSkuSignalAnalysis["skuCampaigns"][number]["campaignBreakdowns"];
     spend: number;
     sales: number;
     orders: number;
@@ -211,16 +220,38 @@ export function analyzeAmazonSearchTermReportRows(rows: Array<Record<string, unk
 }
 
 export function analyzeAmazonCampaignSkuSignals(rows: Array<Record<string, unknown>>, signals: AmazonCampaignSkuSignalInput): AmazonCampaignSkuSignalAnalysis {
-  const bySku = new Map<string, { sku: string; campaignIds: Set<string>; campaignNames: Set<string>; spend: number; sales: number; orders: number }>();
+  const bySku = new Map<string, {
+    sku: string;
+    campaignIds: Set<string>;
+    campaignNames: Set<string>;
+    campaigns: Map<string, { campaignId: string; campaignName: string; adGroupIds: Set<string>; spend: number; sales: number; orders: number }>;
+    spend: number;
+    sales: number;
+    orders: number;
+  }>();
   for (const row of rows) {
     const sku = fieldText(row, ["advertisedSku", "Advertised SKU", "SKU"]);
     if (!sku) continue;
-    const current = bySku.get(sku) ?? { sku, campaignIds: new Set<string>(), campaignNames: new Set<string>(), spend: 0, sales: 0, orders: 0 };
-    current.campaignIds.add(fieldText(row, ["campaignId", "Campaign ID", "Campaign Id"]));
-    current.campaignNames.add(fieldText(row, ["campaignName", "Campaign Name"]));
-    current.spend += fieldNumber(row, ["cost", "Spend", "Cost"]);
-    current.sales += fieldNumber(row, ["sales7d", "7 Day Total Sales", "Sales"]);
-    current.orders += fieldNumber(row, ["purchases7d", "7 Day Total Orders (#)", "Orders"]);
+    const current = bySku.get(sku) ?? { sku, campaignIds: new Set<string>(), campaignNames: new Set<string>(), campaigns: new Map(), spend: 0, sales: 0, orders: 0 };
+    const campaignId = fieldText(row, ["campaignId", "Campaign ID", "Campaign Id"]);
+    const campaignName = fieldText(row, ["campaignName", "Campaign Name"]);
+    const adGroupId = fieldText(row, ["adGroupId", "Ad Group ID", "Ad Group Id"]);
+    const spend = fieldNumber(row, ["cost", "Spend", "Cost"]);
+    const sales = fieldNumber(row, ["sales7d", "7 Day Total Sales", "Sales"]);
+    const orders = fieldNumber(row, ["purchases7d", "7 Day Total Orders (#)", "Orders"]);
+    current.campaignIds.add(campaignId);
+    current.campaignNames.add(campaignName);
+    if (campaignId) {
+      const campaign = current.campaigns.get(campaignId) ?? { campaignId, campaignName, adGroupIds: new Set<string>(), spend: 0, sales: 0, orders: 0 };
+      campaign.adGroupIds.add(adGroupId);
+      campaign.spend += spend;
+      campaign.sales += sales;
+      campaign.orders += orders;
+      current.campaigns.set(campaignId, campaign);
+    }
+    current.spend += spend;
+    current.sales += sales;
+    current.orders += orders;
     bySku.set(sku, current);
   }
   return {
@@ -232,6 +263,14 @@ export function analyzeAmazonCampaignSkuSignals(rows: Array<Record<string, unkno
         sku: row.sku,
         campaignIds: [...row.campaignIds].filter(Boolean),
         campaignNames: [...row.campaignNames].filter(Boolean),
+        campaignBreakdowns: [...row.campaigns.values()].map(campaign => ({
+          campaignId: campaign.campaignId,
+          campaignName: campaign.campaignName,
+          adGroupIds: [...campaign.adGroupIds].filter(Boolean),
+          spend: Number(campaign.spend.toFixed(2)),
+          sales: Number(campaign.sales.toFixed(2)),
+          orders: campaign.orders
+        })).sort((left, right) => right.spend - left.spend),
         spend,
         sales,
         orders: row.orders,
@@ -250,6 +289,7 @@ export function buildAmazonCampaignSkuActionPlan(analysis: AmazonCampaignSkuSign
       sku: row.sku,
       campaignIds: row.campaignIds,
       campaignNames: row.campaignNames,
+      campaignBreakdowns: row.campaignBreakdowns,
       spend: row.spend,
       sales: row.sales,
       orders: row.orders,

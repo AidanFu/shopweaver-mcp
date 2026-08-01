@@ -97,7 +97,8 @@ describe("analyzeAmazonCampaignMetrics", () => {
 
   it("connects campaign spend to SKU sales signals for listing and budget review", () => {
     expect(analyzeAmazonCampaignSkuSignals([
-      { campaignId: "campaign-1", campaignName: "Exact Gold", advertisedSku: "DH-E37S-W6DM", cost: 32, purchases7d: 0, sales7d: 0 },
+      { campaignId: "campaign-1", campaignName: "Exact Gold", adGroupId: "adgroup-1", advertisedSku: "DH-E37S-W6DM", cost: 20, purchases7d: 0, sales7d: 0 },
+      { campaignId: "campaign-4", campaignName: "Broad Gold", adGroupId: "adgroup-4", advertisedSku: "DH-E37S-W6DM", cost: 12, purchases7d: 0, sales7d: 0 },
       { campaignId: "campaign-2", campaignName: "Exact Silver", advertisedSku: "5H-2EH1-7H77", cost: 18, purchases7d: 1, sales7d: 184.9 },
       { campaignId: "campaign-3", campaignName: "Hardware Kit", advertisedSku: "80-16Z5-E38T", cost: 4, purchases7d: 1, sales7d: 15 }
     ], {
@@ -107,9 +108,16 @@ describe("analyzeAmazonCampaignMetrics", () => {
       nonTargetSkusWithSales: ["80-16Z5-E38T"]
     })).toEqual({
       skuCampaigns: [
-        { sku: "DH-E37S-W6DM", campaignIds: ["campaign-1"], campaignNames: ["Exact Gold"], spend: 32, sales: 0, orders: 0, signal: "target_spend_no_sales", recommendation: "Reduce spend pressure or review listing conversion for DH-E37S-W6DM; this target SKU has ad spend but no recent SKU-level sales." },
-        { sku: "5H-2EH1-7H77", campaignIds: ["campaign-2"], campaignNames: ["Exact Silver"], spend: 18, sales: 184.9, orders: 1, signal: "target_sold", recommendation: "Keep 5H-2EH1-7H77 active and monitor ACOS; this target SKU has recent sales." },
-        { sku: "80-16Z5-E38T", campaignIds: ["campaign-3"], campaignNames: ["Hardware Kit"], spend: 4, sales: 15, orders: 1, signal: "non_target_sold", recommendation: "Review 80-16Z5-E38T separately; non-target demand is present and should not be mixed with optimized listing campaign conclusions." }
+        { sku: "DH-E37S-W6DM", campaignIds: ["campaign-1", "campaign-4"], campaignNames: ["Exact Gold", "Broad Gold"], spend: 32, sales: 0, orders: 0, signal: "target_spend_no_sales", recommendation: "Reduce spend pressure or review listing conversion for DH-E37S-W6DM; this target SKU has ad spend but no recent SKU-level sales.", campaignBreakdowns: [
+          { campaignId: "campaign-1", campaignName: "Exact Gold", adGroupIds: ["adgroup-1"], spend: 20, sales: 0, orders: 0 },
+          { campaignId: "campaign-4", campaignName: "Broad Gold", adGroupIds: ["adgroup-4"], spend: 12, sales: 0, orders: 0 }
+        ] },
+        { sku: "5H-2EH1-7H77", campaignIds: ["campaign-2"], campaignNames: ["Exact Silver"], spend: 18, sales: 184.9, orders: 1, signal: "target_sold", recommendation: "Keep 5H-2EH1-7H77 active and monitor ACOS; this target SKU has recent sales.", campaignBreakdowns: [
+          { campaignId: "campaign-2", campaignName: "Exact Silver", adGroupIds: [], spend: 18, sales: 184.9, orders: 1 }
+        ] },
+        { sku: "80-16Z5-E38T", campaignIds: ["campaign-3"], campaignNames: ["Hardware Kit"], spend: 4, sales: 15, orders: 1, signal: "non_target_sold", recommendation: "Review 80-16Z5-E38T separately; non-target demand is present and should not be mixed with optimized listing campaign conclusions.", campaignBreakdowns: [
+          { campaignId: "campaign-3", campaignName: "Hardware Kit", adGroupIds: [], spend: 4, sales: 15, orders: 1 }
+        ] }
       ]
     });
   });
