@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { analyzeAmazonCampaignMetrics, analyzeAmazonCampaignSkuSignals, analyzeAmazonSearchTermReportRows, buildAmazonCampaignSkuActionPlan, buildAmazonCampaignSkuCampaignControlPreview, buildAmazonCampaignSkuControlPreview } from "../src/amazon/campaign-optimization.js";
+import { analyzeAmazonCampaignMetrics, analyzeAmazonCampaignSkuSignals, analyzeAmazonSearchTermReportRows, buildAmazonCampaignSkuActionPlan, buildAmazonCampaignSkuBudgetReviewPreview, buildAmazonCampaignSkuCampaignControlPreview, buildAmazonCampaignSkuControlPreview } from "../src/amazon/campaign-optimization.js";
 
 describe("analyzeAmazonCampaignMetrics", () => {
   it("flags spend with clicks but no orders for budget review", () => {
@@ -208,6 +208,55 @@ describe("analyzeAmazonCampaignMetrics", () => {
         orders: 0,
         affectedSkus: ["DH-E37S-W6DM", "FQ-6KKW-ESSD"],
         recommendedNextStep: "Review campaign budget, ad group bids, and SKU fit before applying any spend reduction; high-priority zero-sale SKU spend dominates this campaign.",
+        sellerApprovalRequired: true
+      }]
+    });
+  });
+
+  it("previews budget review candidates from campaign concentration and current budgets", () => {
+    expect(buildAmazonCampaignSkuBudgetReviewPreview({
+      operation: "preview_amazon_ads_sku_campaign_reviews",
+      applied: false,
+      warning: "Preview only. No campaign budgets, campaign states, bidding strategies, ad groups, bids, keywords, negatives, product ads, or listings were changed.",
+      campaignReviewCount: 2,
+      campaignReviews: [{
+        campaignId: "campaign-1",
+        campaignName: "Exact Gold",
+        totalSpend: 60,
+        highPrioritySpend: 50,
+        highPrioritySpendRatio: 83.33,
+        sales: 0,
+        orders: 0,
+        affectedSkus: ["DH-E37S-W6DM", "FQ-6KKW-ESSD"],
+        recommendedNextStep: "Review campaign budget, ad group bids, and SKU fit before applying any spend reduction; high-priority zero-sale SKU spend dominates this campaign.",
+        sellerApprovalRequired: true
+      }, {
+        campaignId: "campaign-2",
+        campaignName: "Exact Minimum",
+        totalSpend: 40,
+        highPrioritySpend: 40,
+        highPrioritySpendRatio: 100,
+        sales: 0,
+        orders: 0,
+        affectedSkus: ["LOW-BUDGET"],
+        recommendedNextStep: "Review campaign budget, ad group bids, and SKU fit before applying any spend reduction; high-priority zero-sale SKU spend dominates this campaign.",
+        sellerApprovalRequired: true
+      }]
+    }, [
+      { campaignId: "campaign-1", budget: { budgetType: "DAILY", budget: 12 } },
+      { campaignId: "campaign-2", budget: { budgetType: "DAILY", budget: 3 } }
+    ])).toEqual({
+      operation: "preview_amazon_ads_sku_campaign_budget_reviews",
+      applied: false,
+      warning: "Preview only. No campaign budgets were changed. Confirm through the existing campaign budget update flow before applying any exact payload.",
+      budgetReviewCount: 1,
+      campaignBudgetReviews: [{
+        campaignId: "campaign-1",
+        campaignName: "Exact Gold",
+        currentBudget: { budgetType: "DAILY", budget: 12 },
+        suggestedBudget: { budgetType: "DAILY", budget: 6 },
+        reason: "Reduce daily budget from 12 to 6 only after reviewing SKU fit and ad group bids; 83.33% of spend is high-priority zero-sale SKU spend.",
+        affectedSkus: ["DH-E37S-W6DM", "FQ-6KKW-ESSD"],
         sellerApprovalRequired: true
       }]
     });

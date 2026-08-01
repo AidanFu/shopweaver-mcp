@@ -138,6 +138,22 @@ export interface AmazonCampaignSkuCampaignControlPreview {
   }>;
 }
 
+export interface AmazonCampaignSkuBudgetReviewPreview {
+  operation: "preview_amazon_ads_sku_campaign_budget_reviews";
+  applied: false;
+  warning: string;
+  budgetReviewCount: number;
+  campaignBudgetReviews: Array<{
+    campaignId: string;
+    campaignName: string;
+    currentBudget: { budgetType: "DAILY"; budget: number };
+    suggestedBudget: { budgetType: "DAILY"; budget: number };
+    reason: string;
+    affectedSkus: string[];
+    sellerApprovalRequired: true;
+  }>;
+}
+
 export function analyzeAmazonCampaignMetrics(metrics: AmazonCampaignMetrics): AmazonCampaignRecommendation {
   if (metrics.spend >= 25 && metrics.clicks >= 30 && metrics.orders === 0) {
     return {
@@ -427,6 +443,33 @@ export function buildAmazonCampaignSkuCampaignControlPreview(analysis: AmazonCam
   };
 }
 
+export function buildAmazonCampaignSkuBudgetReviewPreview(campaignPreview: AmazonCampaignSkuCampaignControlPreview, campaigns: Array<Record<string, unknown>>): AmazonCampaignSkuBudgetReviewPreview {
+  const currentBudgets = new Map(campaigns.map(campaign => [text(campaign.campaignId), campaignBudget(campaign)]));
+  const campaignBudgetReviews = campaignPreview.campaignReviews
+    .map(review => {
+      const currentBudget = currentBudgets.get(review.campaignId);
+      if (!currentBudget || currentBudget <= 3) return undefined;
+      const suggestedBudget = Number(Math.max(3, currentBudget * 0.5).toFixed(2));
+      return {
+        campaignId: review.campaignId,
+        campaignName: review.campaignName,
+        currentBudget: { budgetType: "DAILY" as const, budget: currentBudget },
+        suggestedBudget: { budgetType: "DAILY" as const, budget: suggestedBudget },
+        reason: `Reduce daily budget from ${currentBudget} to ${suggestedBudget} only after reviewing SKU fit and ad group bids; ${review.highPrioritySpendRatio}% of spend is high-priority zero-sale SKU spend.`,
+        affectedSkus: review.affectedSkus,
+        sellerApprovalRequired: true as const
+      };
+    })
+    .filter(review => review !== undefined);
+  return {
+    operation: "preview_amazon_ads_sku_campaign_budget_reviews",
+    applied: false,
+    warning: "Preview only. No campaign budgets were changed. Confirm through the existing campaign budget update flow before applying any exact payload.",
+    budgetReviewCount: campaignBudgetReviews.length,
+    campaignBudgetReviews
+  };
+}
+
 function campaignSkuSignal(sku: string, spend: number, orders: number, signals: AmazonCampaignSkuSignalInput): AmazonCampaignSkuSignalAnalysis["skuCampaigns"][number]["signal"] {
   if (signals.targetSkusWithSales.includes(sku)) return "target_sold";
   if (signals.targetSkusWithoutSales.includes(sku) && spend > 0 && orders === 0) return "target_spend_no_sales";
@@ -466,6 +509,13 @@ function text(value: unknown): string {
 function number(value: unknown): number {
   const parsed = Number(String(value ?? 0).replace(/[$,%]/g, ""));
   return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function campaignBudget(campaign: Record<string, unknown>): number {
+  const budget = campaign.budget;
+  if (typeof budget === "number") return budget;
+  if (budget && typeof budget === "object" && "budget" in budget) return number((budget as { budget?: unknown }).budget);
+  return 0;
 }
 
 function fieldText(row: Record<string, unknown>, keys: string[]): string {

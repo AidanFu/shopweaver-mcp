@@ -1,7 +1,7 @@
 import type { AmazonAdsClient } from "./ads-client.js";
-import { analyzeAmazonCampaignSkuSignals, buildAmazonCampaignSkuActionPlan, buildAmazonCampaignSkuCampaignControlPreview, buildAmazonCampaignSkuControlPreview } from "./campaign-optimization.js";
+import { analyzeAmazonCampaignSkuSignals, buildAmazonCampaignSkuActionPlan, buildAmazonCampaignSkuBudgetReviewPreview, buildAmazonCampaignSkuCampaignControlPreview, buildAmazonCampaignSkuControlPreview } from "./campaign-optimization.js";
 
-type AmazonAdsSkuOptimizationClient = Pick<AmazonAdsClient, "createSponsoredProductsAdvertisedProductReport" | "getReport" | "downloadReportRows">;
+type AmazonAdsSkuOptimizationClient = Pick<AmazonAdsClient, "createSponsoredProductsAdvertisedProductReport" | "getReport" | "downloadReportRows" | "listSponsoredProductsCampaigns">;
 
 export interface AmazonAdsSkuOptimizationCycleInput {
   profileId: string;
@@ -58,6 +58,8 @@ export async function runAmazonAdsSkuOptimizationCycle(amazonAds: AmazonAdsSkuOp
     nonTargetSkusWithSales: input.nonTargetSkusWithSales
   });
   const actionPlan = buildAmazonCampaignSkuActionPlan(analysis);
+  const campaignControlPreview = buildAmazonCampaignSkuCampaignControlPreview(analysis, actionPlan);
+  const campaignsResponse = await amazonAds.listSponsoredProductsCampaigns(input.profileId, { maxResults: 100 }) as { campaigns?: Array<Record<string, unknown>> };
   return {
     operation: "amazon_ads_run_sku_optimization_cycle" as const,
     status: "COMPLETED",
@@ -67,7 +69,8 @@ export async function runAmazonAdsSkuOptimizationCycle(amazonAds: AmazonAdsSkuOp
     analysis,
     actionPlan,
     controlPreview: buildAmazonCampaignSkuControlPreview(actionPlan),
-    campaignControlPreview: buildAmazonCampaignSkuCampaignControlPreview(analysis, actionPlan),
+    campaignControlPreview,
+    budgetReviewPreview: buildAmazonCampaignSkuBudgetReviewPreview(campaignControlPreview, campaignsResponse.campaigns ?? []),
     applied: false
   };
 }

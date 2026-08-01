@@ -14,6 +14,9 @@ describe("runAmazonAdsSkuOptimizationCycle", () => {
       },
       async downloadReportRows() {
         throw new Error("not expected");
+      },
+      async listSponsoredProductsCampaigns() {
+        throw new Error("not expected");
       }
     };
 
@@ -58,6 +61,11 @@ describe("runAmazonAdsSkuOptimizationCycle", () => {
           { campaignId: "campaign-1", campaignName: "Exact Gold", advertisedSku: "DH-E37S-W6DM", cost: 32, purchases7d: 0, sales7d: 0 },
           { campaignId: "campaign-2", campaignName: "Exact Silver", advertisedSku: "5H-2EH1-7H77", cost: 18, purchases7d: 1, sales7d: 184.9 }
         ];
+      },
+      async listSponsoredProductsCampaigns(profileId: string, body: Record<string, unknown>) {
+        expect(profileId).toBe("profile-1");
+        expect(body).toEqual({ maxResults: 100 });
+        return { campaigns: [{ campaignId: "campaign-1", budget: { budgetType: "DAILY", budget: 10 } }] };
       }
     };
 
@@ -104,6 +112,14 @@ describe("runAmazonAdsSkuOptimizationCycle", () => {
         campaignReviewCount: 1,
         campaignReviews: [
           { campaignId: "campaign-1", campaignName: "Exact Gold", totalSpend: 32, highPrioritySpend: 32, highPrioritySpendRatio: 100 }
+        ]
+      },
+      budgetReviewPreview: {
+        operation: "preview_amazon_ads_sku_campaign_budget_reviews",
+        applied: false,
+        budgetReviewCount: 1,
+        campaignBudgetReviews: [
+          { campaignId: "campaign-1", campaignName: "Exact Gold", currentBudget: { budgetType: "DAILY", budget: 10 }, suggestedBudget: { budgetType: "DAILY", budget: 5 } }
         ]
       }
     });
