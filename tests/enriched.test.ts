@@ -6,17 +6,38 @@ import { parseEnrichedRows, validateEnrichedDraftRow } from "../src/import/enric
 describe("enriched workbook", () => {
   it("writes and parses enriched rows", () => {
     const bytes = writeEnrichedWorkbook([{
-      productName: "产品一",
-      rawChineseDescription: "中文描述",
-      imageFolder: "产品一",
-      imageCount: 2,
+      productName: "郁金香兔-紫色",
+      rawChineseDescription: "紫色兔子",
+      imageFolder: "郁金香兔-紫色",
+      imageCount: 4,
+      listingGroup: "郁金香兔",
+      parentListingTitle: "Handmade Crochet Tulip Bunny",
+      parentListingDescription: "A handmade crochet tulip bunny with selectable colors.",
+      isVariant: "yes",
+      variation1Name: "Color",
+      variation1Value: "Purple",
+      sku: "tulip-bunny-purple",
+      variantPrice: "18.99",
+      variantQuantity: 1,
+      variantImageFolder: "郁金香兔-紫色",
+      variantImageCount: 4,
       validationStatus: "needs_enrichment",
-      validationNotes: "Missing English title"
+      validationNotes: "Missing English title",
+      variationValidationStatus: "ready",
+      variationValidationNotes: "Grouped by recognized color suffix."
     }]);
     const workbook = XLSX.read(bytes, { type: "array" });
     expect(workbook.SheetNames[0]).toBe("Etsy Drafts");
     const rows = parseEnrichedRows(bytes);
-    expect(rows[0]).toMatchObject({ productName: "产品一", rawChineseDescription: "中文描述", imageCount: 2 });
+    expect(rows[0]).toMatchObject({
+      listingGroup: "郁金香兔",
+      isVariant: "yes",
+      variation1Name: "Color",
+      variation1Value: "Purple",
+      sku: "tulip-bunny-purple",
+      variantPrice: "18.99",
+      variantQuantity: 1
+    });
   });
 
   it("validates required physical draft fields", () => {

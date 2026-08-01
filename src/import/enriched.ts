@@ -17,7 +17,22 @@ export const EnrichedDraftRowSchema = z.object({
   type: z.string().optional(),
   readinessStateId: z.number().int().positive().optional(),
   imageFolder: z.string().optional(),
-  imageCount: z.number().int().nonnegative().optional()
+  imageCount: z.number().int().nonnegative().optional(),
+  listingGroup: z.string().optional(),
+  parentListingTitle: z.string().optional(),
+  parentListingDescription: z.string().optional(),
+  isVariant: z.string().optional(),
+  variation1Name: z.string().optional(),
+  variation1Value: z.string().optional(),
+  variation2Name: z.string().optional(),
+  variation2Value: z.string().optional(),
+  sku: z.string().optional(),
+  variantPrice: z.string().optional(),
+  variantQuantity: z.number().int().nonnegative().optional(),
+  variantImageFolder: z.string().optional(),
+  variantImageCount: z.number().int().nonnegative().optional(),
+  variationValidationStatus: z.string().optional(),
+  variationValidationNotes: z.string().optional()
 }).passthrough();
 
 export type EnrichedDraftRow = z.infer<typeof EnrichedDraftRowSchema>;
@@ -45,7 +60,22 @@ export function parseEnrichedRows(bytes: Uint8Array): EnrichedDraftRow[] {
     type: text(row["Type"]),
     readinessStateId: number(row["Readiness State ID"]),
     imageFolder: text(row["Image Folder"]),
-    imageCount: number(row["Image Count"])
+    imageCount: number(row["Image Count"]),
+    listingGroup: text(row["Listing Group"]),
+    parentListingTitle: text(row["Parent Listing Title"]),
+    parentListingDescription: text(row["Parent Listing Description"]),
+    isVariant: text(row["Is Variant"]),
+    variation1Name: text(row["Variation 1 Name"]),
+    variation1Value: text(row["Variation 1 Value"]),
+    variation2Name: text(row["Variation 2 Name"]),
+    variation2Value: text(row["Variation 2 Value"]),
+    sku: text(row["SKU"]),
+    variantPrice: text(row["Variant Price"]),
+    variantQuantity: number(row["Variant Quantity"]),
+    variantImageFolder: text(row["Variant Image Folder"]),
+    variantImageCount: number(row["Variant Image Count"]),
+    variationValidationStatus: text(row["Variation Validation Status"]),
+    variationValidationNotes: text(row["Variation Validation Notes"])
   }));
 }
 
