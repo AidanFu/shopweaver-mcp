@@ -15,6 +15,15 @@ const DriveImageUploadInput = {
   maxImages: z.number().int().positive().max(10).optional()
 };
 
+const DriveVariationImageUploadInput = {
+  mode: z.enum(["preview", "confirm"]).default("preview"),
+  confirmationToken: z.string().min(20).optional(),
+  listingId: z.number().int().positive(),
+  folderId: z.string().min(1),
+  variantImageFolders: z.array(z.string().min(1)).min(1),
+  maxImagesPerVariant: z.number().int().positive().max(10).optional()
+};
+
 export function registerDriveImageTools(server: McpServer, uploads: DriveImageUploadService): void {
   server.registerTool("shopweaver_upload_drive_images_to_etsy_draft", {
     description: "Preview or confirm uploading matched Google Drive product images to one Etsy draft listing.",
@@ -22,4 +31,11 @@ export function registerDriveImageTools(server: McpServer, uploads: DriveImageUp
   }, async ({ mode, confirmationToken, ...input }) => result(mode === "preview"
     ? await uploads.previewUpload(input)
     : await uploads.confirmUpload(input, confirmationToken ?? "")));
+
+  server.registerTool("shopweaver_upload_drive_variation_images_to_etsy_draft", {
+    description: "Preview or confirm uploading Google Drive variant images to one Etsy draft listing. Active listings are rejected.",
+    inputSchema: DriveVariationImageUploadInput
+  }, async ({ mode, confirmationToken, ...input }) => result(mode === "preview"
+    ? await uploads.previewVariationUpload(input)
+    : await uploads.confirmVariationUpload(input, confirmationToken ?? "")));
 }

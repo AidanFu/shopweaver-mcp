@@ -95,6 +95,7 @@ describe("MCP integration", () => {
       "shopweaver_preview_etsy_variation_groups",
       "shopweaver_refresh_amazon_optimization_recommendations",
       "shopweaver_upload_drive_images_to_etsy_draft",
+      "shopweaver_upload_drive_variation_images_to_etsy_draft",
       "shopweaver_write_amazon_listing_workbook",
       "shopweaver_write_enriched_workbook",
       "shopweaver_write_etsy_variation_workbook"

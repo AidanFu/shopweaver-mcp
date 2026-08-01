@@ -50,6 +50,27 @@ describe("DriveImageUploadService", () => {
     expect(client.request).not.toHaveBeenCalled();
   });
 
+  it("previews grouped variant image uploads in rank order", async () => {
+    const { service, drive } = await dependencies();
+    drive.listFolderChildren = vi.fn().mockResolvedValue([
+      { id: "images", name: "Images", mimeType: "application/vnd.google-apps.folder" }
+    ]);
+    drive.listChildrenByParentId = vi.fn()
+      .mockResolvedValueOnce([
+        { id: "purple", name: "郁金香兔-紫色", mimeType: "application/vnd.google-apps.folder" },
+        { id: "blue", name: "郁金香兔-蓝色", mimeType: "application/vnd.google-apps.folder" }
+      ])
+      .mockResolvedValueOnce([{ id: "p1", name: "01.jpg", mimeType: "image/jpeg" }])
+      .mockResolvedValueOnce([{ id: "b1", name: "01.jpg", mimeType: "image/jpeg" }]);
+    const preview = await service.previewVariationUpload({
+      listingId: 9,
+      folderId: "folder",
+      variantImageFolders: ["郁金香兔-紫色", "郁金香兔-蓝色"]
+    });
+    expect(preview.images.map(image => image.rank)).toEqual([1, 2]);
+    expect(preview.images.map(image => image.variantImageFolder)).toEqual(["郁金香兔-紫色", "郁金香兔-蓝色"]);
+  });
+
   it("rejects non-draft listings before Drive image upload preview", async () => {
     const { service, drive } = await dependencies("active");
     await expect(service.previewUpload({
