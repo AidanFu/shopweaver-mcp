@@ -66,6 +66,7 @@ export function compareAmazonAdsOptimizationSnapshots(before: AmazonAdsOptimizat
     const orderChange = afterCampaign.orders - beforeCampaign.orders;
     const acosChange = round(afterCampaign.acos - beforeCampaign.acos);
     const campaignActions = appliedActions.filter(action => actionHasCampaign(action, beforeCampaign.campaignId));
+    const campaignVerdict = verdict(spendChange, salesChange, orderChange, acosChange);
     return {
       campaignId: beforeCampaign.campaignId,
       campaignName: beforeCampaign.campaignName,
@@ -73,10 +74,11 @@ export function compareAmazonAdsOptimizationSnapshots(before: AmazonAdsOptimizat
       salesChange,
       orderChange,
       acosChange,
-      verdict: verdict(spendChange, salesChange, orderChange, acosChange),
+      verdict: campaignVerdict,
       ...(campaignActions.length ? {
         appliedActionCount: campaignActions.length,
-        appliedActions: campaignActions.map(actionSummary)
+        appliedActions: campaignActions.map(actionSummary),
+        followUpRecommendation: followUpRecommendation(campaignVerdict, spendChange, salesChange, orderChange)
       } : {})
     };
   });
@@ -97,6 +99,7 @@ export function compareAmazonAdsOptimizationSnapshots(before: AmazonAdsOptimizat
       appliedActionCount: appliedActions.length,
       appliedActions: appliedActions.map(actionSummary)
     } : {}),
+    ...(appliedActions.length ? { followUpRecommendations: overallRecommendations(spendChange, salesChange, orderChange) } : {}),
     campaignChanges
   };
 }
@@ -189,6 +192,32 @@ function actionSummary(action: AmazonAdsChangeLogRecord) {
     operation: action.operation,
     profileId: action.profileId,
     payload: action.payload
+  };
+}
+
+function overallRecommendations(spendChange: number, salesChange: number, orderChange: number) {
+  if (spendChange < 0 && orderChange >= 0 && salesChange >= 0) {
+    return [{
+      action: "monitor" as const,
+      reason: "Recent Amazon Ads actions correlate with lower spend and stable or improved orders."
+    }];
+  }
+  return [{
+    action: "review" as const,
+    reason: "Recent Amazon Ads actions need review because spend, sales, or orders did not clearly improve."
+  }];
+}
+
+function followUpRecommendation(campaignVerdict: "improved" | "regressed" | "mixed", spendChange: number, salesChange: number, orderChange: number) {
+  if (campaignVerdict === "improved" && spendChange < 0 && (orderChange > 0 || salesChange > 0)) {
+    return {
+      action: "monitor" as const,
+      reason: "Spend decreased while orders or sales improved after the applied action."
+    };
+  }
+  return {
+    action: "review" as const,
+    reason: "Campaign result after the applied action is not clearly improved."
   };
 }
 

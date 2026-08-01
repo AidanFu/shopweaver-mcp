@@ -109,13 +109,60 @@ describe("Amazon Ads optimization history", () => {
       }]
     })).toMatchObject({
       appliedActionCount: 1,
+      followUpRecommendations: [{
+        action: "monitor",
+        reason: "Recent Amazon Ads actions correlate with lower spend and stable or improved orders."
+      }],
       campaignChanges: [{
         campaignId: "campaign-1",
         appliedActionCount: 1,
+        followUpRecommendation: {
+          action: "monitor",
+          reason: "Spend decreased while orders or sales improved after the applied action."
+        },
         appliedActions: [{
           createdAt: "2026-07-30T20:45:00.000Z",
           operation: "amazon_ads_update_campaign_bidding"
         }]
+      }]
+    });
+  });
+
+  it("recommends review when applied actions correlate with worse campaign results", () => {
+    const before = buildAmazonAdsOptimizationSnapshot({
+      label: "before",
+      startDate: "2026-07-16",
+      endDate: "2026-07-29",
+      rows: [{ campaignId: "campaign-1", campaignName: "Exact Waste", clicks: 20, cost: 20, sales7d: 89.99, purchases7d: 1, searchTerm: "good term" }]
+    });
+    const after = buildAmazonAdsOptimizationSnapshot({
+      label: "after",
+      startDate: "2026-07-30",
+      endDate: "2026-08-05",
+      rows: [{ campaignId: "campaign-1", campaignName: "Exact Waste", clicks: 55, cost: 72.73, sales7d: 0, purchases7d: 0, searchTerm: "bad term" }]
+    });
+
+    expect(compareAmazonAdsOptimizationSnapshots(before, after, {
+      appliedActions: [{
+        createdAt: "2026-07-30T20:45:00.000Z",
+        operation: "amazon_ads_update_keyword_bids",
+        profileId: "profile-1",
+        applied: true,
+        payload: { campaigns: [{ campaignId: "campaign-1" }] },
+        result: { campaigns: { success: [{ campaignId: "campaign-1" }], error: [] } }
+      }]
+    })).toMatchObject({
+      followUpRecommendations: [{
+        action: "review",
+        reason: "Recent Amazon Ads actions need review because spend, sales, or orders did not clearly improve."
+      }],
+      campaignChanges: [{
+        campaignId: "campaign-1",
+        verdict: "regressed",
+        followUpRecommendation: {
+          action: "review",
+          reason: "Campaign result after the applied action is not clearly improved."
+        }
       }]
     });
   });
