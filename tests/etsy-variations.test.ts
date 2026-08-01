@@ -18,6 +18,17 @@ describe("Etsy variation grouping", () => {
     expect(groups.find(group => group.listingGroup === "郁金香兔")?.variants.map(variant => variant.variation1Value)).toEqual(["Purple", "Blue"]);
   });
 
+  it("marks duplicate translated option values for review", () => {
+    const groups = inferEtsyVariationGroups([
+      { productName: "郁金香兔-粉色", imageFolderId: "pink-folder", imageFolderName: "郁金香兔-粉色", imageCount: 4, images: [] },
+      { productName: "郁金香兔-粉红色 ", imageFolderId: "pink-red-folder", imageFolderName: "郁金香兔-粉红色", imageCount: 4, images: [] }
+    ]);
+    expect(groups.find(group => group.listingGroup === "郁金香兔")).toMatchObject({
+      validationStatus: "needs_review",
+      validationNotes: "Duplicate variation value: Pink"
+    });
+  });
+
   it("keeps products without safe suffix inference as single listings", () => {
     const groups = inferEtsyVariationGroups(products);
     expect(groups.find(group => group.listingGroup === "独立挂件")).toMatchObject({

@@ -18,8 +18,8 @@ export interface EtsyVariationGroup {
   listingGroup: string;
   variation1Name?: "Color";
   variants: EtsyVariationVariant[];
-  validationStatus: "ready" | "single";
-  validationNotes?: string;
+  validationStatus: "ready" | "single" | "needs_review";
+  validationNotes: string;
 }
 
 export interface EtsyVariationWorkbookRow extends EnrichedWorkbookRow {
@@ -49,7 +49,7 @@ const CHINESE_COLOR_SUFFIXES = new Map([
 ]);
 
 function inferColorSuffix(productName: string) {
-  const match = productName.match(/^(.+?)[\-－—_ ]([^\-－—_ ]+)$/u);
+  const match = productName.trim().match(/^(.+?)[\-－—_ ]([^\-－—_ ]+)$/u);
   if (!match) return null;
   const listingGroup = match[1]?.trim();
   const suffix = match[2]?.trim();
@@ -63,8 +63,17 @@ function singleListing(product: ImportedProduct): EtsyVariationGroup {
   return {
     listingGroup: product.productName,
     variants: [{ product, variation1Value: "" }],
-    validationStatus: "single"
+    validationStatus: "single",
+    validationNotes: ""
   };
+}
+
+function duplicateVariationValues(variants: EtsyVariationVariant[]): string[] {
+  const counts = new Map<string, number>();
+  for (const variant of variants) {
+    counts.set(variant.variation1Value, (counts.get(variant.variation1Value) ?? 0) + 1);
+  }
+  return [...counts.entries()].filter(([, count]) => count > 1).map(([value]) => value);
 }
 
 export function inferEtsyVariationGroups(products: ImportedProduct[]): EtsyVariationGroup[] {
@@ -83,13 +92,16 @@ export function inferEtsyVariationGroups(products: ImportedProduct[]): EtsyVaria
     }
     if (emittedGroups.has(inferred.listingGroup)) continue;
     emittedGroups.add(inferred.listingGroup);
+    const variants = inferences
+      .filter(entry => entry.inferred?.listingGroup === inferred.listingGroup)
+      .map(entry => ({ product: entry.product, variation1Value: entry.inferred?.variation1Value ?? "" }));
+    const duplicates = duplicateVariationValues(variants);
     groups.push({
       listingGroup: inferred.listingGroup,
       variation1Name: "Color",
-      variants: inferences
-        .filter(entry => entry.inferred?.listingGroup === inferred.listingGroup)
-        .map(entry => ({ product: entry.product, variation1Value: entry.inferred?.variation1Value ?? "" })),
-      validationStatus: "ready"
+      variants,
+      validationStatus: duplicates.length > 0 ? "needs_review" : "ready",
+      validationNotes: duplicates.length > 0 ? `Duplicate variation value: ${duplicates.join(", ")}` : ""
     });
   }
   return groups;
@@ -98,7 +110,7 @@ export function inferEtsyVariationGroups(products: ImportedProduct[]): EtsyVaria
 export function toEtsyVariationWorkbookRows(groups: EtsyVariationGroup[]): EtsyVariationWorkbookRow[] {
   return groups.flatMap(group => group.variants.map(variant => {
     const product = variant.product;
-    const isVariant = group.validationStatus === "ready";
+    const isVariant = Boolean(group.variation1Name);
     return {
       productName: product.productName,
       rawChineseDescription: product.rawChineseDescription ?? "",
