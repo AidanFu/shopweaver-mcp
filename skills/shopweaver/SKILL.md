@@ -17,6 +17,20 @@ Use the ShopWeaver MCP tools for one Etsy seller account. Keep all writes draft-
 6. Confirm using the unchanged payload and returned `confirmationToken`.
 7. Stop if the listing is not a draft, the token expired, the payload changed, or Etsy reports an uncertain creation result.
 
+### Etsy variation drafts
+
+Use this when several Drive products should become one Etsy draft listing with options such as Color.
+
+1. Run `shopweaver_preview_etsy_variation_groups`.
+2. Run `shopweaver_write_etsy_variation_workbook` in preview mode, then confirm mode.
+3. Review `Product Information - Etsy Draft.xlsx` and correct `Listing Group`, `Variation 1 Name`, `Variation 1 Value`, SKU, price, quantity, and image folder columns.
+4. Run `shopweaver_preview_etsy_variation_draft` for one listing group.
+5. Preview and confirm `etsy_create_draft_listing`.
+6. Preview and confirm `shopweaver_upload_drive_variation_images_to_etsy_draft`.
+7. Preview and confirm `etsy_update_draft_inventory`.
+
+The listing stays in draft. ShopWeaver does not publish, delete, update active listings, manage ads, process refunds, create shipments, send messages, or email buyers.
+
 ## Tools
 
 | Need | Tool |
@@ -30,6 +44,10 @@ Use the ShopWeaver MCP tools for one Etsy seller account. Keep all writes draft-
 | Draft fields | `etsy_update_draft_listing` |
 | Draft image | `etsy_upload_draft_image` |
 | Draft quantity, SKU, variations, or price | `etsy_update_draft_inventory` |
+| Infer Etsy variation groups from Drive | `shopweaver_preview_etsy_variation_groups` |
+| Etsy variation planning workbook | `shopweaver_write_etsy_variation_workbook` |
+| Preview grouped Etsy variation draft | `shopweaver_preview_etsy_variation_draft` |
+| Upload Drive variation images to draft | `shopweaver_upload_drive_variation_images_to_etsy_draft` |
 
 ## Safety boundary
 

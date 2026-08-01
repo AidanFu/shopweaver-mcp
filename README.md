@@ -135,6 +135,20 @@ HandMade/
 7. Preview one Etsy draft with `shopweaver_preview_etsy_draft_from_enriched_row`.
 8. Confirm Etsy draft creation and image uploads separately.
 
+### Etsy variation drafts
+
+Use this when several Drive products should become one Etsy draft listing with options such as Color.
+
+1. Run `shopweaver_preview_etsy_variation_groups`.
+2. Run `shopweaver_write_etsy_variation_workbook` in preview mode, then confirm mode.
+3. Review `Product Information - Etsy Draft.xlsx` and correct `Listing Group`, `Variation 1 Name`, `Variation 1 Value`, SKU, price, quantity, and image folder columns.
+4. Run `shopweaver_preview_etsy_variation_draft` for one listing group.
+5. Preview and confirm `etsy_create_draft_listing`.
+6. Preview and confirm `shopweaver_upload_drive_variation_images_to_etsy_draft`.
+7. Preview and confirm `etsy_update_draft_inventory`.
+
+The listing stays in draft. ShopWeaver does not publish, delete, update active listings, manage ads, process refunds, create shipments, send messages, or email buyers.
+
 ## Amazon workbook workflow
 
 The Amazon workflow uses the same approved Google Drive folder import, but writes a separate planning workbook:
@@ -198,6 +212,10 @@ The Codex plugin manifest uses `.mcp.json` to run the built server with stdio tr
 - `shopweaver_write_enriched_workbook`
 - `shopweaver_preview_etsy_draft_from_enriched_row`
 - `shopweaver_upload_drive_images_to_etsy_draft`
+- `shopweaver_preview_etsy_variation_groups`
+- `shopweaver_write_etsy_variation_workbook`
+- `shopweaver_preview_etsy_variation_draft`
+- `shopweaver_upload_drive_variation_images_to_etsy_draft`
 - `shopweaver_write_amazon_listing_workbook`
 - `shopweaver_refresh_amazon_optimization_recommendations`
 
