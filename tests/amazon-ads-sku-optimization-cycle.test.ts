@@ -58,8 +58,8 @@ describe("runAmazonAdsSkuOptimizationCycle", () => {
       async downloadReportRows(url: string) {
         expect(url).toBe("https://example.test/sku-report.gz");
         return [
-          { campaignId: "campaign-1", campaignName: "Exact Gold", advertisedSku: "DH-E37S-W6DM", cost: 32, purchases7d: 0, sales7d: 0 },
-          { campaignId: "campaign-2", campaignName: "Exact Silver", advertisedSku: "5H-2EH1-7H77", cost: 18, purchases7d: 1, sales7d: 184.9 }
+          { campaignId: "campaign-1", campaignName: "Exact Gold", adGroupId: "adgroup-1", advertisedSku: "DH-E37S-W6DM", searchTerm: "free crochet pattern", clicks: 18, cost: 32, purchases7d: 0, sales7d: 0 },
+          { campaignId: "campaign-2", campaignName: "Exact Silver", adGroupId: "adgroup-2", advertisedSku: "5H-2EH1-7H77", searchTerm: "crochet bag charm", clicks: 20, cost: 18, purchases7d: 1, sales7d: 184.9 }
         ];
       },
       async listSponsoredProductsCampaigns(profileId: string, body: Record<string, unknown>) {
@@ -121,6 +121,25 @@ describe("runAmazonAdsSkuOptimizationCycle", () => {
         campaignBudgetReviews: [
           { campaignId: "campaign-1", campaignName: "Exact Gold", currentBudget: { budgetType: "DAILY", budget: 10 }, suggestedBudget: { budgetType: "DAILY", budget: 5 } }
         ]
+      },
+      strategyPlan: {
+        operation: "preview_amazon_ads_budget_sales_strategy",
+        applied: false,
+        strategy: "protect_budget_then_scale_validated_demand",
+        budgetProtection: {
+          priority: "high",
+          wasteTermCount: 1,
+          budgetReviewCount: 1
+        },
+        salesGrowth: {
+          priority: "normal",
+          efficientTermCount: 1
+        },
+        listingConversion: {
+          priority: "high",
+          skuReviewCount: 1
+        },
+        cadence: "Run daily while spend is high, then weekly after ACOS and order trend stabilize."
       }
     });
   });

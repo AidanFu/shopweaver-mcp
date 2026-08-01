@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { analyzeAmazonCampaignMetrics, analyzeAmazonCampaignSkuSignals, analyzeAmazonSearchTermReportRows, buildAmazonCampaignSkuActionPlan, buildAmazonCampaignSkuBudgetReviewPreview, buildAmazonCampaignSkuCampaignControlPreview, buildAmazonCampaignSkuControlPreview } from "../src/amazon/campaign-optimization.js";
+import { analyzeAmazonCampaignMetrics, analyzeAmazonCampaignSkuSignals, analyzeAmazonSearchTermReportRows, buildAmazonCampaignBudgetSalesPlan, buildAmazonCampaignSkuActionPlan, buildAmazonCampaignSkuBudgetReviewPreview, buildAmazonCampaignSkuCampaignControlPreview, buildAmazonCampaignSkuControlPreview } from "../src/amazon/campaign-optimization.js";
 
 describe("analyzeAmazonCampaignMetrics", () => {
   it("flags spend with clicks but no orders for budget review", () => {
@@ -258,7 +258,90 @@ describe("analyzeAmazonCampaignMetrics", () => {
         reason: "Reduce daily budget from 12 to 6 only after reviewing SKU fit and ad group bids; 83.33% of spend is high-priority zero-sale SKU spend.",
         affectedSkus: ["DH-E37S-W6DM", "FQ-6KKW-ESSD"],
         sellerApprovalRequired: true
+      }],
+      campaignBudgetUpdates: [{
+        campaignId: "campaign-1",
+        budget: { budgetType: "DAILY", budget: 6 },
+        reason: "Reduce daily budget from 12 to 6 only after reviewing SKU fit and ad group bids; 83.33% of spend is high-priority zero-sale SKU spend."
       }]
+    });
+  });
+
+  it("builds a combined budget-saving and sales-growth plan from search-term, SKU, and budget signals", () => {
+    expect(buildAmazonCampaignBudgetSalesPlan({
+      searchTermAnalysis: {
+        rowCount: 3,
+        campaignCount: 2,
+        totalSpend: 118,
+        totalSales: 180,
+        blendedAcos: 65.56,
+        wasteSearchTerms: [
+          { campaignId: "campaign-1", campaignName: "Auto Discovery", adGroupId: "adgroup-1", adGroupName: "Discovery", matchType: "BROAD", targeting: "crochet keychain", searchTerm: "free crochet pattern", clicks: 80, spend: 48, sales: 0, orders: 0, recommendation: "Add as negative exact candidate after review; high spend/clicks with no orders." }
+        ],
+        efficientSearchTerms: [
+          { campaignId: "campaign-2", campaignName: "Manual Exact Winners", adGroupId: "adgroup-2", adGroupName: "Exact Winners", matchType: "EXACT", targeting: "crochet bag charm", searchTerm: "crochet bag charm", clicks: 50, spend: 40, sales: 180, orders: 6, acos: 22.22, recommendation: "Keep active; consider moving to exact match or modest bid increase only after budget waste is reduced." }
+        ],
+        recommendations: []
+      },
+      actionPlan: {
+        totalActionCount: 2,
+        highPriorityCount: 1,
+        targetSpendNoSalesCount: 1,
+        highSpendNoSalesCount: 0,
+        skuCampaignActions: [
+          { sku: "DH-E37S-W6DM", campaignIds: ["campaign-1"], campaignNames: ["Auto Discovery"], campaignBreakdowns: [{ campaignId: "campaign-1", campaignName: "Auto Discovery", adGroupIds: ["adgroup-1"], spend: 32, sales: 0, orders: 0 }], spend: 32, sales: 0, orders: 0, signal: "target_spend_no_sales", priority: "high", actionType: "reduce_spend_or_listing_review", recommendation: "Reduce spend pressure or review listing conversion for DH-E37S-W6DM; this target SKU has ad spend but no recent SKU-level sales.", sellerApprovalRequired: true },
+          { sku: "5H-2EH1-7H77", campaignIds: ["campaign-2"], campaignNames: ["Manual Exact Winners"], campaignBreakdowns: [{ campaignId: "campaign-2", campaignName: "Manual Exact Winners", adGroupIds: ["adgroup-2"], spend: 18, sales: 184.9, orders: 1 }], spend: 18, sales: 184.9, orders: 1, signal: "target_sold", priority: "normal", actionType: "monitor_target_seller_sales_vs_ad_attribution", recommendation: "Keep 5H-2EH1-7H77 active, but do not scale blindly until seller-order sales and Ads attribution agree.", sellerApprovalRequired: true }
+        ]
+      },
+      budgetReviewPreview: {
+        operation: "preview_amazon_ads_sku_campaign_budget_reviews",
+        applied: false,
+        warning: "Preview only.",
+        budgetReviewCount: 1,
+        campaignBudgetReviews: [{
+          campaignId: "campaign-1",
+          campaignName: "Auto Discovery",
+          currentBudget: { budgetType: "DAILY", budget: 18 },
+          suggestedBudget: { budgetType: "DAILY", budget: 9 },
+          reason: "Reduce daily budget from 18 to 9 only after reviewing SKU fit and ad group bids; 83.73% of spend is high-priority zero-sale SKU spend.",
+          affectedSkus: ["DH-E37S-W6DM"],
+          sellerApprovalRequired: true
+        }],
+        campaignBudgetUpdates: [{
+          campaignId: "campaign-1",
+          budget: { budgetType: "DAILY", budget: 9 },
+          reason: "Reduce daily budget from 18 to 9 only after reviewing SKU fit and ad group bids; 83.73% of spend is high-priority zero-sale SKU spend."
+        }]
+      }
+    })).toEqual({
+      operation: "preview_amazon_ads_budget_sales_strategy",
+      applied: false,
+      strategy: "protect_budget_then_scale_validated_demand",
+      budgetProtection: {
+        priority: "high",
+        wasteTermCount: 1,
+        budgetReviewCount: 1,
+        recommendedActions: [
+          "Review and apply 1 negative exact candidate(s) from search terms with spend or clicks but no orders.",
+          "Review 1 campaign budget reduction payload(s) before applying them through the gated budget update flow."
+        ]
+      },
+      salesGrowth: {
+        priority: "normal",
+        efficientTermCount: 1,
+        recommendedActions: [
+          "Move 1 efficient search term(s) into controlled exact campaigns or protect them from budget cuts.",
+          "Keep 1 SKU(s) with recent sales active, but scale only after Ads attribution and seller orders agree."
+        ]
+      },
+      listingConversion: {
+        priority: "high",
+        skuReviewCount: 1,
+        recommendedActions: [
+          "Review listing conversion for 1 advertised SKU(s) with spend but no recent SKU-level sales before raising bids or budgets."
+        ]
+      },
+      cadence: "Run daily while spend is high, then weekly after ACOS and order trend stabilize."
     });
   });
 });

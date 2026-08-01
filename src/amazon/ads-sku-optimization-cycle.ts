@@ -1,5 +1,5 @@
 import type { AmazonAdsClient } from "./ads-client.js";
-import { analyzeAmazonCampaignSkuSignals, buildAmazonCampaignSkuActionPlan, buildAmazonCampaignSkuBudgetReviewPreview, buildAmazonCampaignSkuCampaignControlPreview, buildAmazonCampaignSkuControlPreview } from "./campaign-optimization.js";
+import { analyzeAmazonCampaignSkuSignals, analyzeAmazonSearchTermReportRows, buildAmazonCampaignBudgetSalesPlan, buildAmazonCampaignSkuActionPlan, buildAmazonCampaignSkuBudgetReviewPreview, buildAmazonCampaignSkuCampaignControlPreview, buildAmazonCampaignSkuControlPreview } from "./campaign-optimization.js";
 
 type AmazonAdsSkuOptimizationClient = Pick<AmazonAdsClient, "createSponsoredProductsAdvertisedProductReport" | "getReport" | "downloadReportRows" | "listSponsoredProductsCampaigns">;
 
@@ -50,6 +50,7 @@ export async function runAmazonAdsSkuOptimizationCycle(amazonAds: AmazonAdsSkuOp
   }
 
   const rows = await amazonAds.downloadReportRows(report.url);
+  const searchTermAnalysis = analyzeAmazonSearchTermReportRows(rows);
   const targetSkusWithoutSales = input.targetSkus.filter(sku => !input.targetSkusWithSales.includes(sku));
   const analysis = analyzeAmazonCampaignSkuSignals(rows, {
     targetSkus: input.targetSkus,
@@ -60,6 +61,7 @@ export async function runAmazonAdsSkuOptimizationCycle(amazonAds: AmazonAdsSkuOp
   const actionPlan = buildAmazonCampaignSkuActionPlan(analysis);
   const campaignControlPreview = buildAmazonCampaignSkuCampaignControlPreview(analysis, actionPlan);
   const campaignsResponse = await amazonAds.listSponsoredProductsCampaigns(input.profileId, { maxResults: 100 }) as { campaigns?: Array<Record<string, unknown>> };
+  const budgetReviewPreview = buildAmazonCampaignSkuBudgetReviewPreview(campaignControlPreview, campaignsResponse.campaigns ?? []);
   return {
     operation: "amazon_ads_run_sku_optimization_cycle" as const,
     status: "COMPLETED",
@@ -70,7 +72,8 @@ export async function runAmazonAdsSkuOptimizationCycle(amazonAds: AmazonAdsSkuOp
     actionPlan,
     controlPreview: buildAmazonCampaignSkuControlPreview(actionPlan),
     campaignControlPreview,
-    budgetReviewPreview: buildAmazonCampaignSkuBudgetReviewPreview(campaignControlPreview, campaignsResponse.campaigns ?? []),
+    budgetReviewPreview,
+    strategyPlan: buildAmazonCampaignBudgetSalesPlan({ searchTermAnalysis, actionPlan, budgetReviewPreview }),
     applied: false
   };
 }

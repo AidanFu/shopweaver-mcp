@@ -152,6 +152,34 @@ export interface AmazonCampaignSkuBudgetReviewPreview {
     affectedSkus: string[];
     sellerApprovalRequired: true;
   }>;
+  campaignBudgetUpdates: Array<{
+    campaignId: string;
+    budget: { budgetType: "DAILY"; budget: number };
+    reason: string;
+  }>;
+}
+
+export interface AmazonCampaignBudgetSalesPlan {
+  operation: "preview_amazon_ads_budget_sales_strategy";
+  applied: false;
+  strategy: "protect_budget_then_scale_validated_demand";
+  budgetProtection: {
+    priority: "high" | "normal";
+    wasteTermCount: number;
+    budgetReviewCount: number;
+    recommendedActions: string[];
+  };
+  salesGrowth: {
+    priority: "high" | "normal";
+    efficientTermCount: number;
+    recommendedActions: string[];
+  };
+  listingConversion: {
+    priority: "high" | "normal";
+    skuReviewCount: number;
+    recommendedActions: string[];
+  };
+  cadence: string;
 }
 
 export function analyzeAmazonCampaignMetrics(metrics: AmazonCampaignMetrics): AmazonCampaignRecommendation {
@@ -466,7 +494,54 @@ export function buildAmazonCampaignSkuBudgetReviewPreview(campaignPreview: Amazo
     applied: false,
     warning: "Preview only. No campaign budgets were changed. Confirm through the existing campaign budget update flow before applying any exact payload.",
     budgetReviewCount: campaignBudgetReviews.length,
-    campaignBudgetReviews
+    campaignBudgetReviews,
+    campaignBudgetUpdates: campaignBudgetReviews.map(review => ({
+      campaignId: review.campaignId,
+      budget: review.suggestedBudget,
+      reason: review.reason
+    }))
+  };
+}
+
+export function buildAmazonCampaignBudgetSalesPlan(input: {
+  searchTermAnalysis: AmazonSearchTermReportAnalysis;
+  actionPlan: AmazonCampaignSkuActionPlan;
+  budgetReviewPreview: AmazonCampaignSkuBudgetReviewPreview;
+}): AmazonCampaignBudgetSalesPlan {
+  const skuReviewCount = input.actionPlan.skuCampaignActions.filter(action => action.actionType === "reduce_spend_or_listing_review").length;
+  const soldSkuCount = input.actionPlan.skuCampaignActions.filter(action => action.signal === "target_sold").length;
+  const budgetActions = [
+    ...(input.searchTermAnalysis.wasteSearchTerms.length > 0 ? [`Review and apply ${input.searchTermAnalysis.wasteSearchTerms.length} negative exact candidate(s) from search terms with spend or clicks but no orders.`] : []),
+    ...(input.budgetReviewPreview.budgetReviewCount > 0 ? [`Review ${input.budgetReviewPreview.budgetReviewCount} campaign budget reduction payload(s) before applying them through the gated budget update flow.`] : [])
+  ];
+  const salesActions = [
+    ...(input.searchTermAnalysis.efficientSearchTerms.length > 0 ? [`Move ${input.searchTermAnalysis.efficientSearchTerms.length} efficient search term(s) into controlled exact campaigns or protect them from budget cuts.`] : []),
+    ...(soldSkuCount > 0 ? [`Keep ${soldSkuCount} SKU(s) with recent sales active, but scale only after Ads attribution and seller orders agree.`] : [])
+  ];
+  const listingActions = skuReviewCount > 0
+    ? [`Review listing conversion for ${skuReviewCount} advertised SKU(s) with spend but no recent SKU-level sales before raising bids or budgets.`]
+    : [];
+  return {
+    operation: "preview_amazon_ads_budget_sales_strategy",
+    applied: false,
+    strategy: "protect_budget_then_scale_validated_demand",
+    budgetProtection: {
+      priority: budgetActions.length > 0 ? "high" : "normal",
+      wasteTermCount: input.searchTermAnalysis.wasteSearchTerms.length,
+      budgetReviewCount: input.budgetReviewPreview.budgetReviewCount,
+      recommendedActions: budgetActions
+    },
+    salesGrowth: {
+      priority: salesActions.length > 0 && budgetActions.length === 0 ? "high" : "normal",
+      efficientTermCount: input.searchTermAnalysis.efficientSearchTerms.length,
+      recommendedActions: salesActions
+    },
+    listingConversion: {
+      priority: skuReviewCount > 0 ? "high" : "normal",
+      skuReviewCount,
+      recommendedActions: listingActions
+    },
+    cadence: "Run daily while spend is high, then weekly after ACOS and order trend stabilize."
   };
 }
 
