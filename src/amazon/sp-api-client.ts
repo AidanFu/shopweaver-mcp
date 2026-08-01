@@ -63,6 +63,10 @@ export class AmazonSpApiClient {
     });
   }
 
+  async getOrderItems(amazonOrderId: string) {
+    return this.request(`/orders/v0/orders/${encodeURIComponent(amazonOrderId)}/orderItems`);
+  }
+
   async patchListingItem(sku: string, body: unknown, options: { validationPreview?: boolean } = {}) {
     const auth = await this.store.get("amazonSpApiAuth");
     if (!auth) throw new ShopWeaverError("AMAZON_SP_API_AUTH_REQUIRED", "Connect Amazon SP-API before using Amazon seller tools.");

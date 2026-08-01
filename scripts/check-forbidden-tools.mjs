@@ -30,6 +30,7 @@ const allowed = [
   "amazon_get_aplus_publish_records",
   "amazon_get_listing_item",
   "amazon_get_marketplace_participations",
+  "amazon_get_order_items",
   "amazon_list_orders",
   "amazon_optimize_campaign_metrics",
   "amazon_optimize_aplus_content",

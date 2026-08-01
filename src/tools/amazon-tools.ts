@@ -485,6 +485,11 @@ export function registerAmazonTools(server: McpServer, store: CredentialStore, a
     }
   }, async (input) => result(await amazon.listOrders(input)));
 
+  server.registerTool("amazon_get_order_items", {
+    description: "Read item-level details for one Amazon order through SP-API for SKU-level sales analysis. This is read-only and does not change orders, listings, ads, bids, budgets, inventory, or fulfillment.",
+    inputSchema: { amazonOrderId: z.string().min(1) }
+  }, async ({ amazonOrderId }) => result(await amazon.getOrderItems(amazonOrderId)));
+
   server.registerTool("amazon_get_aplus_publish_records", {
     description: "Read published A+ Content records for one ASIN through SP-API. This is read-only and does not change A+ content.",
     inputSchema: { asin: z.string().min(1) }
