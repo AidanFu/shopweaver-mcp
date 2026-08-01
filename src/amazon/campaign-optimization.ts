@@ -49,6 +49,26 @@ export interface AmazonEfficientSearchTerm extends AmazonWasteSearchTerm {
   acos: number;
 }
 
+export interface AmazonCampaignSkuSignalInput {
+  targetSkus: string[];
+  targetSkusWithSales: string[];
+  targetSkusWithoutSales: string[];
+  nonTargetSkusWithSales: string[];
+}
+
+export interface AmazonCampaignSkuSignalAnalysis {
+  skuCampaigns: Array<{
+    sku: string;
+    campaignIds: string[];
+    campaignNames: string[];
+    spend: number;
+    sales: number;
+    orders: number;
+    signal: "target_spend_no_sales" | "target_sold" | "non_target_sold" | "collect_more_data";
+    recommendation: string;
+  }>;
+}
+
 export function analyzeAmazonCampaignMetrics(metrics: AmazonCampaignMetrics): AmazonCampaignRecommendation {
   if (metrics.spend >= 25 && metrics.clicks >= 30 && metrics.orders === 0) {
     return {
@@ -168,6 +188,52 @@ export function analyzeAmazonSearchTermReportRows(rows: Array<Record<string, unk
     efficientSearchTerms,
     recommendations: metrics.map(analyzeAmazonCampaignMetrics)
   };
+}
+
+export function analyzeAmazonCampaignSkuSignals(rows: Array<Record<string, unknown>>, signals: AmazonCampaignSkuSignalInput): AmazonCampaignSkuSignalAnalysis {
+  const bySku = new Map<string, { sku: string; campaignIds: Set<string>; campaignNames: Set<string>; spend: number; sales: number; orders: number }>();
+  for (const row of rows) {
+    const sku = fieldText(row, ["advertisedSku", "Advertised SKU", "SKU"]);
+    if (!sku) continue;
+    const current = bySku.get(sku) ?? { sku, campaignIds: new Set<string>(), campaignNames: new Set<string>(), spend: 0, sales: 0, orders: 0 };
+    current.campaignIds.add(fieldText(row, ["campaignId", "Campaign ID", "Campaign Id"]));
+    current.campaignNames.add(fieldText(row, ["campaignName", "Campaign Name"]));
+    current.spend += fieldNumber(row, ["cost", "Spend", "Cost"]);
+    current.sales += fieldNumber(row, ["sales7d", "7 Day Total Sales", "Sales"]);
+    current.orders += fieldNumber(row, ["purchases7d", "7 Day Total Orders (#)", "Orders"]);
+    bySku.set(sku, current);
+  }
+  return {
+    skuCampaigns: [...bySku.values()].map(row => {
+      const spend = Number(row.spend.toFixed(2));
+      const sales = Number(row.sales.toFixed(2));
+      const signal = campaignSkuSignal(row.sku, spend, row.orders, signals);
+      return {
+        sku: row.sku,
+        campaignIds: [...row.campaignIds].filter(Boolean),
+        campaignNames: [...row.campaignNames].filter(Boolean),
+        spend,
+        sales,
+        orders: row.orders,
+        signal,
+        recommendation: campaignSkuRecommendation(row.sku, signal)
+      };
+    })
+  };
+}
+
+function campaignSkuSignal(sku: string, spend: number, orders: number, signals: AmazonCampaignSkuSignalInput): AmazonCampaignSkuSignalAnalysis["skuCampaigns"][number]["signal"] {
+  if (signals.targetSkusWithSales.includes(sku)) return "target_sold";
+  if (signals.targetSkusWithoutSales.includes(sku) && spend > 0 && orders === 0) return "target_spend_no_sales";
+  if (signals.nonTargetSkusWithSales.includes(sku)) return "non_target_sold";
+  return "collect_more_data";
+}
+
+function campaignSkuRecommendation(sku: string, signal: AmazonCampaignSkuSignalAnalysis["skuCampaigns"][number]["signal"]): string {
+  if (signal === "target_sold") return `Keep ${sku} active and monitor ACOS; this target SKU has recent sales.`;
+  if (signal === "target_spend_no_sales") return `Reduce spend pressure or review listing conversion for ${sku}; this target SKU has ad spend but no recent SKU-level sales.`;
+  if (signal === "non_target_sold") return `Review ${sku} separately; non-target demand is present and should not be mixed with optimized listing campaign conclusions.`;
+  return `Collect more ad and order data for ${sku} before changing campaign structure.`;
 }
 
 function text(value: unknown): string {
