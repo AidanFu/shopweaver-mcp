@@ -165,6 +165,26 @@ describe("DriveImageUploadService", () => {
     })).rejects.toMatchObject({ code: "DRIVE_PRODUCT_IMAGES_MISSING" });
   });
 
+  it("rejects grouped variant image plans above Etsy's ten image limit during preview", async () => {
+    const { service, drive, client } = await dependencies();
+    const files = (prefix: string) => Array.from({ length: 6 }, (_, index) => ({
+      id: `${prefix}${index}`,
+      name: `${String(index + 1).padStart(2, "0")}.jpg`,
+      mimeType: "image/jpeg"
+    }));
+    mockVariantFolders(drive, {
+      "郁金香兔-紫色": files("p"),
+      "郁金香兔-蓝色": files("b")
+    });
+    await expect(service.previewVariationUpload({
+      listingId: 9,
+      folderId: "folder",
+      variantImageFolders: ["郁金香兔-紫色", "郁金香兔-蓝色"]
+    })).rejects.toMatchObject({ code: "ETSY_IMAGE_LIMIT_EXCEEDED" });
+    expect(drive.downloadFile).not.toHaveBeenCalled();
+    expect(client.request).not.toHaveBeenCalled();
+  });
+
   it("rejects non-draft listings before Drive image upload preview", async () => {
     const { service, drive } = await dependencies("active");
     await expect(service.previewUpload({

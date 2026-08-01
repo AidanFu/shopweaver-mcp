@@ -8,6 +8,7 @@ import type { ConfirmationStore } from "../writes/confirmations.js";
 
 const FOLDER_TYPE = "application/vnd.google-apps.folder";
 const IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/gif", "image/webp"]);
+const MAX_LISTING_IMAGES = 10;
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 
 export type DriveImageUploadInput = {
@@ -108,6 +109,7 @@ export class DriveImageUploadService {
         .sort((a, b) => a.name.localeCompare(b.name))
         .slice(0, input.maxImagesPerVariant);
       if (supportedFiles.length === 0) throw new ShopWeaverError("DRIVE_PRODUCT_IMAGES_MISSING", "Product image folder must contain at least one supported image.");
+      if (images.length + supportedFiles.length > MAX_LISTING_IMAGES) throw new ShopWeaverError("ETSY_IMAGE_LIMIT_EXCEEDED", "Etsy listings support at most 10 images.");
       images.push(...supportedFiles.map((file, index) => ({
         driveFileId: file.id,
         filename: file.name,
