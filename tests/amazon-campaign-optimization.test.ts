@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { analyzeAmazonCampaignMetrics, analyzeAmazonCampaignSkuSignals, analyzeAmazonSearchTermReportRows, buildAmazonCampaignSkuActionPlan, buildAmazonCampaignSkuControlPreview } from "../src/amazon/campaign-optimization.js";
+import { analyzeAmazonCampaignMetrics, analyzeAmazonCampaignSkuSignals, analyzeAmazonSearchTermReportRows, buildAmazonCampaignSkuActionPlan, buildAmazonCampaignSkuCampaignControlPreview, buildAmazonCampaignSkuControlPreview } from "../src/amazon/campaign-optimization.js";
 
 describe("analyzeAmazonCampaignMetrics", () => {
   it("flags spend with clicks but no orders for budget review", () => {
@@ -168,6 +168,48 @@ describe("analyzeAmazonCampaignMetrics", () => {
         { sku: "DH-E37S-W6DM", campaignId: "campaign-1", campaignName: "Exact Gold", adGroupIds: ["adgroup-1"], spend: 20, sales: 0, orders: 0, signal: "target_spend_no_sales", priority: "high", actionType: "reduce_spend_or_listing_review", recommendedNextStep: "Review listing conversion, product ad state, ad group bid, and campaign budget pressure before applying any spend reduction.", sellerApprovalRequired: true },
         { sku: "DH-E37S-W6DM", campaignId: "campaign-4", campaignName: "Broad Gold", adGroupIds: ["adgroup-4"], spend: 12, sales: 0, orders: 0, signal: "target_spend_no_sales", priority: "high", actionType: "reduce_spend_or_listing_review", recommendedNextStep: "Review listing conversion, product ad state, ad group bid, and campaign budget pressure before applying any spend reduction.", sellerApprovalRequired: true }
       ]
+    });
+  });
+
+  it("previews campaign-level reviews when high-priority SKU spend dominates zero-sale campaign spend", () => {
+    const analysis = {
+      skuCampaigns: [
+        { sku: "DH-E37S-W6DM", campaignIds: ["campaign-1"], campaignNames: ["Exact Gold"], campaignBreakdowns: [{ campaignId: "campaign-1", campaignName: "Exact Gold", adGroupIds: ["adgroup-1"], spend: 30, sales: 0, orders: 0 }], spend: 30, sales: 0, orders: 0, signal: "target_spend_no_sales" as const, recommendation: "Review target SKU." },
+        { sku: "FQ-6KKW-ESSD", campaignIds: ["campaign-1"], campaignNames: ["Exact Gold"], campaignBreakdowns: [{ campaignId: "campaign-1", campaignName: "Exact Gold", adGroupIds: ["adgroup-1"], spend: 20, sales: 0, orders: 0 }], spend: 20, sales: 0, orders: 0, signal: "collect_more_data" as const, recommendation: "Review non-target SKU." },
+        { sku: "LOW-SPEND", campaignIds: ["campaign-1"], campaignNames: ["Exact Gold"], campaignBreakdowns: [{ campaignId: "campaign-1", campaignName: "Exact Gold", adGroupIds: ["adgroup-1"], spend: 10, sales: 0, orders: 0 }], spend: 10, sales: 0, orders: 0, signal: "collect_more_data" as const, recommendation: "Collect more data." },
+        { sku: "WINNER", campaignIds: ["campaign-2"], campaignNames: ["Exact Winner"], campaignBreakdowns: [{ campaignId: "campaign-2", campaignName: "Exact Winner", adGroupIds: ["adgroup-2"], spend: 40, sales: 180, orders: 2 }], spend: 40, sales: 180, orders: 2, signal: "target_sold" as const, recommendation: "Monitor winner." }
+      ]
+    };
+    const actionPlan = {
+      totalActionCount: 4,
+      highPriorityCount: 2,
+      targetSpendNoSalesCount: 1,
+      highSpendNoSalesCount: 1,
+      skuCampaignActions: [
+        { sku: "DH-E37S-W6DM", campaignIds: ["campaign-1"], campaignNames: ["Exact Gold"], campaignBreakdowns: [{ campaignId: "campaign-1", campaignName: "Exact Gold", adGroupIds: ["adgroup-1"], spend: 30, sales: 0, orders: 0 }], spend: 30, sales: 0, orders: 0, signal: "target_spend_no_sales" as const, priority: "high" as const, actionType: "reduce_spend_or_listing_review" as const, recommendation: "Review target SKU.", sellerApprovalRequired: true as const },
+        { sku: "FQ-6KKW-ESSD", campaignIds: ["campaign-1"], campaignNames: ["Exact Gold"], campaignBreakdowns: [{ campaignId: "campaign-1", campaignName: "Exact Gold", adGroupIds: ["adgroup-1"], spend: 20, sales: 0, orders: 0 }], spend: 20, sales: 0, orders: 0, signal: "collect_more_data" as const, priority: "high" as const, actionType: "non_target_waste_review" as const, recommendation: "Review non-target SKU.", sellerApprovalRequired: true as const },
+        { sku: "LOW-SPEND", campaignIds: ["campaign-1"], campaignNames: ["Exact Gold"], campaignBreakdowns: [{ campaignId: "campaign-1", campaignName: "Exact Gold", adGroupIds: ["adgroup-1"], spend: 10, sales: 0, orders: 0 }], spend: 10, sales: 0, orders: 0, signal: "collect_more_data" as const, priority: "normal" as const, actionType: "separate_or_protect_non_target_demand" as const, recommendation: "Collect more data.", sellerApprovalRequired: true as const },
+        { sku: "WINNER", campaignIds: ["campaign-2"], campaignNames: ["Exact Winner"], campaignBreakdowns: [{ campaignId: "campaign-2", campaignName: "Exact Winner", adGroupIds: ["adgroup-2"], spend: 40, sales: 180, orders: 2 }], spend: 40, sales: 180, orders: 2, signal: "target_sold" as const, priority: "normal" as const, actionType: "monitor_target_seller_sales_vs_ad_attribution" as const, recommendation: "Monitor winner.", sellerApprovalRequired: true as const }
+      ]
+    };
+
+    expect(buildAmazonCampaignSkuCampaignControlPreview(analysis, actionPlan)).toEqual({
+      operation: "preview_amazon_ads_sku_campaign_reviews",
+      applied: false,
+      warning: "Preview only. No campaign budgets, campaign states, bidding strategies, ad groups, bids, keywords, negatives, product ads, or listings were changed.",
+      campaignReviewCount: 1,
+      campaignReviews: [{
+        campaignId: "campaign-1",
+        campaignName: "Exact Gold",
+        totalSpend: 60,
+        highPrioritySpend: 50,
+        highPrioritySpendRatio: 83.33,
+        sales: 0,
+        orders: 0,
+        affectedSkus: ["DH-E37S-W6DM", "FQ-6KKW-ESSD"],
+        recommendedNextStep: "Review campaign budget, ad group bids, and SKU fit before applying any spend reduction; high-priority zero-sale SKU spend dominates this campaign.",
+        sellerApprovalRequired: true
+      }]
     });
   });
 });

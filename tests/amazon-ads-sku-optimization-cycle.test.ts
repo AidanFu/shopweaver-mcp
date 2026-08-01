@@ -97,6 +97,14 @@ describe("runAmazonAdsSkuOptimizationCycle", () => {
         skuSpendReviews: [
           { sku: "DH-E37S-W6DM", campaignId: "campaign-1", campaignName: "Exact Gold", spend: 32, priority: "high", actionType: "reduce_spend_or_listing_review" }
         ]
+      },
+      campaignControlPreview: {
+        operation: "preview_amazon_ads_sku_campaign_reviews",
+        applied: false,
+        campaignReviewCount: 1,
+        campaignReviews: [
+          { campaignId: "campaign-1", campaignName: "Exact Gold", totalSpend: 32, highPrioritySpend: 32, highPrioritySpendRatio: 100 }
+        ]
       }
     });
   });

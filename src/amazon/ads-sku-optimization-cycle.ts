@@ -1,5 +1,5 @@
 import type { AmazonAdsClient } from "./ads-client.js";
-import { analyzeAmazonCampaignSkuSignals, buildAmazonCampaignSkuActionPlan, buildAmazonCampaignSkuControlPreview } from "./campaign-optimization.js";
+import { analyzeAmazonCampaignSkuSignals, buildAmazonCampaignSkuActionPlan, buildAmazonCampaignSkuCampaignControlPreview, buildAmazonCampaignSkuControlPreview } from "./campaign-optimization.js";
 
 type AmazonAdsSkuOptimizationClient = Pick<AmazonAdsClient, "createSponsoredProductsAdvertisedProductReport" | "getReport" | "downloadReportRows">;
 
@@ -67,6 +67,7 @@ export async function runAmazonAdsSkuOptimizationCycle(amazonAds: AmazonAdsSkuOp
     analysis,
     actionPlan,
     controlPreview: buildAmazonCampaignSkuControlPreview(actionPlan),
+    campaignControlPreview: buildAmazonCampaignSkuCampaignControlPreview(analysis, actionPlan),
     applied: false
   };
 }

@@ -119,6 +119,25 @@ export interface AmazonCampaignSkuControlPreview {
   }>;
 }
 
+export interface AmazonCampaignSkuCampaignControlPreview {
+  operation: "preview_amazon_ads_sku_campaign_reviews";
+  applied: false;
+  warning: string;
+  campaignReviewCount: number;
+  campaignReviews: Array<{
+    campaignId: string;
+    campaignName: string;
+    totalSpend: number;
+    highPrioritySpend: number;
+    highPrioritySpendRatio: number;
+    sales: number;
+    orders: number;
+    affectedSkus: string[];
+    recommendedNextStep: string;
+    sellerApprovalRequired: true;
+  }>;
+}
+
 export function analyzeAmazonCampaignMetrics(metrics: AmazonCampaignMetrics): AmazonCampaignRecommendation {
   if (metrics.spend >= 25 && metrics.clicks >= 30 && metrics.orders === 0) {
     return {
@@ -358,6 +377,53 @@ export function buildAmazonCampaignSkuControlPreview(actionPlan: AmazonCampaignS
     warning: "Preview only. No campaigns, ad groups, bids, budgets, keywords, negatives, product ads, or listings were changed.",
     reviewCount: skuSpendReviews.length,
     skuSpendReviews
+  };
+}
+
+export function buildAmazonCampaignSkuCampaignControlPreview(analysis: AmazonCampaignSkuSignalAnalysis, actionPlan: AmazonCampaignSkuActionPlan): AmazonCampaignSkuCampaignControlPreview {
+  const campaigns = new Map<string, { campaignId: string; campaignName: string; totalSpend: number; highPrioritySpend: number; sales: number; orders: number; affectedSkus: Set<string> }>();
+  for (const sku of analysis.skuCampaigns) {
+    for (const breakdown of sku.campaignBreakdowns) {
+      const campaign = campaigns.get(breakdown.campaignId) ?? { campaignId: breakdown.campaignId, campaignName: breakdown.campaignName, totalSpend: 0, highPrioritySpend: 0, sales: 0, orders: 0, affectedSkus: new Set<string>() };
+      campaign.totalSpend += breakdown.spend;
+      campaign.sales += breakdown.sales;
+      campaign.orders += breakdown.orders;
+      campaigns.set(breakdown.campaignId, campaign);
+    }
+  }
+  for (const action of actionPlan.skuCampaignActions.filter(action => action.priority === "high")) {
+    for (const breakdown of action.campaignBreakdowns) {
+      const campaign = campaigns.get(breakdown.campaignId) ?? { campaignId: breakdown.campaignId, campaignName: breakdown.campaignName, totalSpend: 0, highPrioritySpend: 0, sales: 0, orders: 0, affectedSkus: new Set<string>() };
+      campaign.highPrioritySpend += breakdown.spend;
+      campaign.affectedSkus.add(action.sku);
+      campaigns.set(breakdown.campaignId, campaign);
+    }
+  }
+  const campaignReviews = [...campaigns.values()]
+    .map(campaign => {
+      const totalSpend = Number(campaign.totalSpend.toFixed(2));
+      const highPrioritySpend = Number(campaign.highPrioritySpend.toFixed(2));
+      return {
+        campaignId: campaign.campaignId,
+        campaignName: campaign.campaignName,
+        totalSpend,
+        highPrioritySpend,
+        highPrioritySpendRatio: totalSpend > 0 ? Number(((highPrioritySpend / totalSpend) * 100).toFixed(2)) : 0,
+        sales: Number(campaign.sales.toFixed(2)),
+        orders: campaign.orders,
+        affectedSkus: [...campaign.affectedSkus],
+        recommendedNextStep: "Review campaign budget, ad group bids, and SKU fit before applying any spend reduction; high-priority zero-sale SKU spend dominates this campaign.",
+        sellerApprovalRequired: true as const
+      };
+    })
+    .filter(campaign => campaign.highPrioritySpend >= 25 && campaign.highPrioritySpendRatio >= 60 && campaign.sales === 0 && campaign.orders === 0)
+    .sort((left, right) => right.highPrioritySpend - left.highPrioritySpend);
+  return {
+    operation: "preview_amazon_ads_sku_campaign_reviews",
+    applied: false,
+    warning: "Preview only. No campaign budgets, campaign states, bidding strategies, ad groups, bids, keywords, negatives, product ads, or listings were changed.",
+    campaignReviewCount: campaignReviews.length,
+    campaignReviews
   };
 }
 
