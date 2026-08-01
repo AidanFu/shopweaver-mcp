@@ -69,6 +69,26 @@ export interface AmazonCampaignSkuSignalAnalysis {
   }>;
 }
 
+export interface AmazonCampaignSkuActionPlan {
+  totalActionCount: number;
+  highPriorityCount: number;
+  targetSpendNoSalesCount: number;
+  highSpendNoSalesCount: number;
+  skuCampaignActions: Array<{
+    sku: string;
+    campaignIds: string[];
+    campaignNames: string[];
+    spend: number;
+    sales: number;
+    orders: number;
+    signal: AmazonCampaignSkuSignalAnalysis["skuCampaigns"][number]["signal"];
+    priority: "high" | "normal";
+    actionType: "reduce_spend_or_listing_review" | "separate_or_protect_non_target_demand" | "non_target_waste_review" | "monitor_target_seller_sales_vs_ad_attribution";
+    recommendation: string;
+    sellerApprovalRequired: true;
+  }>;
+}
+
 export function analyzeAmazonCampaignMetrics(metrics: AmazonCampaignMetrics): AmazonCampaignRecommendation {
   if (metrics.spend >= 25 && metrics.clicks >= 30 && metrics.orders === 0) {
     return {
@@ -222,6 +242,36 @@ export function analyzeAmazonCampaignSkuSignals(rows: Array<Record<string, unkno
   };
 }
 
+export function buildAmazonCampaignSkuActionPlan(analysis: AmazonCampaignSkuSignalAnalysis): AmazonCampaignSkuActionPlan {
+  const skuCampaignActions = analysis.skuCampaigns.map(row => {
+    const highSpendNoSales = row.signal === "collect_more_data" && row.spend >= 25 && row.sales === 0 && row.orders === 0;
+    const priority: AmazonCampaignSkuActionPlan["skuCampaignActions"][number]["priority"] = row.signal === "target_spend_no_sales" || highSpendNoSales ? "high" : "normal";
+    return {
+      sku: row.sku,
+      campaignIds: row.campaignIds,
+      campaignNames: row.campaignNames,
+      spend: row.spend,
+      sales: row.sales,
+      orders: row.orders,
+      signal: row.signal,
+      priority,
+      actionType: campaignSkuActionType(row.signal, highSpendNoSales),
+      recommendation: campaignSkuActionRecommendation(row.sku, row.signal, highSpendNoSales, row.recommendation),
+      sellerApprovalRequired: true as const
+    };
+  }).sort((left, right) => {
+    if (left.priority !== right.priority) return left.priority === "high" ? -1 : 1;
+    return right.spend - left.spend;
+  });
+  return {
+    totalActionCount: skuCampaignActions.length,
+    highPriorityCount: skuCampaignActions.filter(action => action.priority === "high").length,
+    targetSpendNoSalesCount: skuCampaignActions.filter(action => action.signal === "target_spend_no_sales").length,
+    highSpendNoSalesCount: skuCampaignActions.filter(action => action.actionType === "non_target_waste_review").length,
+    skuCampaignActions
+  };
+}
+
 function campaignSkuSignal(sku: string, spend: number, orders: number, signals: AmazonCampaignSkuSignalInput): AmazonCampaignSkuSignalAnalysis["skuCampaigns"][number]["signal"] {
   if (signals.targetSkusWithSales.includes(sku)) return "target_sold";
   if (signals.targetSkusWithoutSales.includes(sku) && spend > 0 && orders === 0) return "target_spend_no_sales";
@@ -234,6 +284,19 @@ function campaignSkuRecommendation(sku: string, signal: AmazonCampaignSkuSignalA
   if (signal === "target_spend_no_sales") return `Reduce spend pressure or review listing conversion for ${sku}; this target SKU has ad spend but no recent SKU-level sales.`;
   if (signal === "non_target_sold") return `Review ${sku} separately; non-target demand is present and should not be mixed with optimized listing campaign conclusions.`;
   return `Collect more ad and order data for ${sku} before changing campaign structure.`;
+}
+
+function campaignSkuActionType(signal: AmazonCampaignSkuSignalAnalysis["skuCampaigns"][number]["signal"], highSpendNoSales: boolean): AmazonCampaignSkuActionPlan["skuCampaignActions"][number]["actionType"] {
+  if (signal === "target_spend_no_sales") return "reduce_spend_or_listing_review";
+  if (signal === "non_target_sold") return "separate_or_protect_non_target_demand";
+  if (signal === "target_sold") return "monitor_target_seller_sales_vs_ad_attribution";
+  return highSpendNoSales ? "non_target_waste_review" : "separate_or_protect_non_target_demand";
+}
+
+function campaignSkuActionRecommendation(sku: string, signal: AmazonCampaignSkuSignalAnalysis["skuCampaigns"][number]["signal"], highSpendNoSales: boolean, fallback: string): string {
+  if (highSpendNoSales) return `Review ${sku} because non-target spend is high with no recent attributed orders.`;
+  if (signal === "target_sold") return `Keep ${sku} active, but do not scale blindly until seller-order sales and Ads attribution agree.`;
+  return fallback;
 }
 
 function text(value: unknown): string {

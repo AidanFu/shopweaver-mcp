@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { analyzeAmazonCampaignMetrics, analyzeAmazonCampaignSkuSignals, analyzeAmazonSearchTermReportRows } from "../src/amazon/campaign-optimization.js";
+import { analyzeAmazonCampaignMetrics, analyzeAmazonCampaignSkuSignals, analyzeAmazonSearchTermReportRows, buildAmazonCampaignSkuActionPlan } from "../src/amazon/campaign-optimization.js";
 
 describe("analyzeAmazonCampaignMetrics", () => {
   it("flags spend with clicks but no orders for budget review", () => {
@@ -110,6 +110,28 @@ describe("analyzeAmazonCampaignMetrics", () => {
         { sku: "DH-E37S-W6DM", campaignIds: ["campaign-1"], campaignNames: ["Exact Gold"], spend: 32, sales: 0, orders: 0, signal: "target_spend_no_sales", recommendation: "Reduce spend pressure or review listing conversion for DH-E37S-W6DM; this target SKU has ad spend but no recent SKU-level sales." },
         { sku: "5H-2EH1-7H77", campaignIds: ["campaign-2"], campaignNames: ["Exact Silver"], spend: 18, sales: 184.9, orders: 1, signal: "target_sold", recommendation: "Keep 5H-2EH1-7H77 active and monitor ACOS; this target SKU has recent sales." },
         { sku: "80-16Z5-E38T", campaignIds: ["campaign-3"], campaignNames: ["Hardware Kit"], spend: 4, sales: 15, orders: 1, signal: "non_target_sold", recommendation: "Review 80-16Z5-E38T separately; non-target demand is present and should not be mixed with optimized listing campaign conclusions." }
+      ]
+    });
+  });
+
+  it("prioritizes SKU campaign action items by waste and target listing pressure", () => {
+    expect(buildAmazonCampaignSkuActionPlan({
+      skuCampaigns: [
+        { sku: "DH-E37S-W6DM", campaignIds: ["campaign-1"], campaignNames: ["Exact Gold"], spend: 26.18, sales: 0, orders: 0, signal: "target_spend_no_sales", recommendation: "Reduce spend pressure or review listing conversion for DH-E37S-W6DM; this target SKU has ad spend but no recent SKU-level sales." },
+        { sku: "77-UM99-B96T", campaignIds: ["campaign-2"], campaignNames: ["Exact Silver"], spend: 19.45, sales: 0, orders: 0, signal: "target_spend_no_sales", recommendation: "Reduce spend pressure or review listing conversion for 77-UM99-B96T; this target SKU has ad spend but no recent SKU-level sales." },
+        { sku: "FQ-6KKW-ESSD", campaignIds: ["campaign-3"], campaignNames: ["Broad Discovery"], spend: 53.21, sales: 0, orders: 0, signal: "collect_more_data", recommendation: "Collect more ad and order data for FQ-6KKW-ESSD before changing campaign structure." },
+        { sku: "5H-2EH1-7H77", campaignIds: ["campaign-4"], campaignNames: ["Power"], spend: 8.12, sales: 0, orders: 0, signal: "target_sold", recommendation: "Keep 5H-2EH1-7H77 active and monitor ACOS; this target SKU has recent sales." }
+      ]
+    })).toEqual({
+      totalActionCount: 4,
+      highPriorityCount: 3,
+      targetSpendNoSalesCount: 2,
+      highSpendNoSalesCount: 1,
+      skuCampaignActions: [
+        { sku: "FQ-6KKW-ESSD", campaignIds: ["campaign-3"], campaignNames: ["Broad Discovery"], spend: 53.21, sales: 0, orders: 0, signal: "collect_more_data", priority: "high", actionType: "non_target_waste_review", recommendation: "Review FQ-6KKW-ESSD because non-target spend is high with no recent attributed orders.", sellerApprovalRequired: true },
+        { sku: "DH-E37S-W6DM", campaignIds: ["campaign-1"], campaignNames: ["Exact Gold"], spend: 26.18, sales: 0, orders: 0, signal: "target_spend_no_sales", priority: "high", actionType: "reduce_spend_or_listing_review", recommendation: "Reduce spend pressure or review listing conversion for DH-E37S-W6DM; this target SKU has ad spend but no recent SKU-level sales.", sellerApprovalRequired: true },
+        { sku: "77-UM99-B96T", campaignIds: ["campaign-2"], campaignNames: ["Exact Silver"], spend: 19.45, sales: 0, orders: 0, signal: "target_spend_no_sales", priority: "high", actionType: "reduce_spend_or_listing_review", recommendation: "Reduce spend pressure or review listing conversion for 77-UM99-B96T; this target SKU has ad spend but no recent SKU-level sales.", sellerApprovalRequired: true },
+        { sku: "5H-2EH1-7H77", campaignIds: ["campaign-4"], campaignNames: ["Power"], spend: 8.12, sales: 0, orders: 0, signal: "target_sold", priority: "normal", actionType: "monitor_target_seller_sales_vs_ad_attribution", recommendation: "Keep 5H-2EH1-7H77 active, but do not scale blindly until seller-order sales and Ads attribution agree.", sellerApprovalRequired: true }
       ]
     });
   });
