@@ -12,17 +12,31 @@ interface AmazonOrdersArgs {
   orderStatuses?: string[];
   maxResultsPerPage?: number;
   nextToken?: string;
+  includeItems?: boolean;
 }
 
 type AmazonOrdersResponse = {
   payload?: {
     CreatedBefore?: string;
     Orders?: Array<{
+      AmazonOrderId?: string;
       PurchaseDate?: string;
       OrderStatus?: string;
       NumberOfItemsShipped?: number;
       NumberOfItemsUnshipped?: number;
       OrderTotal?: { CurrencyCode?: string; Amount?: string };
+    }>;
+  };
+};
+
+type AmazonOrderItemsResponse = {
+  payload?: {
+    OrderItems?: Array<{
+      SellerSKU?: string;
+      ASIN?: string;
+      Title?: string;
+      QuantityOrdered?: number;
+      ItemPrice?: { CurrencyCode?: string; Amount?: string };
     }>;
   };
 };
@@ -44,20 +58,36 @@ export function parseAmazonOrdersArgs(args: string[]): AmazonOrdersArgs {
     ...(values.get("--marketplace-ids") ? { marketplaceIds: splitCsv(values.get("--marketplace-ids") ?? "") } : {}),
     ...(values.get("--status") ? { orderStatuses: splitCsv(values.get("--status") ?? "") } : {}),
     ...(maxResults ? { maxResultsPerPage: Number(maxResults) } : {}),
-    ...(values.get("--next-token") ? { nextToken: values.get("--next-token") } : {})
+    ...(values.get("--next-token") ? { nextToken: values.get("--next-token") } : {}),
+    ...(values.get("--include-items") === "true" ? { includeItems: true } : {})
   };
 }
 
-export function summarizeAmazonOrders(response: AmazonOrdersResponse) {
+export function summarizeAmazonOrders(response: AmazonOrdersResponse, orderItemsByOrderId: Record<string, AmazonOrderItemsResponse> = {}) {
   const orders = response.payload?.Orders ?? [];
   const statusCounts: Record<string, number> = {};
   const totalAmountByCurrency: Record<string, number> = {};
+  const skuSales = new Map<string, {
+    sku: string;
+    asin?: string;
+    title?: string;
+    quantityOrdered: number;
+    totalAmountByCurrency: Record<string, number>;
+  }>();
   const summaries = orders.map(order => {
     const orderStatus = order.OrderStatus ?? "UNKNOWN";
     statusCounts[orderStatus] = (statusCounts[orderStatus] ?? 0) + 1;
     const currencyCode = order.OrderTotal?.CurrencyCode ?? "UNKNOWN";
     const amount = Number(order.OrderTotal?.Amount ?? 0);
     totalAmountByCurrency[currencyCode] = roundCurrency((totalAmountByCurrency[currencyCode] ?? 0) + amount);
+    for (const item of orderItemsByOrderId[order.AmazonOrderId ?? ""]?.payload?.OrderItems ?? []) {
+      const sku = item.SellerSKU ?? "UNKNOWN";
+      const current = skuSales.get(sku) ?? { sku, asin: item.ASIN, title: item.Title, quantityOrdered: 0, totalAmountByCurrency: {} };
+      const itemCurrency = item.ItemPrice?.CurrencyCode ?? "UNKNOWN";
+      current.quantityOrdered += item.QuantityOrdered ?? 0;
+      current.totalAmountByCurrency[itemCurrency] = roundCurrency((current.totalAmountByCurrency[itemCurrency] ?? 0) + Number(item.ItemPrice?.Amount ?? 0));
+      skuSales.set(sku, current);
+    }
     return {
       purchaseDate: order.PurchaseDate,
       orderStatus,
@@ -70,6 +100,7 @@ export function summarizeAmazonOrders(response: AmazonOrdersResponse) {
     orderCount: orders.length,
     totalAmountByCurrency,
     statusCounts,
+    skuSales: Array.from(skuSales.values()),
     orders: summaries
   };
 }
@@ -77,7 +108,15 @@ export function summarizeAmazonOrders(response: AmazonOrdersResponse) {
 async function main(): Promise<void> {
   const store = new KeychainCredentialStore();
   const amazon = new AmazonSpApiClient(store);
-  stdout.write(`${JSON.stringify(summarizeAmazonOrders(await amazon.listOrders(parseAmazonOrdersArgs(process.argv.slice(2))) as AmazonOrdersResponse), null, 2)}\n`);
+  const input = parseAmazonOrdersArgs(process.argv.slice(2));
+  const orders = await amazon.listOrders(input) as AmazonOrdersResponse;
+  const orderItemsByOrderId: Record<string, AmazonOrderItemsResponse> = {};
+  if (input.includeItems) {
+    for (const order of orders.payload?.Orders ?? []) {
+      if (order.AmazonOrderId) orderItemsByOrderId[order.AmazonOrderId] = await amazon.getOrderItems(order.AmazonOrderId) as AmazonOrderItemsResponse;
+    }
+  }
+  stdout.write(`${JSON.stringify(summarizeAmazonOrders(orders, orderItemsByOrderId), null, 2)}\n`);
 }
 
 function splitCsv(value: string): string[] {
