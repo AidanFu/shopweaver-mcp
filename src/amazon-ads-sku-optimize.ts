@@ -7,7 +7,7 @@ import { KeychainCredentialStore } from "./credentials/keychain.js";
 import { ShopWeaverError } from "./errors.js";
 
 export interface AmazonAdsSkuOptimizeArgs extends AmazonAdsSkuOptimizationCycleInput {
-  outputFormat: "json" | "summary";
+  outputFormat: "json" | "summary" | "budget-preview";
 }
 
 export function parseAmazonAdsSkuOptimizeArgs(args: string[]): AmazonAdsSkuOptimizeArgs {
@@ -40,7 +40,24 @@ async function main(): Promise<void> {
   const amazonAds = new AmazonAdsClient(store);
   const args = parseAmazonAdsSkuOptimizeArgs(process.argv.slice(2));
   const result = await runAmazonAdsSkuOptimizationCycle(amazonAds, args);
-  stdout.write(`${args.outputFormat === "summary" ? renderAmazonAdsSkuOptimizationSummary(result) : JSON.stringify(result, null, 2)}\n`);
+  stdout.write(`${renderAmazonAdsSkuOptimizationResult(args, result)}\n`);
+}
+
+function renderAmazonAdsSkuOptimizationResult(args: AmazonAdsSkuOptimizeArgs, result: Record<string, any>): string {
+  if (args.outputFormat === "summary") return renderAmazonAdsSkuOptimizationSummary(result);
+  if (args.outputFormat === "budget-preview") return JSON.stringify(buildAmazonAdsSkuBudgetPreviewPayload(args.profileId, result), null, 2);
+  return JSON.stringify(result, null, 2);
+}
+
+export function buildAmazonAdsSkuBudgetPreviewPayload(profileId: string, result: Record<string, any>) {
+  return {
+    tool: "amazon_ads_update_campaign_budgets",
+    mode: "preview",
+    profileId,
+    campaigns: result.budgetReviewPreview?.campaignBudgetUpdates ?? [],
+    applied: false,
+    warning: "Preview payload only. Submit this to amazon_ads_update_campaign_budgets in preview mode, then confirm with the returned token to write."
+  };
 }
 
 export function renderAmazonAdsSkuOptimizationSummary(result: Record<string, any>): string {
@@ -74,7 +91,7 @@ function splitCsv(value: string): string[] {
 
 function outputFormat(value: string | undefined): AmazonAdsSkuOptimizeArgs["outputFormat"] {
   if (!value) return "json";
-  if (value === "json" || value === "summary") return value;
+  if (value === "json" || value === "summary" || value === "budget-preview") return value;
   throw usageError();
 }
 
@@ -83,7 +100,7 @@ function lines(values: unknown): string[] {
 }
 
 function usageError() {
-  return new ShopWeaverError("AMAZON_ADS_SKU_OPTIMIZE_ARGS_INVALID", "Usage: npm run amazon:ads:sku -- --profile-id PROFILE --start-date YYYY-MM-DD --end-date YYYY-MM-DD --target-skus SKU1,SKU2 [--target-skus-with-sales SKU1] [--non-target-skus-with-sales SKU3] [--report-id REPORT_ID] [--format json|summary]");
+  return new ShopWeaverError("AMAZON_ADS_SKU_OPTIMIZE_ARGS_INVALID", "Usage: npm run amazon:ads:sku -- --profile-id PROFILE --start-date YYYY-MM-DD --end-date YYYY-MM-DD --target-skus SKU1,SKU2 [--target-skus-with-sales SKU1] [--non-target-skus-with-sales SKU3] [--report-id REPORT_ID] [--format json|summary|budget-preview]");
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

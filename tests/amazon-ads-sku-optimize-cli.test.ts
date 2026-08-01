@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseAmazonAdsSkuOptimizeArgs, renderAmazonAdsSkuOptimizationSummary } from "../src/amazon-ads-sku-optimize.js";
+import { buildAmazonAdsSkuBudgetPreviewPayload, parseAmazonAdsSkuOptimizeArgs, renderAmazonAdsSkuOptimizationSummary } from "../src/amazon-ads-sku-optimize.js";
 
 describe("parseAmazonAdsSkuOptimizeArgs", () => {
   it("parses SKU campaign optimization cycle arguments", () => {
@@ -31,6 +31,16 @@ describe("parseAmazonAdsSkuOptimizeArgs", () => {
       "--target-skus", "DH-E37S-W6DM",
       "--format", "summary"
     ])).toMatchObject({ outputFormat: "summary" });
+  });
+
+  it("parses budget preview output format", () => {
+    expect(parseAmazonAdsSkuOptimizeArgs([
+      "--profile-id", "749555662454438",
+      "--start-date", "2026-07-29",
+      "--end-date", "2026-08-01",
+      "--target-skus", "DH-E37S-W6DM",
+      "--format", "budget-preview"
+    ])).toMatchObject({ outputFormat: "budget-preview" });
   });
 
   it("renders a compact SKU optimization summary for daily campaign decisions", () => {
@@ -95,5 +105,28 @@ describe("parseAmazonAdsSkuOptimizeArgs", () => {
       "- 77-UM99-B96T | Exact | Reviewed SKUs Focus | spend 14.08 | Review listing conversion.",
       "Cadence: Run daily while spend is high, then weekly after ACOS and order trend stabilize."
     ].join("\n"));
+  });
+
+  it("builds the exact existing budget update preview payload from SKU optimizer output", () => {
+    expect(buildAmazonAdsSkuBudgetPreviewPayload("profile-1", {
+      budgetReviewPreview: {
+        campaignBudgetUpdates: [{
+          campaignId: "72675144208564",
+          budget: { budgetType: "DAILY", budget: 9 },
+          reason: "Reallocate spend from weak traffic."
+        }]
+      }
+    })).toEqual({
+      tool: "amazon_ads_update_campaign_budgets",
+      mode: "preview",
+      profileId: "profile-1",
+      campaigns: [{
+        campaignId: "72675144208564",
+        budget: { budgetType: "DAILY", budget: 9 },
+        reason: "Reallocate spend from weak traffic."
+      }],
+      applied: false,
+      warning: "Preview payload only. Submit this to amazon_ads_update_campaign_budgets in preview mode, then confirm with the returned token to write."
+    });
   });
 });
