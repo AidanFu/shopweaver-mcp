@@ -2,9 +2,48 @@ import { describe, expect, it } from "vitest";
 import { mkdtemp, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { buildAmazonAdsOptimizationSnapshot, compareAmazonAdsOptimizationReportFiles, compareAmazonAdsOptimizationSnapshots } from "../src/amazon/ads-optimization-history.js";
+import { buildAmazonAdsOptimizationSnapshot, compareAmazonAdsOptimizationReportFiles, compareAmazonAdsOptimizationSnapshots, summarizeAmazonAdsAppliedActions } from "../src/amazon/ads-optimization-history.js";
 
 describe("Amazon Ads optimization history", () => {
+  it("summarizes applied Ads actions for optimizer learning", () => {
+    expect(summarizeAmazonAdsAppliedActions([{
+      createdAt: "2026-07-30T20:45:00.000Z",
+      operation: "amazon_ads_update_campaign_budgets",
+      profileId: "profile-1",
+      applied: true,
+      payload: { campaigns: [{ campaignId: "campaign-1" }, { campaignId: "campaign-2" }] },
+      result: { campaigns: { success: [{ campaignId: "campaign-1" }, { campaignId: "campaign-2" }], error: [] } }
+    }, {
+      createdAt: "2026-07-30T21:00:00.000Z",
+      operation: "amazon_ads_update_keyword_bids",
+      profileId: "profile-1",
+      applied: true,
+      payload: { keywords: [{ keywordId: "keyword-1" }] },
+      result: { keywords: { success: [{ keywordId: "keyword-1" }], error: [] } }
+    }, {
+      createdAt: "2026-07-30T21:10:00.000Z",
+      operation: "amazon_ads_create_negative_keywords",
+      profileId: "profile-1",
+      applied: true,
+      payload: { negativeKeywords: [{ campaignId: "campaign-1", adGroupId: "adgroup-1", keywordText: "free towel rack manual" }] },
+      result: { negativeKeywords: { success: [{ negativeKeywordId: "999" }], error: [] } }
+    }])).toEqual({
+      actionCount: 3,
+      operationCounts: {
+        amazon_ads_create_negative_keywords: 1,
+        amazon_ads_update_campaign_budgets: 1,
+        amazon_ads_update_keyword_bids: 1
+      },
+      campaignIdCount: 2,
+      keywordBidUpdateCount: 1,
+      adGroupBidUpdateCount: 0,
+      negativeKeywordCount: 1,
+      campaignBudgetUpdateCount: 2,
+      firstAppliedAt: "2026-07-30T20:45:00.000Z",
+      lastAppliedAt: "2026-07-30T21:10:00.000Z"
+    });
+  });
+
   it("builds a campaign-level optimization snapshot from report rows", () => {
     expect(buildAmazonAdsOptimizationSnapshot({
       label: "before",
@@ -109,6 +148,11 @@ describe("Amazon Ads optimization history", () => {
       }]
     })).toMatchObject({
       appliedActionCount: 1,
+      appliedActionSummary: {
+        actionCount: 1,
+        operationCounts: { amazon_ads_update_campaign_bidding: 1 },
+        campaignIdCount: 1
+      },
       followUpRecommendations: [{
         action: "monitor",
         reason: "Recent Amazon Ads actions correlate with lower spend and stable or improved orders."

@@ -38,6 +38,34 @@ interface AmazonAdsOptimizationComparisonInput {
   appliedActions?: AmazonAdsChangeLogRecord[];
 }
 
+export function summarizeAmazonAdsAppliedActions(actions: AmazonAdsChangeLogRecord[]) {
+  const operationCounts = actions.reduce<Record<string, number>>((counts, action) => {
+    counts[action.operation] = (counts[action.operation] ?? 0) + 1;
+    return counts;
+  }, {});
+  const campaignIds = new Set<string>();
+  for (const action of actions) {
+    for (const campaign of payloadArray<{ campaignId?: string }>(action.payload, "campaigns")) {
+      if (campaign.campaignId) campaignIds.add(campaign.campaignId);
+    }
+    for (const negativeKeyword of payloadArray<{ campaignId?: string }>(action.payload, "negativeKeywords")) {
+      if (negativeKeyword.campaignId) campaignIds.add(negativeKeyword.campaignId);
+    }
+  }
+  const appliedTimes = actions.map(action => action.createdAt).filter(Boolean).sort() as string[];
+  return {
+    actionCount: actions.length,
+    operationCounts,
+    campaignIdCount: campaignIds.size,
+    keywordBidUpdateCount: actions.reduce((sum, action) => sum + payloadArray(action.payload, "keywords").length, 0),
+    adGroupBidUpdateCount: actions.reduce((sum, action) => sum + payloadArray(action.payload, "adGroups").length, 0),
+    negativeKeywordCount: actions.reduce((sum, action) => sum + payloadArray(action.payload, "negativeKeywords").length, 0),
+    campaignBudgetUpdateCount: actions.reduce((sum, action) => sum + (action.operation === "amazon_ads_update_campaign_budgets" ? payloadArray(action.payload, "campaigns").length : 0), 0),
+    firstAppliedAt: appliedTimes[0],
+    lastAppliedAt: appliedTimes.at(-1)
+  };
+}
+
 export function buildAmazonAdsOptimizationSnapshot(input: AmazonAdsOptimizationSnapshotInput): AmazonAdsOptimizationSnapshot {
   const analysis = analyzeAmazonSearchTermReportRows(input.rows);
   return {
@@ -97,6 +125,7 @@ export function compareAmazonAdsOptimizationSnapshots(before: AmazonAdsOptimizat
     verdict: verdict(spendChange, salesChange, orderChange, blendedAcosChange),
     ...(appliedActions.length ? {
       appliedActionCount: appliedActions.length,
+      appliedActionSummary: summarizeAmazonAdsAppliedActions(appliedActions),
       appliedActions: appliedActions.map(actionSummary)
     } : {}),
     ...(appliedActions.length ? { followUpRecommendations: overallRecommendations(spendChange, salesChange, orderChange) } : {}),
@@ -183,7 +212,8 @@ function emptyCampaign(campaign: AmazonAdsOptimizationCampaignSnapshot): AmazonA
 
 function actionHasCampaign(action: AmazonAdsChangeLogRecord, campaignId: string): boolean {
   const campaigns = (action.payload as { campaigns?: Array<{ campaignId?: string }> }).campaigns ?? [];
-  return campaigns.some(campaign => campaign.campaignId === campaignId);
+  const negativeKeywords = payloadArray<{ campaignId?: string }>(action.payload, "negativeKeywords");
+  return campaigns.some(campaign => campaign.campaignId === campaignId) || negativeKeywords.some(keyword => keyword.campaignId === campaignId);
 }
 
 function actionSummary(action: AmazonAdsChangeLogRecord) {
@@ -238,4 +268,9 @@ function number(value: unknown): number {
 
 function round(value: number): number {
   return Number(value.toFixed(2));
+}
+
+function payloadArray<T extends Record<string, unknown>>(payload: Record<string, unknown>, key: string): T[] {
+  const value = payload[key];
+  return Array.isArray(value) ? value as T[] : [];
 }
