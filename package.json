@@ -25,6 +25,7 @@
     "amazon:brand-store:workbook": "tsx src/amazon-brand-store.ts",
     "amazon:listings:workbook": "tsx src/amazon-existing-listing-workbook.ts",
     "amazon:listings:live-workbook": "tsx src/amazon-existing-listing-live-workbook.ts",
+    "amazon:listings:review": "tsx src/amazon-existing-listing-review.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "check:safety": "node scripts/check-forbidden-tools.mjs",
