@@ -21,6 +21,7 @@
     "amazon:ads:sku": "tsx src/amazon-ads-sku-optimize.ts",
     "amazon:ads:compare": "tsx src/amazon-ads-compare.ts",
     "amazon:ads:history": "tsx src/amazon-ads-history.ts",
+    "amazon:aplus:workbook": "tsx src/amazon-aplus-workbook.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "check:safety": "node scripts/check-forbidden-tools.mjs",
