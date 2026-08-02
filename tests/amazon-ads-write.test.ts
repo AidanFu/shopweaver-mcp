@@ -640,6 +640,55 @@ describe("AmazonAdsWriteService", () => {
     expect(amazonAds.createSponsoredProductsNegativeKeywords).not.toHaveBeenCalled();
   });
 
+  it("applies learned optimization rules to combined SKU optimizer apply plans", async () => {
+    const amazonAds = {
+      createSponsoredProductsNegativeKeywords: vi.fn(),
+      updateSponsoredProductsCampaigns: vi.fn(),
+      createSponsoredProductsCampaigns: vi.fn(),
+      updateSponsoredProductsKeywords: vi.fn(),
+      updateSponsoredProductsAdGroups: vi.fn(),
+      getReport: vi.fn().mockResolvedValue({ reportId: "sku-report-1", status: "COMPLETED", url: "https://example.test/sku-report.gz" }),
+      downloadReportRows: vi.fn().mockResolvedValue([
+        { campaignId: "campaign-1", campaignName: "Exact Gold", adGroupId: "adgroup-1", advertisedSku: "DH-E37S-W6DM", keywordId: "keyword-1", searchTerm: "free towel rack manual", clicks: 18, cost: 32, purchases7d: 0, sales7d: 0, bid: 0.8 },
+        { campaignId: "campaign-1", campaignName: "Broad Gold", adGroupId: "adgroup-1", advertisedSku: "DH-E37S-W6DM", searchTerm: "another weak term", clicks: 16, cost: 22, purchases7d: 0, sales7d: 0, defaultBid: 0.6 }
+      ]),
+      listSponsoredProductsCampaigns: vi.fn().mockResolvedValue({ campaigns: [] })
+    };
+    const service = new AmazonAdsWriteService(amazonAds, new ConfirmationStore(() => 1_000));
+
+    const preview = await service.previewSkuOptimizerApplyPlan({
+      profileId: "profile-1",
+      reportId: "sku-report-1",
+      startDate: "2026-07-29",
+      endDate: "2026-08-01",
+      targetSkus: ["DH-E37S-W6DM"],
+      targetSkusWithSales: [],
+      nonTargetSkusWithSales: [],
+      nextOptimizationRules: [{
+        rule: "restore_prior_converting_bids",
+        priority: "high",
+        recommendation: "Review recent bid reductions first."
+      }]
+    });
+
+    expect(preview).toMatchObject({
+      operation: "preview_amazon_ads_sku_apply_plan",
+      summary: {
+        nextOptimizationRules: [{
+          rule: "restore_prior_converting_bids",
+          priority: "high"
+        }],
+        guardrails: ["Suppressed 2 bid reduction payload(s) because the last bid-control change correlated with worse orders or sales."]
+      },
+      payloads: {
+        keywordBids: { keywords: [] },
+        adGroupBids: { adGroups: [] }
+      }
+    });
+    expect(amazonAds.updateSponsoredProductsKeywords).not.toHaveBeenCalled();
+    expect(amazonAds.updateSponsoredProductsAdGroups).not.toHaveBeenCalled();
+  });
+
   it("promotes a combined SKU apply plan into exact action previews without writing", async () => {
     const amazonAds = {
       createSponsoredProductsNegativeKeywords: vi.fn(),

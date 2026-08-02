@@ -149,7 +149,7 @@ No Ads write is automatic. Budget, bid, campaign, keyword, negative-keyword, and
 
 When later reports are compared with the local Ads change log, the comparison includes `nextOptimizationRules`. These rules turn the observed post-change outcome into the next optimizer bias, such as continuing conservative budget guardrails after lower spend with stable orders, or reviewing/restoring prior converting bids before deeper cuts when sales or orders regress.
 
-Pass the comparison JSON back into the next SKU apply-plan run with `npm run amazon:ads:sku -- ... --optimization-rules /path/ads-comparison.json`. If the last bid-control change correlated with worse orders or sales, ShopWeaver suppresses new bid-reduction payloads in that review plan and marks the guardrail in the summary.
+Pass the comparison JSON back into the next SKU apply-plan run with `npm run amazon:ads:sku -- ... --optimization-rules /path/ads-comparison.json`, or pass the `nextOptimizationRules` array directly to `amazon_ads_run_sku_apply_plan_preview`. If the last bid-control change correlated with worse orders or sales, ShopWeaver suppresses new bid-reduction payloads in that review plan and marks the guardrail in the summary.
 
 When efficient winner terms are present, the SKU apply plan can include paused `amazon_ads_create_campaigns` candidates. These are review-only exact-campaign ideas with low daily budget defaults; use `amazon_ads_preview_sku_apply_plan_actions` to get a campaign creation confirmation token, then confirm only after reviewing the exact unchanged campaign payload.
 

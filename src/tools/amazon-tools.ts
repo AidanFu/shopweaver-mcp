@@ -31,6 +31,11 @@ const amazonSalesSignalSchema = z.object({
   sellerOrders: z.number().nonnegative().optional(),
   adsOrders: z.number().nonnegative().optional()
 });
+const amazonAdsNextOptimizationRuleSchema = z.object({
+  rule: z.string().min(1),
+  priority: z.string().min(1),
+  recommendation: z.string().min(1)
+});
 
 type AmazonListingPayload = { summaries?: Array<{ productType?: string }> };
 type AmazonListingCopyPreview = {
@@ -71,6 +76,11 @@ type AmazonAdsAdGroupBidUpdate = {
   adGroupId: string;
   defaultBid: number;
   reason?: string;
+};
+type AmazonAdsNextOptimizationRule = {
+  rule: string;
+  priority: string;
+  recommendation: string;
 };
 type AmazonAdsCampaignCreate = {
   name: string;
@@ -416,9 +426,12 @@ export class AmazonAdsWriteService {
     };
   }
 
-  async previewSkuOptimizerApplyPlan(input: AmazonAdsSkuOptimizationCycleInput) {
+  async previewSkuOptimizerApplyPlan(input: AmazonAdsSkuOptimizationCycleInput & { nextOptimizationRules?: AmazonAdsNextOptimizationRule[] }) {
     const cycle = await runAmazonAdsSkuOptimizationCycle(this.amazonAds, input) as Record<string, any>;
-    return buildAmazonAdsSkuApplyPlanPayload(input.profileId, cycle);
+    return buildAmazonAdsSkuApplyPlanPayload(input.profileId, {
+      ...cycle,
+      ...(input.nextOptimizationRules ? { nextOptimizationRules: input.nextOptimizationRules } : {})
+    });
   }
 
   async previewSkuApplyPlanActions(applyPlan: AmazonAdsSkuApplyPlan) {
@@ -1141,6 +1154,7 @@ export function registerAmazonTools(server: McpServer, store: CredentialStore, a
         targetSkusWithSales: z.array(z.string().min(1)).default([]),
         nonTargetSkusWithSales: z.array(z.string().min(1)).default([]),
         salesSignals: z.array(amazonSalesSignalSchema).optional(),
+        nextOptimizationRules: z.array(amazonAdsNextOptimizationRuleSchema).optional(),
         reportId: z.string().min(1).optional()
       }
     }, async input => result(await amazonAdsWrites.previewSkuOptimizerApplyPlan(input)));

@@ -192,6 +192,78 @@ describe("MCP integration", () => {
     await Promise.all([client.close(), server.close()]);
   });
 
+  it("passes learned Amazon Ads rules into the SKU apply-plan preview tool", async () => {
+    const store = new MemoryCredentialStore();
+    await store.set("shop", { userId: 1, shopId: 42 });
+    const clientApi = { request: vi.fn() } as never;
+    const listings = new ListingService(clientApi, store);
+    const orders = new OrderService(clientApi, store);
+    const writes = new DraftWriteService(clientApi, listings, store, new ConfirmationStore());
+    const googleFolders = new GoogleFolderToolService({} as never);
+    const driveImports = new DriveImportService({} as never);
+    const driveImageUploads = new DriveImageUploadService(clientApi, listings, {} as never, store, new ConfirmationStore());
+    const amazonAds = new AmazonAdsClient(store, vi.fn());
+    const amazonSpApi = new AmazonSpApiClient(store, vi.fn());
+    const amazonListingWrites = new AmazonListingWriteService(store, amazonSpApi, new ConfirmationStore());
+    const amazonAdsWrites = {
+      previewSkuOptimizerApplyPlan: vi.fn().mockResolvedValue({
+        operation: "preview_amazon_ads_sku_apply_plan",
+        applied: false,
+        summary: {
+          nextOptimizationRules: [{
+            rule: "restore_prior_converting_bids",
+            priority: "high",
+            recommendation: "Review recent bid reductions first."
+          }],
+          guardrails: ["Suppressed 2 bid reduction payload(s) because the last bid-control change correlated with worse orders or sales."]
+        },
+        payloads: {
+          keywordBids: { keywords: [] },
+          adGroupBids: { adGroups: [] }
+        }
+      })
+    } as never;
+    const amazonAdsChangeLog = { record: vi.fn(), read: vi.fn() };
+    const server = createServer({ store, listings, orders, writes, googleFolders, driveImports, driveImageUploads, amazonAds, amazonSpApi, amazonListingWrites, amazonAdsWrites, amazonAdsChangeLog });
+    const client = new Client({ name: "test", version: "1" });
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
+
+    const response = await client.callTool({
+      name: "amazon_ads_run_sku_apply_plan_preview",
+      arguments: {
+        profileId: "profile-1",
+        reportId: "sku-report-1",
+        startDate: "2026-07-29",
+        endDate: "2026-08-01",
+        targetSkus: ["DH-E37S-W6DM"],
+        targetSkusWithSales: [],
+        nonTargetSkusWithSales: [],
+        nextOptimizationRules: [{
+          rule: "restore_prior_converting_bids",
+          priority: "high",
+          recommendation: "Review recent bid reductions first."
+        }]
+      }
+    });
+
+    expect(amazonAdsWrites.previewSkuOptimizerApplyPlan).toHaveBeenCalledWith(expect.objectContaining({
+      nextOptimizationRules: [{
+        rule: "restore_prior_converting_bids",
+        priority: "high",
+        recommendation: "Review recent bid reductions first."
+      }]
+    }));
+    expect(response.structuredContent).toMatchObject({
+      operation: "preview_amazon_ads_sku_apply_plan",
+      summary: {
+        nextOptimizationRules: [{ rule: "restore_prior_converting_bids", priority: "high" }],
+        guardrails: ["Suppressed 2 bid reduction payload(s) because the last bid-control change correlated with worse orders or sales."]
+      }
+    });
+    await Promise.all([client.close(), server.close()]);
+  });
+
   it("compares Amazon seller order item sales with Ads-attributed SKU sales through a read-only tool", async () => {
     const store = new MemoryCredentialStore();
     await store.set("shop", { userId: 1, shopId: 42 });
