@@ -12,6 +12,14 @@ export interface AmazonBrandStoreProduct {
   priority?: "hero" | "standard";
 }
 
+export interface AmazonBrandStoreSalesSignal {
+  sku: string;
+  signal: "matched_ads_and_seller_sales" | "ads_attributed_without_seller_order" | "seller_order_without_ads_attribution" | "no_ads_or_seller_sales";
+  adSpend?: number;
+  sellerOrders?: number;
+  adsOrders?: number;
+}
+
 export interface AmazonBrandStoreInput {
   outputPath?: string;
   brandName: string;
@@ -21,6 +29,7 @@ export interface AmazonBrandStoreInput {
     efficientSearchTerms?: string[];
     wasteSearchTerms?: string[];
   };
+  salesSignals?: AmazonBrandStoreSalesSignal[];
 }
 
 export interface AmazonBrandStoreSection {
@@ -38,10 +47,13 @@ export interface AmazonBrandStoreProductTile {
   callout: string;
   price?: number;
   imageUrl?: string;
+  salesSignal?: AmazonBrandStoreSalesSignal["signal"];
+  storeRole?: "lead_tile" | "supporting_tile" | "diagnostic_tile";
 }
 
 export function buildAmazonBrandStorePlan(input: AmazonBrandStoreInput) {
-  const products = input.products;
+  const salesSignals = new Map((input.salesSignals ?? []).map(signal => [signal.sku, signal]));
+  const products = [...input.products].sort((left, right) => productSignalRank(salesSignals.get(right.sku ?? "")) - productSignalRank(salesSignals.get(left.sku ?? "")));
   const sections = buildSections(input.primaryCategory);
   const efficientTerms = input.campaignInsights?.efficientSearchTerms ?? [];
   const wasteTerms = input.campaignInsights?.wasteSearchTerms ?? [];
@@ -51,7 +63,7 @@ export function buildAmazonBrandStorePlan(input: AmazonBrandStoreInput) {
     primaryCategory: input.primaryCategory,
     productCount: products.length,
     sections,
-    productTiles: products.map(productTile),
+    productTiles: products.map(product => productTile(product, salesSignals.get(product.sku ?? ""))),
     adLearningHooks: [
       ...(efficientTerms.length > 0 ? [{
         signal: "efficient_search_terms" as const,
@@ -60,6 +72,10 @@ export function buildAmazonBrandStorePlan(input: AmazonBrandStoreInput) {
       ...(wasteTerms.length > 0 ? [{
         signal: "waste_search_terms" as const,
         recommendation: `Avoid Store copy that attracts low-intent or free-seeking traffic: ${wasteTerms.slice(0, 5).join(", ")}.`
+      }] : []),
+      ...(input.salesSignals?.length ? [{
+        signal: "store_sales_signal_review" as const,
+        recommendation: "Use Store tile order to protect proven sellers first, then diagnose no-sale SKUs before giving them hero placement."
       }] : []),
       {
         signal: "weekly_review" as const,
@@ -93,7 +109,9 @@ export async function writeAmazonBrandStoreWorkbook(input: AmazonBrandStoreInput
     "Primary Message": tile.primaryMessage,
     "Callout": tile.callout,
     "Price": tile.price ?? "",
-    "Image URL": tile.imageUrl ?? ""
+    "Image URL": tile.imageUrl ?? "",
+    "Sales Signal": tile.salesSignal ?? "",
+    "Store Role": tile.storeRole ?? ""
   }))), "Product Tiles");
   XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(plan.adLearningHooks.map(hook => ({
     "Signal": hook.signal,
@@ -158,14 +176,50 @@ function buildSections(category: string): AmazonBrandStoreSection[] {
   ];
 }
 
-function productTile(product: AmazonBrandStoreProduct): AmazonBrandStoreProductTile {
+function productTile(product: AmazonBrandStoreProduct, salesSignal?: AmazonBrandStoreSalesSignal): AmazonBrandStoreProductTile {
+  const salesGuidance = salesSignal ? productTileSalesGuidance(salesSignal) : undefined;
   return {
     asin: product.asin,
     sku: product.sku ?? "",
     title: product.title,
     primaryMessage: product.finish ? `${product.finish} finish for a polished bathroom upgrade` : "Designed for clear comparison and confident purchase decisions",
-    callout: product.priority === "hero" ? "Feature in the first product row and connect to top converting ad terms." : "Place in comparison rows after the hero product.",
+    callout: salesGuidance?.callout ?? (product.priority === "hero" ? "Feature in the first product row and connect to top converting ad terms." : "Place in comparison rows after the hero product."),
     ...(product.price !== undefined ? { price: product.price } : {}),
-    ...(product.imageUrl ? { imageUrl: product.imageUrl } : {})
+    ...(product.imageUrl ? { imageUrl: product.imageUrl } : {}),
+    ...(salesSignal ? { salesSignal: salesSignal.signal } : {}),
+    ...(salesGuidance ? { storeRole: salesGuidance.storeRole } : {})
+  };
+}
+
+function productSignalRank(signal?: AmazonBrandStoreSalesSignal): number {
+  if (!signal) return 1;
+  if (signal.signal === "matched_ads_and_seller_sales") return 4;
+  if (signal.signal === "seller_order_without_ads_attribution") return 3;
+  if (signal.signal === "ads_attributed_without_seller_order") return 2;
+  return 0;
+}
+
+function productTileSalesGuidance(signal: AmazonBrandStoreSalesSignal) {
+  if (signal.signal === "matched_ads_and_seller_sales") {
+    return {
+      storeRole: "lead_tile" as const,
+      callout: "Feature early in the Store because Ads and Seller orders both show recent demand."
+    };
+  }
+  if (signal.signal === "seller_order_without_ads_attribution") {
+    return {
+      storeRole: "lead_tile" as const,
+      callout: "Feature early enough to protect Seller-order demand while checking why Ads attribution is weak."
+    };
+  }
+  if (signal.signal === "ads_attributed_without_seller_order") {
+    return {
+      storeRole: "supporting_tile" as const,
+      callout: "Keep as a supporting tile until Ads attribution and Seller order data are reconciled."
+    };
+  }
+  return {
+    storeRole: "diagnostic_tile" as const,
+    callout: "Keep visible for comparison, but review listing promise, image, price, and campaign traffic before making it the hero tile."
   };
 }

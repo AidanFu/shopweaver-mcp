@@ -135,6 +135,8 @@ The comparison also returns `listingOptimizationActions`. These review-only acti
 - Seller orders exist but Ads attribution is weak: protect the SKU from automatic cuts and inspect unattributed discovery paths.
 - Neither Ads nor Seller orders show sales: review title, first image, price, coupon, delivery promise, bullets, and A+ content before adding traffic.
 
+The same SKU signals can be passed into `amazon_write_brand_store_workbook` as `salesSignals`. Brand Store planning then ranks proven sellers earlier, keeps unattributed sellers visible, and marks no-sale SKUs as diagnostic tiles instead of default hero placements.
+
 No Ads write is automatic. Budget, bid, campaign, keyword, negative-keyword, and campaign-creation changes require an explicit confirmation token.
 
 ## Safety Boundary

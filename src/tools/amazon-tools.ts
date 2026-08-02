@@ -890,7 +890,14 @@ export function registerAmazonTools(server: McpServer, store: CredentialStore, a
       campaignInsights: z.object({
         efficientSearchTerms: z.array(z.string().min(1)).optional(),
         wasteSearchTerms: z.array(z.string().min(1)).optional()
-      }).optional()
+      }).optional(),
+      salesSignals: z.array(z.object({
+        sku: z.string().min(1),
+        signal: z.enum(["matched_ads_and_seller_sales", "ads_attributed_without_seller_order", "seller_order_without_ads_attribution", "no_ads_or_seller_sales"]),
+        adSpend: z.number().nonnegative().optional(),
+        sellerOrders: z.number().nonnegative().optional(),
+        adsOrders: z.number().nonnegative().optional()
+      })).optional()
     }
   }, async (input) => result(await writeAmazonBrandStoreWorkbook(input)));
 

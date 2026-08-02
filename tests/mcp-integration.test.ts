@@ -271,6 +271,22 @@ describe("MCP integration", () => {
         operation: "compare_amazon_ads_sku_sales_to_seller_orders",
         matchedSalesCount: 1,
         noSalesCount: 1
+      },
+      listingOptimizationActions: {
+        operation: "build_amazon_listing_optimization_actions_from_sales_comparison",
+        actionCount: 2,
+        actions: [
+          {
+            sku: "DH-E37S-W6DM",
+            priority: "high",
+            focus: "listing_conversion_review"
+          },
+          {
+            sku: "5H-2EH1-7H77",
+            priority: "medium",
+            focus: "harvest_and_monitor"
+          }
+        ]
       }
     });
     await Promise.all([client.close(), server.close()]);

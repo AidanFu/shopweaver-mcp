@@ -44,6 +44,55 @@ describe("buildAmazonBrandStorePlan", () => {
       recommendation: "Use converting Sponsored Products terms in Store headline and tile copy: electric towel warmer gold."
     });
   });
+
+  it("uses Ads and Seller sales signals to guide Brand Store product tiles", () => {
+    const plan = buildAmazonBrandStorePlan({
+      brandName: "Senplus Momokids",
+      primaryCategory: "Electric towel warmer racks",
+      products: [{
+        asin: "B0GDPKVXSZ",
+        sku: "DH-E37S-W6DM",
+        title: "Electric Towel Warmer Rack, Wall Mount 3-Bar Stainless Steel, 38 in, Gold",
+        finish: "Gold",
+        price: 49.99
+      }, {
+        asin: "B0GD7T3YGK",
+        sku: "5H-2EH1-7H77",
+        title: "Electric Towel Warmer Rack, Wall Mount 3-Bar Stainless Steel, 38 in, Silver",
+        finish: "Silver",
+        price: 49.99
+      }],
+      salesSignals: [{
+        sku: "DH-E37S-W6DM",
+        signal: "no_ads_or_seller_sales",
+        adSpend: 32,
+        sellerOrders: 0,
+        adsOrders: 0
+      }, {
+        sku: "5H-2EH1-7H77",
+        signal: "matched_ads_and_seller_sales",
+        adSpend: 18,
+        sellerOrders: 1,
+        adsOrders: 1
+      }]
+    });
+
+    expect(plan.productTiles).toMatchObject([{
+      sku: "5H-2EH1-7H77",
+      storeRole: "lead_tile",
+      salesSignal: "matched_ads_and_seller_sales",
+      callout: "Feature early in the Store because Ads and Seller orders both show recent demand."
+    }, {
+      sku: "DH-E37S-W6DM",
+      storeRole: "diagnostic_tile",
+      salesSignal: "no_ads_or_seller_sales",
+      callout: "Keep visible for comparison, but review listing promise, image, price, and campaign traffic before making it the hero tile."
+    }]);
+    expect(plan.adLearningHooks).toContainEqual({
+      signal: "store_sales_signal_review",
+      recommendation: "Use Store tile order to protect proven sellers first, then diagnose no-sale SKUs before giving them hero placement."
+    });
+  });
 });
 
 describe("writeAmazonBrandStoreWorkbook", () => {
