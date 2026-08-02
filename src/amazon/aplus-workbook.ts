@@ -11,11 +11,19 @@ export interface AmazonAplusWorkbookItem extends AmazonAplusContentInput {
   expectedFinish: string;
   expectedHeightInches: number;
   sourceContentReferenceKey: string;
+  salesSignal?: AmazonAplusSalesSignal;
 }
 
 export interface AmazonAplusWorkbookInput {
   outputPath: string;
   items: AmazonAplusWorkbookItem[];
+}
+
+export interface AmazonAplusSalesSignal {
+  signal: "matched_ads_and_seller_sales" | "ads_attributed_without_seller_order" | "seller_order_without_ads_attribution" | "no_ads_or_seller_sales";
+  adSpend?: number;
+  sellerOrders?: number;
+  adsOrders?: number;
 }
 
 export async function writeAmazonAplusOptimizationWorkbook(input: AmazonAplusWorkbookInput) {
@@ -40,6 +48,8 @@ export async function writeAmazonAplusOptimizationWorkbook(input: AmazonAplusWor
     "Content Status": recommendation.contentStatus,
     "Recommendation Status": recommendation.status,
     "Priority": recommendation.priority,
+    "Sales Signal": item.salesSignal?.signal ?? "",
+    "A+ Sales Action Focus": item.salesSignal ? aplusSalesAction(item.salesSignal).focus : "",
     "Module Count": recommendation.moduleCount,
     "Empty Overlay Modules": recommendation.emptyOverlayModuleCount,
     "Generic Alt Text": recommendation.genericAltTextCount,
@@ -80,6 +90,18 @@ export async function writeAmazonAplusOptimizationWorkbook(input: AmazonAplusWor
       }))
   )), "Optimized Overlay Copy");
 
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(optimizedItems.flatMap(({ item }) =>
+    item.salesSignal ? [{
+      "ASIN": item.asin,
+      "Signal": item.salesSignal.signal,
+      "Ad Spend": item.salesSignal.adSpend ?? "",
+      "Seller Orders": item.salesSignal.sellerOrders ?? "",
+      "Ads Orders": item.salesSignal.adsOrders ?? "",
+      "Focus": aplusSalesAction(item.salesSignal).focus,
+      "Action": aplusSalesAction(item.salesSignal).action
+    }] : []
+  )), "Sales Signal Actions");
+
   XLSX.writeFile(workbook, input.outputPath);
   return {
     operation: "write_amazon_aplus_optimization_workbook" as const,
@@ -92,4 +114,29 @@ function productDescription(document: AplusContentDocument): string {
   return document.contentModuleList
     .map((module: AplusModule) => module.standardProductDescription?.body?.textList?.map(entry => entry.value ?? "").join(" ") ?? "")
     .find(Boolean) ?? "";
+}
+
+function aplusSalesAction(signal: AmazonAplusSalesSignal) {
+  if (signal.signal === "matched_ads_and_seller_sales") {
+    return {
+      focus: "protect_winning_message",
+      action: "Keep the current A+ direction stable and only test one module at a time after enough traffic accumulates."
+    };
+  }
+  if (signal.signal === "seller_order_without_ads_attribution") {
+    return {
+      focus: "protect_seller_order_message",
+      action: "Keep trust and comparison modules visible because Seller orders exist, then investigate why Ads attribution is weak."
+    };
+  }
+  if (signal.signal === "ads_attributed_without_seller_order") {
+    return {
+      focus: "reconcile_before_aplus_expansion",
+      action: "Reconcile the Ads attribution window and Seller order window before expanding A+ tests or increasing paid traffic."
+    };
+  }
+  return {
+    focus: "conversion_trust_rebuild",
+    action: "Prioritize A+ modules that explain benefit, installation fit, dimensions, warranty/support, and real bathroom use before sending more paid traffic."
+  };
 }

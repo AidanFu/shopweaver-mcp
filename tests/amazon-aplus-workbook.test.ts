@@ -18,14 +18,26 @@ describe("writeAmazonAplusOptimizationWorkbook", () => {
           expectedFinish: "Gold",
           expectedHeightInches: 38,
           sourceContentReferenceKey: "gold-content",
-          contentRecord: aplusContentRecord()
+          contentRecord: aplusContentRecord(),
+          salesSignal: {
+            signal: "no_ads_or_seller_sales",
+            adSpend: 32,
+            sellerOrders: 0,
+            adsOrders: 0
+          }
         },
         {
           asin: "B0GD89SVK9",
           expectedFinish: "Black",
           expectedHeightInches: 38,
           sourceContentReferenceKey: "black-content",
-          contentRecord: aplusContentRecord()
+          contentRecord: aplusContentRecord(),
+          salesSignal: {
+            signal: "matched_ads_and_seller_sales",
+            adSpend: 18,
+            sellerOrders: 1,
+            adsOrders: 1
+          }
         }
       ]
     })).resolves.toMatchObject({
@@ -35,12 +47,14 @@ describe("writeAmazonAplusOptimizationWorkbook", () => {
     });
 
     const workbook = XLSX.readFile(output);
-    expect(workbook.SheetNames).toEqual(["Summary", "Recommendations", "Proposed Module Plan", "Product Description", "Optimized Overlay Copy"]);
+    expect(workbook.SheetNames).toEqual(["Summary", "Recommendations", "Proposed Module Plan", "Product Description", "Optimized Overlay Copy", "Sales Signal Actions"]);
     expect(XLSX.utils.sheet_to_json(workbook.Sheets.Summary)[0]).toMatchObject({
       "ASIN": "B0GDPKVXSZ",
       "Finish": "Gold",
       "Source Content Reference Key": "gold-content",
       "Priority": "high",
+      "Sales Signal": "no_ads_or_seller_sales",
+      "A+ Sales Action Focus": "conversion_trust_rebuild",
       "Empty Overlay Modules": 1,
       "Generic Alt Text": 1
     });
@@ -54,6 +68,17 @@ describe("writeAmazonAplusOptimizationWorkbook", () => {
       "ASIN": "B0GD89SVK9",
       "Description": expect.stringContaining("polished Black finish")
     });
+    expect(XLSX.utils.sheet_to_json(workbook.Sheets["Sales Signal Actions"])).toMatchObject([{
+      "ASIN": "B0GDPKVXSZ",
+      "Signal": "no_ads_or_seller_sales",
+      "Focus": "conversion_trust_rebuild",
+      "Action": "Prioritize A+ modules that explain benefit, installation fit, dimensions, warranty/support, and real bathroom use before sending more paid traffic."
+    }, {
+      "ASIN": "B0GD89SVK9",
+      "Signal": "matched_ads_and_seller_sales",
+      "Focus": "protect_winning_message",
+      "Action": "Keep the current A+ direction stable and only test one module at a time after enough traffic accumulates."
+    }]);
   });
 });
 
