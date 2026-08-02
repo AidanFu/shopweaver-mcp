@@ -56,6 +56,14 @@ export interface AmazonCampaignSkuSignalInput {
   nonTargetSkusWithSales: string[];
 }
 
+export interface AmazonNormalizedSalesSignal {
+  sku: string;
+  signal: "matched_ads_and_seller_sales" | "ads_attributed_without_seller_order" | "seller_order_without_ads_attribution" | "no_ads_or_seller_sales";
+  adSpend?: number;
+  sellerOrders?: number;
+  adsOrders?: number;
+}
+
 export interface AmazonCampaignSkuSignalAnalysis {
   skuCampaigns: Array<{
     sku: string;
@@ -75,6 +83,23 @@ export interface AmazonCampaignSkuSignalAnalysis {
     signal: "target_spend_no_sales" | "target_sold" | "non_target_sold" | "collect_more_data";
     recommendation: string;
   }>;
+}
+
+export function buildAmazonCampaignSkuSignalInputFromSalesSignals(targetSkus: string[], salesSignals: AmazonNormalizedSalesSignal[]): AmazonCampaignSkuSignalInput {
+  const targetSet = new Set(targetSkus);
+  const targetSkusWithSales = salesSignals
+    .filter(signal => targetSet.has(signal.sku) && hasSellerSales(signal))
+    .map(signal => signal.sku);
+  const targetSkusWithoutSales = targetSkus.filter(sku => !targetSkusWithSales.includes(sku));
+  const nonTargetSkusWithSales = salesSignals
+    .filter(signal => !targetSet.has(signal.sku) && hasSellerSales(signal))
+    .map(signal => signal.sku);
+  return {
+    targetSkus,
+    targetSkusWithSales,
+    targetSkusWithoutSales,
+    nonTargetSkusWithSales
+  };
 }
 
 export interface AmazonCampaignSkuActionPlan {
@@ -731,6 +756,12 @@ function campaignSkuSignal(sku: string, spend: number, orders: number, signals: 
   if (signals.targetSkusWithoutSales.includes(sku) && spend > 0 && orders === 0) return "target_spend_no_sales";
   if (signals.nonTargetSkusWithSales.includes(sku)) return "non_target_sold";
   return "collect_more_data";
+}
+
+function hasSellerSales(signal: AmazonNormalizedSalesSignal): boolean {
+  return signal.sellerOrders !== undefined
+    ? signal.sellerOrders > 0
+    : signal.signal === "matched_ads_and_seller_sales" || signal.signal === "seller_order_without_ads_attribution";
 }
 
 function campaignSkuRecommendation(sku: string, signal: AmazonCampaignSkuSignalAnalysis["skuCampaigns"][number]["signal"]): string {

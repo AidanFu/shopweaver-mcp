@@ -1,5 +1,5 @@
 import type { AmazonAdsClient } from "./ads-client.js";
-import { analyzeAmazonCampaignSkuSignals, analyzeAmazonSearchTermReportRows, buildAmazonAdsBidKeywordPreview, buildAmazonCampaignBudgetSalesPlan, buildAmazonCampaignSkuActionPlan, buildAmazonCampaignSkuBudgetReviewPreview, buildAmazonCampaignSkuCampaignControlPreview, buildAmazonCampaignSkuControlPreview, buildAmazonCampaignSkuStateReviewPreview } from "./campaign-optimization.js";
+import { analyzeAmazonCampaignSkuSignals, analyzeAmazonSearchTermReportRows, buildAmazonAdsBidKeywordPreview, buildAmazonCampaignBudgetSalesPlan, buildAmazonCampaignSkuActionPlan, buildAmazonCampaignSkuSignalInputFromSalesSignals, buildAmazonCampaignSkuBudgetReviewPreview, buildAmazonCampaignSkuCampaignControlPreview, buildAmazonCampaignSkuControlPreview, buildAmazonCampaignSkuStateReviewPreview, type AmazonNormalizedSalesSignal } from "./campaign-optimization.js";
 
 type AmazonAdsSkuOptimizationClient = Pick<AmazonAdsClient, "createSponsoredProductsAdvertisedProductReport" | "getReport" | "downloadReportRows" | "listSponsoredProductsCampaigns">;
 
@@ -10,6 +10,7 @@ export interface AmazonAdsSkuOptimizationCycleInput {
   targetSkus: string[];
   targetSkusWithSales: string[];
   nonTargetSkusWithSales: string[];
+  salesSignals?: AmazonNormalizedSalesSignal[];
   reportId?: string;
 }
 
@@ -51,13 +52,15 @@ export async function runAmazonAdsSkuOptimizationCycle(amazonAds: AmazonAdsSkuOp
 
   const rows = await amazonAds.downloadReportRows(report.url);
   const searchTermAnalysis = analyzeAmazonSearchTermReportRows(rows);
-  const targetSkusWithoutSales = input.targetSkus.filter(sku => !input.targetSkusWithSales.includes(sku));
-  const analysis = analyzeAmazonCampaignSkuSignals(rows, {
+  const skuSignalInput = input.salesSignals?.length
+    ? buildAmazonCampaignSkuSignalInputFromSalesSignals(input.targetSkus, input.salesSignals)
+    : {
     targetSkus: input.targetSkus,
     targetSkusWithSales: input.targetSkusWithSales,
-    targetSkusWithoutSales,
+      targetSkusWithoutSales: input.targetSkus.filter(sku => !input.targetSkusWithSales.includes(sku)),
     nonTargetSkusWithSales: input.nonTargetSkusWithSales
-  });
+      };
+  const analysis = analyzeAmazonCampaignSkuSignals(rows, skuSignalInput);
   const actionPlan = buildAmazonCampaignSkuActionPlan(analysis);
   const campaignControlPreview = buildAmazonCampaignSkuCampaignControlPreview(analysis, actionPlan);
   const campaignsResponse = await amazonAds.listSponsoredProductsCampaigns(input.profileId, { maxResults: 100 }) as { campaigns?: Array<Record<string, unknown>> };

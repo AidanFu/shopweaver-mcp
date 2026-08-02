@@ -1,13 +1,16 @@
 #!/usr/bin/env node
+import { readFile } from "node:fs/promises";
 import { stdout } from "node:process";
 import { pathToFileURL } from "node:url";
 import { AmazonAdsClient } from "./amazon/ads-client.js";
 import { type AmazonAdsSkuOptimizationCycleInput, runAmazonAdsSkuOptimizationCycle } from "./amazon/ads-sku-optimization-cycle.js";
+import type { AmazonNormalizedSalesSignal } from "./amazon/campaign-optimization.js";
 import { KeychainCredentialStore } from "./credentials/keychain.js";
 import { ShopWeaverError } from "./errors.js";
 
 export interface AmazonAdsSkuOptimizeArgs extends AmazonAdsSkuOptimizationCycleInput {
   outputFormat: "json" | "summary" | "apply-plan" | "budget-preview" | "keyword-bids-preview" | "ad-group-bids-preview" | "negative-keywords-preview";
+  salesSignalsPath?: string;
 }
 
 export function parseAmazonAdsSkuOptimizeArgs(args: string[]): AmazonAdsSkuOptimizeArgs {
@@ -31,6 +34,7 @@ export function parseAmazonAdsSkuOptimizeArgs(args: string[]): AmazonAdsSkuOptim
     targetSkusWithSales: splitCsv(values.get("--target-skus-with-sales") ?? ""),
     nonTargetSkusWithSales: splitCsv(values.get("--non-target-skus-with-sales") ?? ""),
     outputFormat: outputFormat(values.get("--format")),
+    ...(values.get("--sales-signals") ? { salesSignalsPath: values.get("--sales-signals") } : {}),
     ...(values.get("--report-id") ? { reportId: values.get("--report-id") } : {})
   };
 }
@@ -39,8 +43,20 @@ async function main(): Promise<void> {
   const store = new KeychainCredentialStore();
   const amazonAds = new AmazonAdsClient(store);
   const args = parseAmazonAdsSkuOptimizeArgs(process.argv.slice(2));
-  const result = await runAmazonAdsSkuOptimizationCycle(amazonAds, args);
+  const result = await runAmazonAdsSkuOptimizationCycle(amazonAds, {
+    ...args,
+    ...(args.salesSignalsPath ? { salesSignals: await loadAmazonAdsSkuSalesSignals(args.salesSignalsPath) } : {})
+  });
   stdout.write(`${renderAmazonAdsSkuOptimizationResult(args, result)}\n`);
+}
+
+export async function loadAmazonAdsSkuSalesSignals(filePath: string): Promise<AmazonNormalizedSalesSignal[]> {
+  const input = JSON.parse(await readFile(filePath, "utf8")) as {
+    salesSignals?: AmazonNormalizedSalesSignal[];
+    adsOrderComparison?: { salesSignals?: AmazonNormalizedSalesSignal[] };
+  } | AmazonNormalizedSalesSignal[];
+  if (Array.isArray(input)) return input;
+  return input.adsOrderComparison?.salesSignals ?? input.salesSignals ?? [];
 }
 
 function renderAmazonAdsSkuOptimizationResult(args: AmazonAdsSkuOptimizeArgs, result: Record<string, any>): string {
@@ -224,7 +240,7 @@ function winnerTermLines(values: unknown): string[] {
 }
 
 function usageError() {
-  return new ShopWeaverError("AMAZON_ADS_SKU_OPTIMIZE_ARGS_INVALID", "Usage: npm run amazon:ads:sku -- --profile-id PROFILE --start-date YYYY-MM-DD --end-date YYYY-MM-DD --target-skus SKU1,SKU2 [--target-skus-with-sales SKU1] [--non-target-skus-with-sales SKU3] [--report-id REPORT_ID] [--format json|summary|apply-plan|budget-preview|keyword-bids-preview|ad-group-bids-preview|negative-keywords-preview]");
+  return new ShopWeaverError("AMAZON_ADS_SKU_OPTIMIZE_ARGS_INVALID", "Usage: npm run amazon:ads:sku -- --profile-id PROFILE --start-date YYYY-MM-DD --end-date YYYY-MM-DD --target-skus SKU1,SKU2 [--target-skus-with-sales SKU1] [--non-target-skus-with-sales SKU3] [--sales-signals /path/order-comparison.json] [--report-id REPORT_ID] [--format json|summary|apply-plan|budget-preview|keyword-bids-preview|ad-group-bids-preview|negative-keywords-preview]");
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

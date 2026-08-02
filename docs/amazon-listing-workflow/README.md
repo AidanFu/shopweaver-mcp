@@ -137,6 +137,8 @@ The comparison also returns `listingOptimizationActions`. These review-only acti
 
 The same comparison result includes a normalized `salesSignals` array. Pass that array directly into existing-listing, A+, or Brand Store workbook tools so listing copy, A+ modules, Store tile order, and campaign decisions use the same Ads-vs-orders evidence.
 
+The Ads SKU optimizer also accepts those signals. In MCP calls, pass `salesSignals` into the SKU preview tools. In CLI usage, pass the order comparison JSON with `npm run amazon:ads:sku -- ... --sales-signals /path/order-comparison.json`; ShopWeaver derives target SKUs with Seller sales, target SKUs without Seller sales, and non-target seller demand from the same normalized signal list.
+
 The same SKU signals can be passed into `amazon_write_brand_store_workbook` as `salesSignals`. Brand Store planning then ranks proven sellers earlier, keeps unattributed sellers visible, and marks no-sale SKUs as diagnostic tiles instead of default hero placements.
 
 The A+ workbook can also carry per-ASIN or per-SKU `salesSignal` data, either attached to each item or passed as top-level `salesSignals`. It adds a `Sales Signal Actions` sheet so weak/no-sale products get stronger benefit, dimension, installation, warranty, and real-use modules before more ad traffic, while proven sellers are protected from unnecessary A+ churn.

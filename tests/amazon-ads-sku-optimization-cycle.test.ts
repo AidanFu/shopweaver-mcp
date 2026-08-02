@@ -159,4 +159,59 @@ describe("runAmazonAdsSkuOptimizationCycle", () => {
       }
     });
   });
+
+  it("uses normalized sales signals instead of manually split SKU sales lists", async () => {
+    const client = {
+      async createSponsoredProductsAdvertisedProductReport() {
+        throw new Error("not expected");
+      },
+      async getReport() {
+        return { reportId: "sku-report-1", status: "COMPLETED", url: "https://example.test/sku-report.gz" };
+      },
+      async downloadReportRows() {
+        return [
+          { campaignId: "campaign-1", campaignName: "Exact Gold", adGroupId: "adgroup-1", advertisedSku: "DH-E37S-W6DM", keywordId: "keyword-1", searchTerm: "heated towel rack", clicks: 18, cost: 32, purchases7d: 0, sales7d: 0, bid: 0.8 },
+          { campaignId: "campaign-2", campaignName: "Exact Silver", adGroupId: "adgroup-2", advertisedSku: "5H-2EH1-7H77", keywordId: "keyword-2", searchTerm: "heated towel rack silver", clicks: 20, cost: 18, purchases7d: 0, sales7d: 0, bid: 0.7 }
+        ];
+      },
+      async listSponsoredProductsCampaigns() {
+        return { campaigns: [] };
+      }
+    };
+
+    await expect(runAmazonAdsSkuOptimizationCycle(client, {
+      profileId: "profile-1",
+      reportId: "sku-report-1",
+      startDate: "2026-07-29",
+      endDate: "2026-08-01",
+      targetSkus: ["DH-E37S-W6DM", "5H-2EH1-7H77"],
+      targetSkusWithSales: [],
+      nonTargetSkusWithSales: [],
+      salesSignals: [{
+        sku: "DH-E37S-W6DM",
+        signal: "no_ads_or_seller_sales",
+        adSpend: 32,
+        sellerOrders: 0,
+        adsOrders: 0
+      }, {
+        sku: "5H-2EH1-7H77",
+        signal: "seller_order_without_ads_attribution",
+        adSpend: 18,
+        sellerOrders: 1,
+        adsOrders: 0
+      }]
+    })).resolves.toMatchObject({
+      analysis: {
+        skuCampaigns: [
+          { sku: "DH-E37S-W6DM", signal: "target_spend_no_sales" },
+          { sku: "5H-2EH1-7H77", signal: "target_sold" }
+        ]
+      },
+      strategyPlan: {
+        salesGrowth: {
+          recommendedActions: ["Keep 1 SKU(s) with recent sales active, but scale only after Ads attribution and seller orders agree."]
+        }
+      }
+    });
+  });
 });

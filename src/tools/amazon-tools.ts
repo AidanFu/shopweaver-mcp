@@ -24,6 +24,14 @@ function result(value: unknown) {
   return { content: [{ type: "text" as const, text: JSON.stringify(value, null, 2) }], structuredContent: value as Record<string, unknown> };
 }
 
+const amazonSalesSignalSchema = z.object({
+  sku: z.string().min(1),
+  signal: z.enum(["matched_ads_and_seller_sales", "ads_attributed_without_seller_order", "seller_order_without_ads_attribution", "no_ads_or_seller_sales"]),
+  adSpend: z.number().nonnegative().optional(),
+  sellerOrders: z.number().nonnegative().optional(),
+  adsOrders: z.number().nonnegative().optional()
+});
+
 type AmazonListingPayload = { summaries?: Array<{ productType?: string }> };
 type AmazonListingCopyPreview = {
   sku: string;
@@ -1073,6 +1081,7 @@ export function registerAmazonTools(server: McpServer, store: CredentialStore, a
         targetSkus: z.array(z.string().min(1)).min(1),
         targetSkusWithSales: z.array(z.string().min(1)).default([]),
         nonTargetSkusWithSales: z.array(z.string().min(1)).default([]),
+        salesSignals: z.array(amazonSalesSignalSchema).optional(),
         reportId: z.string().min(1).optional()
       }
     }, async input => result(await amazonAdsWrites.previewSkuOptimizerBudgetUpdates(input)));
@@ -1086,6 +1095,7 @@ export function registerAmazonTools(server: McpServer, store: CredentialStore, a
         targetSkus: z.array(z.string().min(1)).min(1),
         targetSkusWithSales: z.array(z.string().min(1)).default([]),
         nonTargetSkusWithSales: z.array(z.string().min(1)).default([]),
+        salesSignals: z.array(amazonSalesSignalSchema).optional(),
         reportId: z.string().min(1).optional()
       }
     }, async input => result(await amazonAdsWrites.previewSkuOptimizerKeywordBidUpdates(input)));
@@ -1099,6 +1109,7 @@ export function registerAmazonTools(server: McpServer, store: CredentialStore, a
         targetSkus: z.array(z.string().min(1)).min(1),
         targetSkusWithSales: z.array(z.string().min(1)).default([]),
         nonTargetSkusWithSales: z.array(z.string().min(1)).default([]),
+        salesSignals: z.array(amazonSalesSignalSchema).optional(),
         reportId: z.string().min(1).optional()
       }
     }, async input => result(await amazonAdsWrites.previewSkuOptimizerAdGroupBidUpdates(input)));
@@ -1112,6 +1123,7 @@ export function registerAmazonTools(server: McpServer, store: CredentialStore, a
         targetSkus: z.array(z.string().min(1)).min(1),
         targetSkusWithSales: z.array(z.string().min(1)).default([]),
         nonTargetSkusWithSales: z.array(z.string().min(1)).default([]),
+        salesSignals: z.array(amazonSalesSignalSchema).optional(),
         reportId: z.string().min(1).optional()
       }
     }, async input => result(await amazonAdsWrites.previewSkuOptimizerNegativeKeywords(input)));
@@ -1125,6 +1137,7 @@ export function registerAmazonTools(server: McpServer, store: CredentialStore, a
         targetSkus: z.array(z.string().min(1)).min(1),
         targetSkusWithSales: z.array(z.string().min(1)).default([]),
         nonTargetSkusWithSales: z.array(z.string().min(1)).default([]),
+        salesSignals: z.array(amazonSalesSignalSchema).optional(),
         reportId: z.string().min(1).optional()
       }
     }, async input => result(await amazonAdsWrites.previewSkuOptimizerApplyPlan(input)));

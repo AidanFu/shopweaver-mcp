@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { analyzeAmazonCampaignMetrics, analyzeAmazonCampaignSkuSignals, analyzeAmazonSearchTermReportRows, buildAmazonAdsBidKeywordPreview, buildAmazonCampaignBudgetSalesPlan, buildAmazonCampaignSkuActionPlan, buildAmazonCampaignSkuBudgetReviewPreview, buildAmazonCampaignSkuCampaignControlPreview, buildAmazonCampaignSkuControlPreview, buildAmazonCampaignSkuStateReviewPreview } from "../src/amazon/campaign-optimization.js";
+import { analyzeAmazonCampaignMetrics, analyzeAmazonCampaignSkuSignals, analyzeAmazonSearchTermReportRows, buildAmazonAdsBidKeywordPreview, buildAmazonCampaignBudgetSalesPlan, buildAmazonCampaignSkuActionPlan, buildAmazonCampaignSkuSignalInputFromSalesSignals, buildAmazonCampaignSkuBudgetReviewPreview, buildAmazonCampaignSkuCampaignControlPreview, buildAmazonCampaignSkuControlPreview, buildAmazonCampaignSkuStateReviewPreview } from "../src/amazon/campaign-optimization.js";
 
 describe("analyzeAmazonCampaignMetrics", () => {
   it("flags spend with clicks but no orders for budget review", () => {
@@ -148,6 +148,39 @@ describe("analyzeAmazonCampaignMetrics", () => {
           { campaignId: "campaign-3", campaignName: "Hardware Kit", adGroupIds: [], spend: 4, sales: 15, orders: 1 }
         ] }
       ]
+    });
+  });
+
+  it("derives campaign SKU signal inputs from normalized Ads-vs-orders sales signals", () => {
+    expect(buildAmazonCampaignSkuSignalInputFromSalesSignals(["DH-E37S-W6DM", "77-UM99-B96T", "5H-2EH1-7H77"], [{
+      sku: "DH-E37S-W6DM",
+      signal: "ads_attributed_without_seller_order",
+      adSpend: 32,
+      sellerOrders: 0,
+      adsOrders: 1
+    }, {
+      sku: "77-UM99-B96T",
+      signal: "no_ads_or_seller_sales",
+      adSpend: 26,
+      sellerOrders: 0,
+      adsOrders: 0
+    }, {
+      sku: "5H-2EH1-7H77",
+      signal: "seller_order_without_ads_attribution",
+      adSpend: 18,
+      sellerOrders: 1,
+      adsOrders: 0
+    }, {
+      sku: "80-16Z5-E38T",
+      signal: "matched_ads_and_seller_sales",
+      adSpend: 4,
+      sellerOrders: 1,
+      adsOrders: 1
+    }])).toEqual({
+      targetSkus: ["DH-E37S-W6DM", "77-UM99-B96T", "5H-2EH1-7H77"],
+      targetSkusWithSales: ["5H-2EH1-7H77"],
+      targetSkusWithoutSales: ["DH-E37S-W6DM", "77-UM99-B96T"],
+      nonTargetSkusWithSales: ["80-16Z5-E38T"]
     });
   });
 

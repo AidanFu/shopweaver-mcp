@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { buildAmazonAdsSkuAdGroupBidsPreviewPayload, buildAmazonAdsSkuApplyPlanPayload, buildAmazonAdsSkuBudgetPreviewPayload, buildAmazonAdsSkuKeywordBidsPreviewPayload, buildAmazonAdsSkuNegativeKeywordsPreviewPayload, parseAmazonAdsSkuOptimizeArgs, renderAmazonAdsSkuOptimizationSummary } from "../src/amazon-ads-sku-optimize.js";
+import { mkdtemp, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { buildAmazonAdsSkuAdGroupBidsPreviewPayload, buildAmazonAdsSkuApplyPlanPayload, buildAmazonAdsSkuBudgetPreviewPayload, buildAmazonAdsSkuKeywordBidsPreviewPayload, buildAmazonAdsSkuNegativeKeywordsPreviewPayload, loadAmazonAdsSkuSalesSignals, parseAmazonAdsSkuOptimizeArgs, renderAmazonAdsSkuOptimizationSummary } from "../src/amazon-ads-sku-optimize.js";
 
 describe("parseAmazonAdsSkuOptimizeArgs", () => {
   it("parses SKU campaign optimization cycle arguments", () => {
@@ -10,6 +13,7 @@ describe("parseAmazonAdsSkuOptimizeArgs", () => {
       "--target-skus", "DH-E37S-W6DM,77-UM99-B96T,5H-2EH1-7H77",
       "--target-skus-with-sales", "5H-2EH1-7H77",
       "--non-target-skus-with-sales", "80-16Z5-E38T",
+      "--sales-signals", "/tmp/sales-signals.json",
       "--report-id", "sku-report-1"
     ])).toEqual({
       profileId: "749555662454438",
@@ -18,9 +22,34 @@ describe("parseAmazonAdsSkuOptimizeArgs", () => {
       targetSkus: ["DH-E37S-W6DM", "77-UM99-B96T", "5H-2EH1-7H77"],
       targetSkusWithSales: ["5H-2EH1-7H77"],
       nonTargetSkusWithSales: ["80-16Z5-E38T"],
+      salesSignalsPath: "/tmp/sales-signals.json",
       reportId: "sku-report-1",
       outputFormat: "json"
     });
+  });
+
+  it("loads normalized sales signals from an order comparison JSON file", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "shopweaver-ads-sku-signals-"));
+    const filePath = join(dir, "orders-comparison.json");
+    await writeFile(filePath, JSON.stringify({
+      adsOrderComparison: {
+        salesSignals: [{
+          sku: "5H-2EH1-7H77",
+          signal: "seller_order_without_ads_attribution",
+          adSpend: 18,
+          sellerOrders: 1,
+          adsOrders: 0
+        }]
+      }
+    }));
+
+    await expect(loadAmazonAdsSkuSalesSignals(filePath)).resolves.toEqual([{
+      sku: "5H-2EH1-7H77",
+      signal: "seller_order_without_ads_attribution",
+      adSpend: 18,
+      sellerOrders: 1,
+      adsOrders: 0
+    }]);
   });
 
   it("parses summary output format", () => {
