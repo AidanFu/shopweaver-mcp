@@ -140,6 +140,36 @@ export class AmazonListingWriteService {
       applied: true
     };
   }
+
+  async previewApprovedListingCopyUpdates(filePath: string, marketplaceId: string, productType: string) {
+    const preview = await previewAmazonExistingListingApprovedCopyUpdates(filePath, { marketplaceId, productType });
+    const validationResults = await Promise.all(preview.patches.map(async item => ({
+      sku: item.sku,
+      validation: await this.amazon.patchListingItem(item.sku, item.patch, { validationPreview: true })
+    })));
+    return {
+      ...preview,
+      operation: "amazon_update_listing_copy_from_workbook" as const,
+      validationResults,
+      ...this.confirmations.issue("amazon_update_listing_copy_from_workbook", 0, preview),
+      warning: "This validation preview did not change Amazon listings. Confirm with the returned token to apply the exact approved workbook patches."
+    };
+  }
+
+  async confirmApprovedListingCopyUpdates(filePath: string, marketplaceId: string, productType: string, confirmationToken: string) {
+    const preview = await previewAmazonExistingListingApprovedCopyUpdates(filePath, { marketplaceId, productType });
+    this.confirmations.consume(confirmationToken, "amazon_update_listing_copy_from_workbook", 0, preview);
+    const results = await Promise.all(preview.patches.map(async item => ({
+      sku: item.sku,
+      result: await this.amazon.patchListingItem(item.sku, item.patch)
+    })));
+    return {
+      ...preview,
+      operation: "amazon_update_listing_copy_from_workbook" as const,
+      results,
+      applied: true
+    };
+  }
 }
 
 export class AmazonAdsWriteService {
@@ -852,6 +882,19 @@ export function registerAmazonTools(server: McpServer, store: CredentialStore, a
     }, async ({ mode, sku, confirmationToken }) => result(mode === "preview"
       ? await amazonListingWrites.previewListingCopyUpdate(sku)
       : await amazonListingWrites.confirmListingCopyUpdate(sku, confirmationToken ?? "")));
+
+    server.registerTool("amazon_update_listing_copy_from_workbook", {
+      description: "Preview or confirm applying approved optimized listing copy rows from a reviewed workbook. Preview validates only; confirm changes listings only after exact confirmation.",
+      inputSchema: {
+        mode: z.enum(["preview", "confirm"]).default("preview"),
+        filePath: z.string().min(1),
+        marketplaceId: z.string().min(1),
+        productType: z.string().min(1),
+        confirmationToken: z.string().min(20).optional()
+      }
+    }, async ({ mode, filePath, marketplaceId, productType, confirmationToken }) => result(mode === "preview"
+      ? await amazonListingWrites.previewApprovedListingCopyUpdates(filePath, marketplaceId, productType)
+      : await amazonListingWrites.confirmApprovedListingCopyUpdates(filePath, marketplaceId, productType, confirmationToken ?? "")));
   }
 
   if (amazonAdsWrites) {

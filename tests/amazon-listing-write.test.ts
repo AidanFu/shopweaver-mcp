@@ -1,4 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
+import { mkdtemp } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import * as XLSX from "xlsx";
 import { AmazonListingWriteService } from "../src/tools/amazon-tools.js";
 import { MemoryCredentialStore } from "../src/credentials/memory.js";
 import { ConfirmationStore } from "../src/writes/confirmations.js";
@@ -69,4 +73,51 @@ describe("AmazonListingWriteService", () => {
       .resolves.toMatchObject({ operation: "amazon_update_listing_copy", applied: true, result: { status: "VALID", issues: [] } });
     expect(amazon.patchListingItem).toHaveBeenLastCalledWith("DH-E37S-W6DM", secondPreview.patch);
   });
+
+  it("previews and confirms approved workbook listing copy updates with exact payload matching", async () => {
+    const { service, amazon } = await dependencies();
+    const dir = await mkdtemp(join(tmpdir(), "shopweaver-listing-write-"));
+    const file = join(dir, "reviewed-listings.xlsx");
+    writeReviewedWorkbook(file, "approve");
+
+    const preview = await service.previewApprovedListingCopyUpdates(file, "ATVPDKIKX0DER", "TOWEL_HOLDER");
+
+    expect(preview.operation).toBe("amazon_update_listing_copy_from_workbook");
+    expect(preview.applied).toBe(false);
+    expect(preview.approvedListingCount).toBe(1);
+    expect(preview.validationResults).toEqual([{ sku: "DH-E37S-W6DM", validation: { status: "VALID", issues: [] } }]);
+    expect(amazon.patchListingItem).toHaveBeenCalledWith("DH-E37S-W6DM", preview.patches[0].patch, { validationPreview: true });
+
+    writeReviewedWorkbook(file, "defer");
+    await expect(service.confirmApprovedListingCopyUpdates(file, "ATVPDKIKX0DER", "TOWEL_HOLDER", preview.confirmationToken))
+      .rejects.toMatchObject({ code: "PREVIEW_MISMATCH" });
+
+    writeReviewedWorkbook(file, "approve");
+    const secondPreview = await service.previewApprovedListingCopyUpdates(file, "ATVPDKIKX0DER", "TOWEL_HOLDER");
+    await expect(service.confirmApprovedListingCopyUpdates(file, "ATVPDKIKX0DER", "TOWEL_HOLDER", secondPreview.confirmationToken))
+      .resolves.toMatchObject({
+        operation: "amazon_update_listing_copy_from_workbook",
+        applied: true,
+        approvedListingCount: 1,
+        results: [{ sku: "DH-E37S-W6DM", result: { status: "VALID", issues: [] } }]
+      });
+    expect(amazon.patchListingItem).toHaveBeenLastCalledWith("DH-E37S-W6DM", preview.patches[0].patch);
+  });
 });
+
+function writeReviewedWorkbook(file: string, decision: string) {
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet([{
+    "SKU": "DH-E37S-W6DM",
+    "Optimized Title": "Electric Towel Warmer Rack, Wall Mount 3-Bar Stainless Steel, 38 in, Gold",
+    "Bullet 1": "Benefit one.",
+    "Bullet 2": "Benefit two.",
+    "Bullet 3": "Benefit three.",
+    "Bullet 4": "Worry reducer.",
+    "Bullet 5": "Post-sale support.",
+    "Optimized Description": "Optimized bathroom comfort description.",
+    "Optimized Backend Search Terms": "heated towel rail bathroom towel dryer wall towel warmer",
+    "Decision": decision
+  }]), "Optimized Copy");
+  XLSX.writeFile(workbook, file);
+}

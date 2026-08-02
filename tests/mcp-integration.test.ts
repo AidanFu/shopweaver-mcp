@@ -85,6 +85,7 @@ describe("MCP integration", () => {
       "amazon_preview_optimized_aplus_content",
       "amazon_read_existing_listing_copy_decisions",
       "amazon_update_listing_copy",
+      "amazon_update_listing_copy_from_workbook",
       "amazon_validate_listing_copy_update",
       "amazon_validate_optimized_aplus_content",
       "amazon_write_aplus_optimization_workbook",
@@ -374,6 +375,70 @@ describe("MCP integration", () => {
         }
       }]
     });
+    await Promise.all([client.close(), server.close()]);
+  });
+
+  it("previews workbook listing copy updates through Amazon validation without applying changes", async () => {
+    const store = new MemoryCredentialStore();
+    await store.set("amazonSpApiAuth", {
+      refreshToken: "refresh",
+      sellingPartnerId: "A1SELLER",
+      region: "na",
+      marketplaceIds: ["ATVPDKIKX0DER"]
+    });
+    const clientApi = { request: vi.fn() } as never;
+    const listings = new ListingService(clientApi, store);
+    const orders = new OrderService(clientApi, store);
+    const writes = new DraftWriteService(clientApi, listings, store, new ConfirmationStore());
+    const googleFolders = new GoogleFolderToolService({} as never);
+    const driveImports = new DriveImportService({} as never);
+    const driveImageUploads = new DriveImageUploadService(clientApi, listings, {} as never, store, new ConfirmationStore());
+    const amazonAds = new AmazonAdsClient(store, vi.fn());
+    const amazonSpApi = {
+      getListingItem: vi.fn(),
+      patchListingItem: vi.fn().mockResolvedValue({ status: "VALID", issues: [] })
+    } as unknown as AmazonSpApiClient;
+    const amazonListingWrites = new AmazonListingWriteService(store, amazonSpApi, new ConfirmationStore(() => 1_000));
+    const amazonAdsWrites = new AmazonAdsWriteService(amazonAds, new ConfirmationStore());
+    const amazonAdsChangeLog = { record: vi.fn(), read: vi.fn() };
+    const server = createServer({ store, listings, orders, writes, googleFolders, driveImports, driveImageUploads, amazonAds, amazonSpApi, amazonListingWrites, amazonAdsWrites, amazonAdsChangeLog });
+    const client = new Client({ name: "test", version: "1" });
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
+    const dir = await mkdtemp(join(tmpdir(), "shopweaver-listing-write-tool-"));
+    const filePath = join(dir, "reviewed-listings.xlsx");
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet([{
+      "SKU": "DH-E37S-W6DM",
+      "Optimized Title": "Electric Towel Warmer Rack, Wall Mount 3-Bar Stainless Steel, 38 in, Gold",
+      "Bullet 1": "Benefit one.",
+      "Bullet 2": "Benefit two.",
+      "Bullet 3": "Benefit three.",
+      "Bullet 4": "Worry reducer.",
+      "Bullet 5": "Post-sale support.",
+      "Optimized Description": "Optimized bathroom comfort description.",
+      "Optimized Backend Search Terms": "heated towel rail bathroom towel dryer wall towel warmer",
+      "Decision": "approve"
+    }]), "Optimized Copy");
+    XLSX.writeFile(workbook, filePath);
+
+    const response = await client.callTool({
+      name: "amazon_update_listing_copy_from_workbook",
+      arguments: {
+        mode: "preview",
+        filePath,
+        marketplaceId: "ATVPDKIKX0DER",
+        productType: "TOWEL_HOLDER"
+      }
+    });
+
+    expect(response.structuredContent).toMatchObject({
+      operation: "amazon_update_listing_copy_from_workbook",
+      applied: false,
+      approvedListingCount: 1,
+      validationResults: [{ sku: "DH-E37S-W6DM", validation: { status: "VALID", issues: [] } }]
+    });
+    expect(amazonSpApi.patchListingItem).toHaveBeenCalledWith("DH-E37S-W6DM", expect.objectContaining({ productType: "TOWEL_HOLDER" }), { validationPreview: true });
     await Promise.all([client.close(), server.close()]);
   });
 });

@@ -46,6 +46,7 @@ const allowed = [
   "amazon_preview_optimized_aplus_content",
   "amazon_read_existing_listing_copy_decisions",
   "amazon_update_listing_copy",
+  "amazon_update_listing_copy_from_workbook",
   "amazon_validate_listing_copy_update",
   "amazon_validate_optimized_aplus_content",
   "amazon_write_aplus_optimization_workbook",
