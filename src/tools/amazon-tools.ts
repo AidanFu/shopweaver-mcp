@@ -7,11 +7,12 @@ import { buildAmazonAdsCostControlPlanFromReportUrl } from "../amazon/ads-cost-c
 import { runAmazonAdsCampaignOptimizationCycle } from "../amazon/ads-optimization-cycle.js";
 import { runAmazonAdsSkuOptimizationCycle, type AmazonAdsSkuOptimizationCycleInput } from "../amazon/ads-sku-optimization-cycle.js";
 import { buildAmazonAdsAppliedActionLearningPlan, compareAmazonAdsOptimizationReportFiles, summarizeAmazonAdsAppliedActions } from "../amazon/ads-optimization-history.js";
-import { analyzeAmazonSearchTermReportFile, previewAmazonAdsApprovedActions, readAmazonAdsActionDecisions, writeAmazonSearchTermOptimizationWorkbook } from "../amazon/campaign-report-file.js";
+import { analyzeAmazonSearchTermReportFile, previewAmazonAdsApprovedActions, readAmazonAdsActionDecisions, readAmazonSearchTermReportRows, writeAmazonSearchTermOptimizationWorkbook } from "../amazon/campaign-report-file.js";
 import { analyzeAmazonCampaignMetrics, analyzeAmazonSearchTermReportRows } from "../amazon/campaign-optimization.js";
 import { analyzeAmazonExistingListing, buildAmazonListingCopyPatch } from "../amazon/listing-optimization.js";
 import { previewAmazonExistingListingApprovedCopyUpdates, readAmazonExistingListingCopyDecisions, writeAmazonExistingListingOptimizationWorkbook } from "../amazon/listing-optimization-workbook.js";
 import { buildAmazonAdsSkuApplyPlanPayload } from "../amazon-ads-sku-optimize.js";
+import { buildAmazonOrdersAnalysisResult, summarizeAmazonOrders } from "../amazon-orders.js";
 import type { AmazonAdsChangeLog } from "../amazon/ads-change-log.js";
 import type { AmazonAdsClient } from "../amazon/ads-client.js";
 import type { AmazonSpApiClient } from "../amazon/sp-api-client.js";
@@ -729,6 +730,31 @@ export function registerAmazonTools(server: McpServer, store: CredentialStore, a
     description: "Read item-level details for one Amazon order through SP-API for SKU-level sales analysis. This is read-only and does not change orders, listings, ads, bids, budgets, inventory, or fulfillment.",
     inputSchema: { amazonOrderId: z.string().min(1) }
   }, async ({ amazonOrderId }) => result(await amazon.getOrderItems(amazonOrderId)));
+
+  server.registerTool("amazon_compare_orders_to_ads_sales", {
+    description: "Read recent Amazon seller orders with item details and compare Seller order SKU sales against a local Amazon Ads report file. This is read-only and does not change orders, listings, ads, bids, budgets, or inventory.",
+    inputSchema: {
+      createdAfter: z.string().min(1),
+      createdBefore: z.string().min(1).optional(),
+      marketplaceIds: z.array(z.string().min(1)).optional(),
+      orderStatuses: z.array(z.string().min(1)).optional(),
+      maxResultsPerPage: z.number().int().min(1).max(100).optional(),
+      nextToken: z.string().min(1).optional(),
+      targetSkus: z.array(z.string().min(1)).min(1),
+      adsReportFilePath: z.string().min(1)
+    }
+  }, async ({ targetSkus, adsReportFilePath, ...orderInput }) => {
+    const orders = await amazon.listOrders(orderInput) as { payload?: { Orders?: Array<{ AmazonOrderId?: string }> } };
+    const orderItemsByOrderId: Record<string, unknown> = {};
+    for (const order of orders.payload?.Orders ?? []) {
+      if (order.AmazonOrderId) orderItemsByOrderId[order.AmazonOrderId] = await amazon.getOrderItems(order.AmazonOrderId);
+    }
+    return result(buildAmazonOrdersAnalysisResult(
+      summarizeAmazonOrders(orders as never, orderItemsByOrderId as never),
+      { targetSkus },
+      await readAmazonSearchTermReportRows(adsReportFilePath)
+    ));
+  });
 
   server.registerTool("amazon_get_aplus_publish_records", {
     description: "Read published A+ Content records for one ASIN through SP-API. This is read-only and does not change A+ content.",

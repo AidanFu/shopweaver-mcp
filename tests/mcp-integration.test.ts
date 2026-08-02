@@ -73,6 +73,7 @@ describe("MCP integration", () => {
       "amazon_ads_update_campaign_states",
       "amazon_ads_update_keyword_bids",
       "amazon_ads_write_sp_search_term_optimization_workbook",
+      "amazon_compare_orders_to_ads_sales",
       "amazon_connection_status",
       "amazon_get_aplus_content_document",
       "amazon_get_aplus_publish_records",
@@ -186,6 +187,90 @@ describe("MCP integration", () => {
         applied: false,
         actionMix: "balanced_cost_and_query_cleanup",
         priority: "high"
+      }
+    });
+    await Promise.all([client.close(), server.close()]);
+  });
+
+  it("compares Amazon seller order item sales with Ads-attributed SKU sales through a read-only tool", async () => {
+    const store = new MemoryCredentialStore();
+    await store.set("shop", { userId: 1, shopId: 42 });
+    const clientApi = { request: vi.fn() } as never;
+    const listings = new ListingService(clientApi, store);
+    const orders = new OrderService(clientApi, store);
+    const writes = new DraftWriteService(clientApi, listings, store, new ConfirmationStore());
+    const googleFolders = new GoogleFolderToolService({} as never);
+    const driveImports = new DriveImportService({} as never);
+    const driveImageUploads = new DriveImageUploadService(clientApi, listings, {} as never, store, new ConfirmationStore());
+    const amazonAds = new AmazonAdsClient(store, vi.fn());
+    const amazonSpApi = {
+      listOrders: vi.fn().mockResolvedValue({
+        payload: {
+          Orders: [{
+            AmazonOrderId: "113-5004643-9613005",
+            PurchaseDate: "2026-07-29T00:07:00Z",
+            OrderStatus: "Shipped",
+            NumberOfItemsShipped: 1,
+            NumberOfItemsUnshipped: 0,
+            OrderTotal: { CurrencyCode: "USD", Amount: "184.90" }
+          }]
+        }
+      }),
+      getOrderItems: vi.fn().mockResolvedValue({
+        payload: {
+          OrderItems: [{
+            SellerSKU: "5H-2EH1-7H77",
+            ASIN: "B0GD7T3YGK",
+            Title: "Silver towel warmer",
+            QuantityOrdered: 1,
+            ItemPrice: { CurrencyCode: "USD", Amount: "184.90" }
+          }]
+        }
+      }),
+      getMarketplaceParticipations: vi.fn(),
+      getListingItem: vi.fn(),
+      patchListingItem: vi.fn(),
+      getAplusContentPublishRecords: vi.fn(),
+      getAplusContentDocument: vi.fn(),
+      validateAplusContentDocument: vi.fn()
+    };
+    const amazonListingWrites = new AmazonListingWriteService(store, amazonSpApi as never, new ConfirmationStore());
+    const amazonAdsWrites = new AmazonAdsWriteService(amazonAds, new ConfirmationStore());
+    const amazonAdsChangeLog = { record: vi.fn(), read: vi.fn() };
+    const server = createServer({ store, listings, orders, writes, googleFolders, driveImports, driveImageUploads, amazonAds, amazonSpApi: amazonSpApi as never, amazonListingWrites, amazonAdsWrites, amazonAdsChangeLog });
+    const client = new Client({ name: "test", version: "1" });
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
+    const dir = await mkdtemp(join(tmpdir(), "shopweaver-orders-ads-tool-"));
+    const adsReportFilePath = join(dir, "advertised-products.csv");
+    await import("node:fs/promises").then(({ writeFile }) => writeFile(adsReportFilePath, [
+      "advertisedSku,purchases7d,sales7d,cost",
+      "DH-E37S-W6DM,0,0,32",
+      "5H-2EH1-7H77,1,184.9,18"
+    ].join("\n")));
+
+    const response = await client.callTool({
+      name: "amazon_compare_orders_to_ads_sales",
+      arguments: {
+        createdAfter: "2026-07-29T00:00:00Z",
+        createdBefore: "2026-08-01T00:00:00Z",
+        targetSkus: ["DH-E37S-W6DM", "5H-2EH1-7H77"],
+        adsReportFilePath
+      }
+    });
+
+    expect(amazonSpApi.listOrders).toHaveBeenCalledWith({
+      createdAfter: "2026-07-29T00:00:00Z",
+      createdBefore: "2026-08-01T00:00:00Z"
+    });
+    expect(amazonSpApi.getOrderItems).toHaveBeenCalledWith("113-5004643-9613005");
+    expect(JSON.stringify(response.structuredContent)).not.toContain("113-5004643-9613005");
+    expect(response.structuredContent).toMatchObject({
+      orderCount: 1,
+      adsOrderComparison: {
+        operation: "compare_amazon_ads_sku_sales_to_seller_orders",
+        matchedSalesCount: 1,
+        noSalesCount: 1
       }
     });
     await Promise.all([client.close(), server.close()]);

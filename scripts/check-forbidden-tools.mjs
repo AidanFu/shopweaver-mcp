@@ -35,6 +35,7 @@ const allowed = [
   "amazon_ads_update_campaign_states",
   "amazon_ads_update_keyword_bids",
   "amazon_ads_write_sp_search_term_optimization_workbook",
+  "amazon_compare_orders_to_ads_sales",
   "amazon_get_aplus_content_document",
   "amazon_get_aplus_publish_records",
   "amazon_get_listing_item",

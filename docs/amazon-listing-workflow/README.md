@@ -48,6 +48,7 @@ amazon_ads_update_keyword_bids
 amazon_ads_update_ad_group_bids
 amazon_ads_create_negative_keywords_from_review
 amazon_ads_create_campaigns
+amazon_compare_orders_to_ads_sales
 ```
 
 Run preview mode first. Confirm mode writes only the workbook back to the allowed Google Drive folder for workbook tools, or applies the exact reviewed Amazon Ads payload for Ads tools.
@@ -124,6 +125,8 @@ The Ads loop is API-backed but still gated:
 The `amazon:ads:sku` CLI supports `--format apply-plan` to show all review-only write candidates together: budget updates, keyword bid updates, ad group bid updates, and negative keywords. The combined plan is not a write command.
 
 The `amazon:orders` CLI supports `--include-items true --target-skus SKU1,SKU2 --ads-report-file /absolute/path.csv` to compare Seller order item sales with Ads-attributed SKU sales. This is read-only and helps avoid cutting budget from SKUs that are selling in Seller Central but not clearly attributed in Ads.
+
+The `amazon_compare_orders_to_ads_sales` MCP tool runs the same read-only seller-order and local Ads report comparison from the normal tool surface.
 
 No Ads write is automatic. Budget, bid, campaign, keyword, negative-keyword, and campaign-creation changes require an explicit confirmation token.
 
