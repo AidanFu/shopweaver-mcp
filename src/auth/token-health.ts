@@ -25,6 +25,14 @@ export function isoExpiresAt(expiresAt: number | undefined): string | null {
   return expiresAt === undefined ? null : new Date(expiresAt).toISOString();
 }
 
-export function reconnectAction(providerName: string): string {
-  return `Run npm run google:setup to reconnect ${providerName}.`;
+export function reconnectAction(provider: TokenHealthProvider): string {
+  const actions: Record<TokenHealthProvider, string> = {
+    google_drive: "Run npm run google:setup to reconnect Google Drive.",
+    etsy: "Run npm run setup to reconnect Etsy.",
+    amazon_sp_api: "Run npm run amazon:setup to reconnect Amazon SP-API.",
+    amazon_ads: "Run npm run amazon:ads:setup to reconnect Amazon Ads.",
+    ebay: "Run npm run ebay:setup to reconnect eBay."
+  };
+
+  return actions[provider];
 }
