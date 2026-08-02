@@ -33,12 +33,13 @@ export function parseAmazonExistingListingWorkbookArgs(args: string[]): AmazonEx
 }
 
 export async function buildAmazonExistingListingWorkbookFromFile(args: AmazonExistingListingWorkbookArgs) {
-  const input = JSON.parse(await readFile(args.inputPath, "utf8")) as Pick<AmazonExistingListingOptimizationWorkbookInput, "listings">;
+  const input = JSON.parse(await readFile(args.inputPath, "utf8")) as Pick<AmazonExistingListingOptimizationWorkbookInput, "listings" | "salesSignals">;
   return writeAmazonExistingListingOptimizationWorkbook({
     outputPath: args.outputPath,
     marketplaceId: args.marketplaceId,
     productType: args.productType,
-    listings: input.listings
+    listings: input.listings,
+    ...(input.salesSignals ? { salesSignals: input.salesSignals } : {})
   });
 }
 

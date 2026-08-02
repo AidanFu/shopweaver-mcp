@@ -924,13 +924,21 @@ export function registerAmazonTools(server: McpServer, store: CredentialStore, a
       outputPath: z.string().min(1),
       skus: z.array(z.string().min(1)).min(1),
       marketplaceId: z.string().min(1),
-      productType: z.string().min(1)
+      productType: z.string().min(1),
+      salesSignals: z.array(z.object({
+        sku: z.string().min(1),
+        signal: z.enum(["matched_ads_and_seller_sales", "ads_attributed_without_seller_order", "seller_order_without_ads_attribution", "no_ads_or_seller_sales"]),
+        adSpend: z.number().nonnegative().optional(),
+        sellerOrders: z.number().nonnegative().optional(),
+        adsOrders: z.number().nonnegative().optional()
+      })).optional()
     }
-  }, async ({ outputPath, skus, marketplaceId, productType }) => result(await writeAmazonExistingListingOptimizationWorkbook({
+  }, async ({ outputPath, skus, marketplaceId, productType, salesSignals }) => result(await writeAmazonExistingListingOptimizationWorkbook({
     outputPath,
     marketplaceId,
     productType,
-    listings: await Promise.all(skus.map(sku => amazon.getListingItem(sku) as Promise<never>))
+    listings: await Promise.all(skus.map(sku => amazon.getListingItem(sku) as Promise<never>)),
+    ...(salesSignals ? { salesSignals } : {})
   })));
 
   server.registerTool("amazon_read_existing_listing_copy_decisions", {

@@ -65,6 +65,11 @@ describe("buildAmazonExistingListingWorkbookFromFile", () => {
           generic_keyword: [{ value: "Electric Heated Towel Rack" }]
         },
         issues: []
+      }],
+      salesSignals: [{
+        sku: "DH-E37S-W6DM",
+        signal: "no_ads_or_seller_sales",
+        adSpend: 32
       }]
     }));
 
@@ -86,6 +91,10 @@ describe("buildAmazonExistingListingWorkbookFromFile", () => {
     expect(XLSX.utils.sheet_to_json(workbook.Sheets["Patch Preview"])[0]).toMatchObject({
       "SKU": "DH-E37S-W6DM",
       "Patch Path": "/attributes/item_name"
+    });
+    expect(XLSX.utils.sheet_to_json(workbook.Sheets["Sales Signal Actions"])[0]).toMatchObject({
+      "SKU": "DH-E37S-W6DM",
+      "Signal": "no_ads_or_seller_sales"
     });
   });
 });

@@ -1,4 +1,4 @@
-import { mkdtemp, readFile } from "node:fs/promises";
+import { mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
@@ -12,12 +12,14 @@ describe("parseAmazonExistingListingLiveWorkbookArgs", () => {
       "--output", "/tmp/live-listing-optimization.xlsx",
       "--marketplace-id", "ATVPDKIKX0DER",
       "--product-type", "TOWEL_HOLDER",
+      "--sales-signals", "/tmp/sales-signals.json",
       "--format", "summary"
     ])).toEqual({
       skus: ["DH-E37S-W6DM", "77-UM99-B96T"],
       outputPath: "/tmp/live-listing-optimization.xlsx",
       marketplaceId: "ATVPDKIKX0DER",
       productType: "TOWEL_HOLDER",
+      salesSignalsPath: "/tmp/sales-signals.json",
       outputFormat: "summary"
     });
   });
@@ -46,6 +48,14 @@ describe("buildAmazonExistingListingWorkbookFromClient", () => {
   it("fetches listing items and writes the local workbook without write calls", async () => {
     const dir = await mkdtemp(join(tmpdir(), "shopweaver-live-listing-cli-"));
     const outputPath = join(dir, "live-listing-optimization.xlsx");
+    const salesSignalsPath = join(dir, "sales-signals.json");
+    await writeFile(salesSignalsPath, JSON.stringify({
+      salesSignals: [{
+        sku: "DH-E37S-W6DM",
+        signal: "no_ads_or_seller_sales",
+        adSpend: 32
+      }]
+    }));
     const client = {
       getListingItem: vi.fn().mockResolvedValue({
         sku: "DH-E37S-W6DM",
@@ -74,6 +84,7 @@ describe("buildAmazonExistingListingWorkbookFromClient", () => {
       outputPath,
       marketplaceId: "ATVPDKIKX0DER",
       productType: "TOWEL_HOLDER",
+      salesSignalsPath,
       outputFormat: "json"
     })).resolves.toMatchObject({
       operation: "write_amazon_existing_listing_optimization_workbook",
@@ -89,6 +100,10 @@ describe("buildAmazonExistingListingWorkbookFromClient", () => {
     expect(XLSX.utils.sheet_to_json(workbook.Sheets["Optimized Copy"])[0]).toMatchObject({
       "SKU": "DH-E37S-W6DM",
       "Optimized Title": "Electric Towel Warmer Rack, Wall Mount 3-Bar Stainless Steel, 38 in, Gold"
+    });
+    expect(XLSX.utils.sheet_to_json(workbook.Sheets["Sales Signal Actions"])[0]).toMatchObject({
+      "SKU": "DH-E37S-W6DM",
+      "Signal": "no_ads_or_seller_sales"
     });
   });
 });

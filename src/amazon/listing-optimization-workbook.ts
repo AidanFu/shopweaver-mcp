@@ -9,10 +9,20 @@ export interface AmazonExistingListingOptimizationWorkbookInput {
   marketplaceId: string;
   productType: string;
   listings: AmazonExistingListingInput[];
+  salesSignals?: AmazonExistingListingSalesSignal[];
+}
+
+export interface AmazonExistingListingSalesSignal {
+  sku: string;
+  signal: "matched_ads_and_seller_sales" | "ads_attributed_without_seller_order" | "seller_order_without_ads_attribution" | "no_ads_or_seller_sales";
+  adSpend?: number;
+  sellerOrders?: number;
+  adsOrders?: number;
 }
 
 export async function writeAmazonExistingListingOptimizationWorkbook(input: AmazonExistingListingOptimizationWorkbookInput) {
   if (!isAbsolute(input.outputPath)) throw new ShopWeaverError("AMAZON_EXISTING_LISTING_OUTPUT_PATH_INVALID", "Amazon existing listing optimization workbook output path must be absolute.");
+  const salesSignals = new Map((input.salesSignals ?? []).map(signal => [signal.sku, signal]));
   const rows = input.listings.map(listing => {
     const recommendation = analyzeAmazonExistingListing(listing);
     const patch = recommendation.optimizedTitle && recommendation.optimizedBullets && recommendation.optimizedDescription && recommendation.optimizedBackendSearchTerms
@@ -25,13 +35,15 @@ export async function writeAmazonExistingListingOptimizationWorkbook(input: Amaz
         backendSearchTerms: recommendation.optimizedBackendSearchTerms
       })
       : undefined;
-    return { listing, recommendation, patch };
+    return { listing, recommendation, patch, salesSignal: salesSignals.get(recommendation.sku) };
   });
   const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(rows.map(({ recommendation }) => ({
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(rows.map(({ recommendation, salesSignal }) => ({
     "SKU": recommendation.sku,
     "Status": recommendation.status,
     "Priority": recommendation.priority,
+    "Sales Signal": salesSignal?.signal ?? "",
+    "Listing Sales Action Focus": salesSignal ? listingSalesAction(salesSignal).focus : "",
     "Title Recommendation": recommendation.titleRecommendation,
     "Bullet Recommendation": recommendation.bulletRecommendation,
     "Description Recommendation": recommendation.descriptionRecommendation,
@@ -78,6 +90,17 @@ export async function writeAmazonExistingListingOptimizationWorkbook(input: Amaz
       "Preview JSON": JSON.stringify(item.value)
     })) ?? []
   )), "Patch Preview");
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(rows.flatMap(({ recommendation, salesSignal }) =>
+    salesSignal ? listingSalesAction(salesSignal).actions.map(action => ({
+      "SKU": recommendation.sku,
+      "Signal": salesSignal.signal,
+      "Ad Spend": salesSignal.adSpend ?? "",
+      "Seller Orders": salesSignal.sellerOrders ?? "",
+      "Ads Orders": salesSignal.adsOrders ?? "",
+      "Focus": listingSalesAction(salesSignal).focus,
+      "Action": action
+    })) : []
+  )), "Sales Signal Actions");
   XLSX.writeFile(workbook, input.outputPath);
   return {
     operation: "write_amazon_existing_listing_optimization_workbook" as const,
@@ -162,4 +185,42 @@ function reviewedDecision(row: Record<string, unknown>) {
 
 function text(value: unknown): string {
   return String(value ?? "").trim();
+}
+
+function listingSalesAction(signal: AmazonExistingListingSalesSignal) {
+  if (signal.signal === "matched_ads_and_seller_sales") {
+    return {
+      focus: "harvest_and_monitor",
+      actions: [
+        "Keep the current listing direction and harvest converting search terms into controlled exact or phrase targets.",
+        "Monitor conversion, ACOS, and Seller order volume before making additional copy changes."
+      ]
+    };
+  }
+  if (signal.signal === "ads_attributed_without_seller_order") {
+    return {
+      focus: "reconcile_attribution_before_scaling",
+      actions: [
+        "Compare the Ads attribution window with Seller order dates before increasing this SKU budget.",
+        "Keep listing copy changes conservative until Ads and Seller order data agree."
+      ]
+    };
+  }
+  if (signal.signal === "seller_order_without_ads_attribution") {
+    return {
+      focus: "protect_seller_order_signal",
+      actions: [
+        "Avoid cutting this SKU solely from weak Ads attribution because Seller orders exist.",
+        "Use listing changes only for clear conversion gaps, not because Ads attribution is delayed."
+      ]
+    };
+  }
+  return {
+    focus: "listing_conversion_review",
+    actions: [
+      "Review title, first image, price, coupon, and delivery promise before adding more traffic.",
+      "Improve bullets around customer benefits, installation confidence, worry removal, and after-sale support.",
+      "Add or revise A+ modules that show dimensions, use scenes, gift value, and trust signals."
+    ]
+  };
 }

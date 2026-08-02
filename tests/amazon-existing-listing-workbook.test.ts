@@ -13,6 +13,13 @@ describe("writeAmazonExistingListingOptimizationWorkbook", () => {
       outputPath,
       marketplaceId: "ATVPDKIKX0DER",
       productType: "TOWEL_HOLDER",
+      salesSignals: [{
+        sku: "DH-E37S-W6DM",
+        signal: "no_ads_or_seller_sales",
+        adSpend: 32,
+        sellerOrders: 0,
+        adsOrders: 0
+      }],
       listings: [{
         sku: "DH-E37S-W6DM",
         summaries: [{
@@ -42,11 +49,13 @@ describe("writeAmazonExistingListingOptimizationWorkbook", () => {
     });
 
     const workbook = XLSX.readFile(outputPath);
-    expect(workbook.SheetNames).toEqual(["Summary", "Recommendations", "Optimized Copy", "Decision Options", "Patch Preview"]);
+    expect(workbook.SheetNames).toEqual(["Summary", "Recommendations", "Optimized Copy", "Decision Options", "Patch Preview", "Sales Signal Actions"]);
     expect(XLSX.utils.sheet_to_json(workbook.Sheets.Summary)[0]).toMatchObject({
       "SKU": "DH-E37S-W6DM",
       "Status": "needs_listing_optimization",
       "Priority": "normal",
+      "Sales Signal": "no_ads_or_seller_sales",
+      "Listing Sales Action Focus": "listing_conversion_review",
       "Seller Approval Required": true
     });
     expect(XLSX.utils.sheet_to_json(workbook.Sheets["Optimized Copy"])[0]).toMatchObject({
@@ -64,6 +73,12 @@ describe("writeAmazonExistingListingOptimizationWorkbook", () => {
       "SKU": "DH-E37S-W6DM",
       "Patch Path": "/attributes/item_name",
       "Value Count": 1
+    });
+    expect(XLSX.utils.sheet_to_json(workbook.Sheets["Sales Signal Actions"])[0]).toMatchObject({
+      "SKU": "DH-E37S-W6DM",
+      "Signal": "no_ads_or_seller_sales",
+      "Focus": "listing_conversion_review",
+      "Action": "Review title, first image, price, coupon, and delivery promise before adding more traffic."
     });
   });
 

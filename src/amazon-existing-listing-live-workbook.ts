@@ -1,8 +1,9 @@
 #!/usr/bin/env node
+import { readFile } from "node:fs/promises";
 import { stdout } from "node:process";
 import { pathToFileURL } from "node:url";
 import { AmazonSpApiClient } from "./amazon/sp-api-client.js";
-import { writeAmazonExistingListingOptimizationWorkbook } from "./amazon/listing-optimization-workbook.js";
+import { writeAmazonExistingListingOptimizationWorkbook, type AmazonExistingListingSalesSignal } from "./amazon/listing-optimization-workbook.js";
 import type { AmazonExistingListingInput } from "./amazon/listing-optimization.js";
 import { KeychainCredentialStore } from "./credentials/keychain.js";
 import { ShopWeaverError } from "./errors.js";
@@ -13,6 +14,7 @@ interface AmazonExistingListingLiveWorkbookArgs {
   marketplaceId: string;
   productType: string;
   outputFormat: "json" | "summary";
+  salesSignalsPath?: string;
 }
 
 type AmazonListingReadClient = {
@@ -33,7 +35,8 @@ export function parseAmazonExistingListingLiveWorkbookArgs(args: string[]): Amaz
     outputPath: values.get("--output"),
     marketplaceId: values.get("--marketplace-id"),
     productType: values.get("--product-type"),
-    outputFormat: outputFormat(values.get("--format"))
+    outputFormat: outputFormat(values.get("--format")),
+    ...(values.get("--sales-signals") ? { salesSignalsPath: values.get("--sales-signals") } : {})
   };
   if (skus.length === 0 || !parsed.outputPath || !parsed.marketplaceId || !parsed.productType) throw usageError();
   return parsed as AmazonExistingListingLiveWorkbookArgs;
@@ -41,11 +44,13 @@ export function parseAmazonExistingListingLiveWorkbookArgs(args: string[]): Amaz
 
 export async function buildAmazonExistingListingWorkbookFromClient(client: AmazonListingReadClient, args: AmazonExistingListingLiveWorkbookArgs) {
   const listings = await Promise.all(args.skus.map(sku => client.getListingItem(sku)));
+  const salesSignals = args.salesSignalsPath ? await readSalesSignals(args.salesSignalsPath) : undefined;
   const result = await writeAmazonExistingListingOptimizationWorkbook({
     outputPath: args.outputPath,
     marketplaceId: args.marketplaceId,
     productType: args.productType,
-    listings
+    listings,
+    ...(salesSignals ? { salesSignals } : {})
   });
   return {
     ...result,
@@ -83,8 +88,13 @@ function splitCsv(value: string): string[] {
   return value.split(",").map(item => item.trim()).filter(Boolean);
 }
 
+async function readSalesSignals(filePath: string): Promise<AmazonExistingListingSalesSignal[]> {
+  const input = JSON.parse(await readFile(filePath, "utf8")) as { salesSignals?: AmazonExistingListingSalesSignal[] } | AmazonExistingListingSalesSignal[];
+  return Array.isArray(input) ? input : input.salesSignals ?? [];
+}
+
 function usageError() {
-  return new ShopWeaverError("AMAZON_EXISTING_LISTING_LIVE_WORKBOOK_ARGS_INVALID", "Usage: npm run amazon:listings:live-workbook -- --skus SKU1,SKU2 --output /path/listing-optimization.xlsx --marketplace-id MARKETPLACE --product-type PRODUCT_TYPE [--format json|summary]");
+  return new ShopWeaverError("AMAZON_EXISTING_LISTING_LIVE_WORKBOOK_ARGS_INVALID", "Usage: npm run amazon:listings:live-workbook -- --skus SKU1,SKU2 --output /path/listing-optimization.xlsx --marketplace-id MARKETPLACE --product-type PRODUCT_TYPE [--sales-signals /path/sales-signals.json] [--format json|summary]");
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

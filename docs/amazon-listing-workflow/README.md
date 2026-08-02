@@ -139,6 +139,8 @@ The same SKU signals can be passed into `amazon_write_brand_store_workbook` as `
 
 The A+ workbook can also carry per-ASIN or per-SKU `salesSignal` data, either attached to each item or passed as top-level `salesSignals`. It adds a `Sales Signal Actions` sheet so weak/no-sale products get stronger benefit, dimension, installation, warranty, and real-use modules before more ad traffic, while proven sellers are protected from unnecessary A+ churn.
 
+Existing listing optimization workbooks can also accept top-level SKU `salesSignals`. The workbook adds listing-specific sales action focus and a `Sales Signal Actions` sheet so title, image, price, bullet, A+, and campaign review decisions use the same Ads-vs-orders signal language.
+
 No Ads write is automatic. Budget, bid, campaign, keyword, negative-keyword, and campaign-creation changes require an explicit confirmation token.
 
 ## Safety Boundary
