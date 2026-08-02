@@ -5,7 +5,7 @@ import { writeAmazonAplusOptimizationWorkbook } from "../amazon/aplus-workbook.j
 import { buildAmazonAdsCostControlPlanFromReportUrl } from "../amazon/ads-cost-control-plan.js";
 import { runAmazonAdsCampaignOptimizationCycle } from "../amazon/ads-optimization-cycle.js";
 import { runAmazonAdsSkuOptimizationCycle, type AmazonAdsSkuOptimizationCycleInput } from "../amazon/ads-sku-optimization-cycle.js";
-import { compareAmazonAdsOptimizationReportFiles, summarizeAmazonAdsAppliedActions } from "../amazon/ads-optimization-history.js";
+import { buildAmazonAdsAppliedActionLearningPlan, compareAmazonAdsOptimizationReportFiles, summarizeAmazonAdsAppliedActions } from "../amazon/ads-optimization-history.js";
 import { analyzeAmazonSearchTermReportFile, previewAmazonAdsApprovedActions, readAmazonAdsActionDecisions, writeAmazonSearchTermOptimizationWorkbook } from "../amazon/campaign-report-file.js";
 import { analyzeAmazonCampaignMetrics, analyzeAmazonSearchTermReportRows } from "../amazon/campaign-optimization.js";
 import { analyzeAmazonExistingListing, buildAmazonListingCopyPatch } from "../amazon/listing-optimization.js";
@@ -1065,11 +1065,13 @@ export function registerAmazonTools(server: McpServer, store: CredentialStore, a
       }
     }, async (input) => {
       const records = await amazonAdsChangeLog.read(input);
+      const summary = summarizeAmazonAdsAppliedActions(records.records);
       return result({
         operation: "summarize_amazon_ads_change_log",
         filters: input,
         sourceRecordCount: records.recordCount,
-        summary: summarizeAmazonAdsAppliedActions(records.records)
+        summary,
+        learningPlan: buildAmazonAdsAppliedActionLearningPlan(summary)
       });
     });
   }

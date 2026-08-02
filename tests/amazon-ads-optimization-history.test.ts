@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { mkdtemp, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { buildAmazonAdsOptimizationSnapshot, compareAmazonAdsOptimizationReportFiles, compareAmazonAdsOptimizationSnapshots, summarizeAmazonAdsAppliedActions } from "../src/amazon/ads-optimization-history.js";
+import { buildAmazonAdsOptimizationSnapshot, buildAmazonAdsAppliedActionLearningPlan, compareAmazonAdsOptimizationReportFiles, compareAmazonAdsOptimizationSnapshots, summarizeAmazonAdsAppliedActions } from "../src/amazon/ads-optimization-history.js";
 
 describe("Amazon Ads optimization history", () => {
   it("summarizes applied Ads actions for optimizer learning", () => {
@@ -41,6 +41,36 @@ describe("Amazon Ads optimization history", () => {
       campaignBudgetUpdateCount: 2,
       firstAppliedAt: "2026-07-30T20:45:00.000Z",
       lastAppliedAt: "2026-07-30T21:10:00.000Z"
+    });
+  });
+
+  it("turns applied action summaries into next learning recommendations", () => {
+    expect(buildAmazonAdsAppliedActionLearningPlan({
+      actionCount: 4,
+      operationCounts: {
+        amazon_ads_create_negative_keywords: 1,
+        amazon_ads_update_ad_group_bids: 1,
+        amazon_ads_update_campaign_budgets: 1,
+        amazon_ads_update_keyword_bids: 1
+      },
+      campaignIdCount: 2,
+      keywordBidUpdateCount: 2,
+      adGroupBidUpdateCount: 1,
+      negativeKeywordCount: 3,
+      campaignBudgetUpdateCount: 1,
+      firstAppliedAt: "2026-07-30T20:45:00.000Z",
+      lastAppliedAt: "2026-07-30T21:10:00.000Z"
+    })).toEqual({
+      operation: "preview_amazon_ads_applied_action_learning_plan",
+      applied: false,
+      actionMix: "balanced_cost_and_query_cleanup",
+      priority: "high",
+      recommendations: [
+        "Compare the next Sponsored Products report against the pre-change baseline before applying another budget cut.",
+        "Track whether negative keywords reduced irrelevant clicks without reducing orders from adjacent converting terms.",
+        "Review keyword and ad group bid changes together; if orders fall, restore bids for terms with prior sales before reducing more budget."
+      ],
+      cadence: "Review after 3-7 days of post-change traffic, then weekly once spend and order trend stabilize."
     });
   });
 
@@ -152,6 +182,12 @@ describe("Amazon Ads optimization history", () => {
         actionCount: 1,
         operationCounts: { amazon_ads_update_campaign_bidding: 1 },
         campaignIdCount: 1
+      },
+      appliedActionLearningPlan: {
+        operation: "preview_amazon_ads_applied_action_learning_plan",
+        applied: false,
+        actionMix: "bid_control",
+        priority: "high"
       },
       followUpRecommendations: [{
         action: "monitor",

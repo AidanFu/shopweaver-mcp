@@ -169,6 +169,12 @@ describe("MCP integration", () => {
         campaignIdCount: 1,
         negativeKeywordCount: 1,
         campaignBudgetUpdateCount: 1
+      },
+      learningPlan: {
+        operation: "preview_amazon_ads_applied_action_learning_plan",
+        applied: false,
+        actionMix: "balanced_cost_and_query_cleanup",
+        priority: "high"
       }
     });
     await Promise.all([client.close(), server.close()]);

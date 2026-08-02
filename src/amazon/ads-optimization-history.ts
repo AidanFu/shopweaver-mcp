@@ -38,6 +38,8 @@ interface AmazonAdsOptimizationComparisonInput {
   appliedActions?: AmazonAdsChangeLogRecord[];
 }
 
+type AmazonAdsAppliedActionSummary = ReturnType<typeof summarizeAmazonAdsAppliedActions>;
+
 export function summarizeAmazonAdsAppliedActions(actions: AmazonAdsChangeLogRecord[]) {
   const operationCounts = actions.reduce<Record<string, number>>((counts, action) => {
     counts[action.operation] = (counts[action.operation] ?? 0) + 1;
@@ -66,6 +68,26 @@ export function summarizeAmazonAdsAppliedActions(actions: AmazonAdsChangeLogReco
   };
 }
 
+export function buildAmazonAdsAppliedActionLearningPlan(summary: AmazonAdsAppliedActionSummary) {
+  const hasBudgetControl = summary.campaignBudgetUpdateCount > 0;
+  const hasBidControl = summary.keywordBidUpdateCount > 0 || summary.adGroupBidUpdateCount > 0 || (summary.operationCounts.amazon_ads_update_campaign_bidding ?? 0) > 0;
+  const hasQueryCleanup = summary.negativeKeywordCount > 0;
+  const recommendations = [
+    ...(hasBudgetControl ? ["Compare the next Sponsored Products report against the pre-change baseline before applying another budget cut."] : []),
+    ...(hasQueryCleanup ? ["Track whether negative keywords reduced irrelevant clicks without reducing orders from adjacent converting terms."] : []),
+    ...(hasBidControl ? ["Review keyword and ad group bid changes together; if orders fall, restore bids for terms with prior sales before reducing more budget."] : []),
+    ...(!hasBudgetControl && !hasBidControl && !hasQueryCleanup ? ["Collect more confirmed Ads actions before drawing optimizer conclusions from change history."] : [])
+  ];
+  return {
+    operation: "preview_amazon_ads_applied_action_learning_plan" as const,
+    applied: false as const,
+    actionMix: actionMix(hasBudgetControl, hasBidControl, hasQueryCleanup),
+    priority: summary.actionCount > 0 ? "high" as const : "normal" as const,
+    recommendations,
+    cadence: "Review after 3-7 days of post-change traffic, then weekly once spend and order trend stabilize."
+  };
+}
+
 export function buildAmazonAdsOptimizationSnapshot(input: AmazonAdsOptimizationSnapshotInput): AmazonAdsOptimizationSnapshot {
   const analysis = analyzeAmazonSearchTermReportRows(input.rows);
   return {
@@ -86,6 +108,7 @@ export function buildAmazonAdsOptimizationSnapshot(input: AmazonAdsOptimizationS
 
 export function compareAmazonAdsOptimizationSnapshots(before: AmazonAdsOptimizationSnapshot, after: AmazonAdsOptimizationSnapshot, input: AmazonAdsOptimizationComparisonInput = {}) {
   const appliedActions = input.appliedActions ?? [];
+  const appliedActionSummary = summarizeAmazonAdsAppliedActions(appliedActions);
   const afterCampaigns = new Map(after.campaigns.map(campaign => [campaign.campaignId, campaign]));
   const campaignChanges = before.campaigns.map(beforeCampaign => {
     const afterCampaign = afterCampaigns.get(beforeCampaign.campaignId) ?? emptyCampaign(beforeCampaign);
@@ -125,7 +148,8 @@ export function compareAmazonAdsOptimizationSnapshots(before: AmazonAdsOptimizat
     verdict: verdict(spendChange, salesChange, orderChange, blendedAcosChange),
     ...(appliedActions.length ? {
       appliedActionCount: appliedActions.length,
-      appliedActionSummary: summarizeAmazonAdsAppliedActions(appliedActions),
+      appliedActionSummary,
+      appliedActionLearningPlan: buildAmazonAdsAppliedActionLearningPlan(appliedActionSummary),
       appliedActions: appliedActions.map(actionSummary)
     } : {}),
     ...(appliedActions.length ? { followUpRecommendations: overallRecommendations(spendChange, salesChange, orderChange) } : {}),
@@ -255,6 +279,14 @@ function verdict(spendChange: number, salesChange: number, orderChange: number, 
   if ((spendChange < 0 && orderChange >= 0 && salesChange >= 0) || (orderChange > 0 && acosChange <= 0)) return "improved";
   if (spendChange > 0 && orderChange <= 0 && salesChange <= 0) return "regressed";
   return "mixed";
+}
+
+function actionMix(hasBudgetControl: boolean, hasBidControl: boolean, hasQueryCleanup: boolean): "balanced_cost_and_query_cleanup" | "budget_control" | "bid_control" | "query_cleanup" | "collect_more_data" {
+  if ((hasBudgetControl || hasBidControl) && hasQueryCleanup) return "balanced_cost_and_query_cleanup";
+  if (hasBudgetControl) return "budget_control";
+  if (hasBidControl) return "bid_control";
+  if (hasQueryCleanup) return "query_cleanup";
+  return "collect_more_data";
 }
 
 function text(value: unknown): string {
