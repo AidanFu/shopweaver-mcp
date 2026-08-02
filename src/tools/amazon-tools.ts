@@ -851,11 +851,13 @@ export function registerAmazonTools(server: McpServer, store: CredentialStore, a
       outputPath: z.string().min(1),
       variations: z.array(z.object({
         asin: z.string().min(1),
+        sku: z.string().min(1).optional(),
         expectedFinish: z.string().min(1),
         expectedHeightInches: z.number().positive()
       })).min(1),
       salesSignals: z.array(z.object({
-        asin: z.string().min(1),
+        asin: z.string().min(1).optional(),
+        sku: z.string().min(1).optional(),
         signal: z.enum(["matched_ads_and_seller_sales", "ads_attributed_without_seller_order", "seller_order_without_ads_attribution", "no_ads_or_seller_sales"]),
         adSpend: z.number().nonnegative().optional(),
         sellerOrders: z.number().nonnegative().optional(),
@@ -863,7 +865,7 @@ export function registerAmazonTools(server: McpServer, store: CredentialStore, a
       })).optional()
     }
   }, async ({ outputPath, variations, salesSignals }) => {
-    const salesSignalByAsin = new Map((salesSignals ?? []).map(signal => [signal.asin, signal]));
+    const salesSignalBySkuOrAsin = new Map((salesSignals ?? []).flatMap(signal => [signal.asin, signal.sku].filter(Boolean).map(key => [key, signal])));
     const items = [];
     for (const variation of variations) {
       const records = await amazon.getAplusContentPublishRecords(variation.asin) as { publishRecordList?: Array<{ locale?: string; contentReferenceKey?: string }> };
@@ -871,11 +873,12 @@ export function registerAmazonTools(server: McpServer, store: CredentialStore, a
       if (!record?.contentReferenceKey) throw new ShopWeaverError("AMAZON_APLUS_CONTENT_NOT_FOUND", `No published A+ content record was found for ASIN ${variation.asin}.`);
       const document = await amazon.getAplusContentDocument(record.contentReferenceKey) as { contentRecord?: { contentDocument?: unknown } };
       const contentRecord = document.contentRecord ?? document;
+      const salesSignal = salesSignalBySkuOrAsin.get(variation.asin) ?? salesSignalBySkuOrAsin.get(variation.sku ?? "");
       items.push({
         ...variation,
         sourceContentReferenceKey: record.contentReferenceKey,
         contentRecord: contentRecord as never,
-        ...(salesSignalByAsin.get(variation.asin) ? { salesSignal: salesSignalByAsin.get(variation.asin) } : {})
+        ...(salesSignal ? { salesSignal } : {})
       });
     }
     return result(await writeAmazonAplusOptimizationWorkbook({ outputPath, items }));

@@ -8,6 +8,7 @@ import {
 } from "./aplus-optimization.js";
 
 export interface AmazonAplusWorkbookItem extends AmazonAplusContentInput {
+  sku?: string;
   expectedFinish: string;
   expectedHeightInches: number;
   sourceContentReferenceKey: string;
@@ -17,9 +18,12 @@ export interface AmazonAplusWorkbookItem extends AmazonAplusContentInput {
 export interface AmazonAplusWorkbookInput {
   outputPath: string;
   items: AmazonAplusWorkbookItem[];
+  salesSignals?: AmazonAplusSalesSignal[];
 }
 
 export interface AmazonAplusSalesSignal {
+  asin?: string;
+  sku?: string;
   signal: "matched_ads_and_seller_sales" | "ads_attributed_without_seller_order" | "seller_order_without_ads_attribution" | "no_ads_or_seller_sales";
   adSpend?: number;
   sellerOrders?: number;
@@ -28,6 +32,7 @@ export interface AmazonAplusSalesSignal {
 
 export async function writeAmazonAplusOptimizationWorkbook(input: AmazonAplusWorkbookInput) {
   const workbook = XLSX.utils.book_new();
+  const salesSignals = buildSalesSignalLookup(input.salesSignals ?? []);
   const optimizedItems = input.items.map(item => {
     const currentDocument = item.contentRecord.contentDocument;
     if (!currentDocument) throw new Error(`No A+ content document payload was found for ASIN ${item.asin}.`);
@@ -37,19 +42,20 @@ export async function writeAmazonAplusOptimizationWorkbook(input: AmazonAplusWor
       finish: item.expectedFinish,
       heightInches: item.expectedHeightInches
     });
-    return { item, recommendation, optimizedDocument };
+    return { item, recommendation, optimizedDocument, salesSignal: item.salesSignal ?? salesSignals.get(item.asin) ?? salesSignals.get(item.sku ?? "") };
   });
 
-  XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(optimizedItems.map(({ item, recommendation, optimizedDocument }) => ({
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(optimizedItems.map(({ item, recommendation, optimizedDocument, salesSignal }) => ({
     "ASIN": item.asin,
+    "SKU": item.sku ?? "",
     "Finish": item.expectedFinish,
     "Height Inches": item.expectedHeightInches,
     "Source Content Reference Key": item.sourceContentReferenceKey,
     "Content Status": recommendation.contentStatus,
     "Recommendation Status": recommendation.status,
     "Priority": recommendation.priority,
-    "Sales Signal": item.salesSignal?.signal ?? "",
-    "A+ Sales Action Focus": item.salesSignal ? aplusSalesAction(item.salesSignal).focus : "",
+    "Sales Signal": salesSignal?.signal ?? "",
+    "A+ Sales Action Focus": salesSignal ? aplusSalesAction(salesSignal).focus : "",
     "Module Count": recommendation.moduleCount,
     "Empty Overlay Modules": recommendation.emptyOverlayModuleCount,
     "Generic Alt Text": recommendation.genericAltTextCount,
@@ -90,15 +96,16 @@ export async function writeAmazonAplusOptimizationWorkbook(input: AmazonAplusWor
       }))
   )), "Optimized Overlay Copy");
 
-  XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(optimizedItems.flatMap(({ item }) =>
-    item.salesSignal ? [{
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(optimizedItems.flatMap(({ item, salesSignal }) =>
+    salesSignal ? [{
       "ASIN": item.asin,
-      "Signal": item.salesSignal.signal,
-      "Ad Spend": item.salesSignal.adSpend ?? "",
-      "Seller Orders": item.salesSignal.sellerOrders ?? "",
-      "Ads Orders": item.salesSignal.adsOrders ?? "",
-      "Focus": aplusSalesAction(item.salesSignal).focus,
-      "Action": aplusSalesAction(item.salesSignal).action
+      "SKU": item.sku ?? "",
+      "Signal": salesSignal.signal,
+      "Ad Spend": salesSignal.adSpend ?? "",
+      "Seller Orders": salesSignal.sellerOrders ?? "",
+      "Ads Orders": salesSignal.adsOrders ?? "",
+      "Focus": aplusSalesAction(salesSignal).focus,
+      "Action": aplusSalesAction(salesSignal).action
     }] : []
   )), "Sales Signal Actions");
 
@@ -139,4 +146,13 @@ function aplusSalesAction(signal: AmazonAplusSalesSignal) {
     focus: "conversion_trust_rebuild",
     action: "Prioritize A+ modules that explain benefit, installation fit, dimensions, warranty/support, and real bathroom use before sending more paid traffic."
   };
+}
+
+function buildSalesSignalLookup(signals: AmazonAplusSalesSignal[]): Map<string, AmazonAplusSalesSignal> {
+  const lookup = new Map<string, AmazonAplusSalesSignal>();
+  for (const signal of signals) {
+    if (signal.asin) lookup.set(signal.asin, signal);
+    if (signal.sku) lookup.set(signal.sku, signal);
+  }
+  return lookup;
 }

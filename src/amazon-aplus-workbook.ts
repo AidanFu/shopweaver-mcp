@@ -29,10 +29,11 @@ export function parseAmazonAplusWorkbookArgs(args: string[]): AmazonAplusWorkboo
 }
 
 export async function buildAmazonAplusWorkbookFromFile(args: AmazonAplusWorkbookArgs) {
-  const input = JSON.parse(await readFile(args.inputPath, "utf8")) as Pick<AmazonAplusWorkbookInput, "items">;
+  const input = JSON.parse(await readFile(args.inputPath, "utf8")) as Pick<AmazonAplusWorkbookInput, "items" | "salesSignals">;
   return writeAmazonAplusOptimizationWorkbook({
     outputPath: args.outputPath,
-    items: input.items
+    items: input.items,
+    ...(input.salesSignals ? { salesSignals: input.salesSignals } : {})
   });
 }
 

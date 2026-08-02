@@ -137,7 +137,7 @@ The comparison also returns `listingOptimizationActions`. These review-only acti
 
 The same SKU signals can be passed into `amazon_write_brand_store_workbook` as `salesSignals`. Brand Store planning then ranks proven sellers earlier, keeps unattributed sellers visible, and marks no-sale SKUs as diagnostic tiles instead of default hero placements.
 
-The A+ workbook can also carry per-ASIN `salesSignal` data. It adds a `Sales Signal Actions` sheet so weak/no-sale products get stronger benefit, dimension, installation, warranty, and real-use modules before more ad traffic, while proven sellers are protected from unnecessary A+ churn.
+The A+ workbook can also carry per-ASIN or per-SKU `salesSignal` data, either attached to each item or passed as top-level `salesSignals`. It adds a `Sales Signal Actions` sheet so weak/no-sale products get stronger benefit, dimension, installation, warranty, and real-use modules before more ad traffic, while proven sellers are protected from unnecessary A+ churn.
 
 No Ads write is automatic. Budget, bid, campaign, keyword, negative-keyword, and campaign-creation changes require an explicit confirmation token.
 

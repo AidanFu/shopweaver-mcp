@@ -80,6 +80,43 @@ describe("writeAmazonAplusOptimizationWorkbook", () => {
       "Action": "Keep the current A+ direction stable and only test one module at a time after enough traffic accumulates."
     }]);
   });
+
+  it("maps top-level SKU sales signals onto matching A+ items", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "shopweaver-amazon-aplus-sku-"));
+    const output = join(dir, "aplus-optimization.xlsx");
+
+    await writeAmazonAplusOptimizationWorkbook({
+      outputPath: output,
+      items: [{
+        asin: "B0GDPKVXSZ",
+        sku: "DH-E37S-W6DM",
+        expectedFinish: "Gold",
+        expectedHeightInches: 38,
+        sourceContentReferenceKey: "gold-content",
+        contentRecord: aplusContentRecord()
+      }],
+      salesSignals: [{
+        sku: "DH-E37S-W6DM",
+        signal: "no_ads_or_seller_sales",
+        adSpend: 32,
+        sellerOrders: 0,
+        adsOrders: 0
+      }]
+    });
+
+    const workbook = XLSX.readFile(output);
+    expect(XLSX.utils.sheet_to_json(workbook.Sheets.Summary)[0]).toMatchObject({
+      "ASIN": "B0GDPKVXSZ",
+      "SKU": "DH-E37S-W6DM",
+      "Sales Signal": "no_ads_or_seller_sales",
+      "A+ Sales Action Focus": "conversion_trust_rebuild"
+    });
+    expect(XLSX.utils.sheet_to_json(workbook.Sheets["Sales Signal Actions"])[0]).toMatchObject({
+      "ASIN": "B0GDPKVXSZ",
+      "SKU": "DH-E37S-W6DM",
+      "Signal": "no_ads_or_seller_sales"
+    });
+  });
 });
 
 function aplusContentRecord() {
