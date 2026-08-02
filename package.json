@@ -20,6 +20,7 @@
     "amazon:ads:optimize": "tsx src/amazon-ads-optimize.ts",
     "amazon:ads:sku": "tsx src/amazon-ads-sku-optimize.ts",
     "amazon:ads:compare": "tsx src/amazon-ads-compare.ts",
+    "amazon:ads:history": "tsx src/amazon-ads-history.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "check:safety": "node scripts/check-forbidden-tools.mjs",
