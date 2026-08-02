@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { MemoryCredentialStore } from "../src/credentials/memory.js";
 import type { StoredRecords } from "../src/credentials/types.js";
 import { ShopWeaverError } from "../src/errors.js";
+import { GoogleOAuth } from "../src/google/oauth.js";
 import { GoogleDriveHealthService } from "../src/google/status.js";
 import { LocalConfigStore } from "../src/local-config.js";
 
@@ -132,6 +133,25 @@ describe("GoogleDriveHealthService", () => {
       refreshStatus: "refreshed"
     });
     expect(refresh).toHaveBeenCalledOnce();
+  });
+
+  it("supports a production-style Google OAuth refresher", async () => {
+    const store = await storeWithGoogle({ app: true, token: { expiresAt: NOW - 1 } });
+    const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      access_token: "refreshed-access-token",
+      token_type: "Bearer",
+      expires_in: 120,
+      scope: "https://www.googleapis.com/auth/drive"
+    }), { status: 200, headers: { "content-type": "application/json" } }));
+    const oauth = new GoogleOAuth(store, fetch, () => NOW);
+    const service = new GoogleDriveHealthService(store, configWithFolders(), oauth, () => NOW);
+
+    await expect(service.status({ validateRefresh: true })).resolves.toMatchObject({
+      connected: true,
+      accessTokenStatus: "valid",
+      refreshStatus: "refreshed"
+    });
+    expect(fetch).toHaveBeenCalledOnce();
   });
 
   it("reports failed refresh without leaking token values", async () => {
