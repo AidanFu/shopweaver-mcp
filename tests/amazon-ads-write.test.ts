@@ -655,6 +655,23 @@ describe("AmazonAdsWriteService", () => {
       profileId: "profile-1",
       reportId: "sku-report-1",
       payloads: {
+        campaignCreations: {
+          tool: "amazon_ads_create_campaigns",
+          mode: "preview",
+          profileId: "profile-1",
+          campaigns: [{
+            name: "ShopWeaver Exact | heated towel rack wall mounted",
+            targetingType: "MANUAL" as const,
+            state: "PAUSED" as const,
+            startDate: "2026-08-02",
+            budget: { budgetType: "DAILY" as const, budget: 5 },
+            dynamicBidding: {
+              strategy: "AUTO_FOR_SALES" as const,
+              placementBidding: []
+            },
+            reason: "Create paused exact campaign candidate from efficient winner term."
+          }]
+        },
         campaignStates: {
           tool: "amazon_ads_update_campaign_states",
           mode: "preview",
@@ -708,8 +725,14 @@ describe("AmazonAdsWriteService", () => {
       sourceReportId: "sku-report-1",
       profileId: "profile-1",
       applied: false,
-      previewCount: 4,
+      previewCount: 5,
       previews: {
+        campaignCreations: {
+          operation: "amazon_ads_create_campaigns",
+          campaignCreateCount: 1,
+          campaigns: [{ name: "ShopWeaver Exact | heated towel rack wall mounted", state: "PAUSED" }],
+          applied: false
+        },
         campaignStates: {
           operation: "amazon_ads_update_campaign_states",
           campaignUpdateCount: 1,
@@ -736,6 +759,7 @@ describe("AmazonAdsWriteService", () => {
         }
       }
     });
+    expect(previews.previews.campaignCreations.confirmationToken).toEqual(expect.any(String));
     expect(previews.previews.campaignStates.confirmationToken).toEqual(expect.any(String));
     expect(previews.previews.campaignBudgets.confirmationToken).toEqual(expect.any(String));
     expect(previews.previews.keywordBids.confirmationToken).toEqual(expect.any(String));
@@ -744,6 +768,7 @@ describe("AmazonAdsWriteService", () => {
     expect(amazonAds.updateSponsoredProductsCampaigns).not.toHaveBeenCalled();
     expect(amazonAds.updateSponsoredProductsKeywords).not.toHaveBeenCalled();
     expect(amazonAds.updateSponsoredProductsAdGroups).not.toHaveBeenCalled();
+    expect(amazonAds.createSponsoredProductsCampaigns).not.toHaveBeenCalled();
     expect(amazonAds.createSponsoredProductsNegativeKeywords).not.toHaveBeenCalled();
   });
 

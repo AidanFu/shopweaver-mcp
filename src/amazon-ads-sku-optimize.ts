@@ -114,6 +114,7 @@ export function buildAmazonAdsSkuNegativeKeywordsPreviewPayload(profileId: strin
 }
 
 export function buildAmazonAdsSkuApplyPlanPayload(profileId: string, result: Record<string, any>) {
+  const campaignCreations = buildAmazonAdsSkuCampaignCreationCandidates(result.bidKeywordPreview?.winnerTerms ?? []);
   const campaignStateUpdates = result.campaignStateReviewPreview?.campaignStateUpdates ?? [];
   const campaignBudgetUpdates = result.budgetReviewPreview?.campaignBudgetUpdates ?? [];
   const keywordBidUpdates = result.bidKeywordPreview?.keywordBidUpdates ?? [];
@@ -138,10 +139,17 @@ export function buildAmazonAdsSkuApplyPlanPayload(profileId: string, result: Rec
         campaignBudgetUpdates: campaignBudgetUpdates.length,
         keywordBidUpdates: keywordBidUpdates.length,
         adGroupBidUpdates: adGroupBidUpdates.length,
-        negativeKeywords: negativeKeywords.length
+        negativeKeywords: negativeKeywords.length,
+        campaignCreations: campaignCreations.length
       }
     },
     payloads: {
+      campaignCreations: {
+        tool: "amazon_ads_create_campaigns" as const,
+        mode: "preview" as const,
+        profileId,
+        campaigns: campaignCreations
+      },
       campaignStates: {
         tool: "amazon_ads_update_campaign_states" as const,
         mode: "preview" as const,
@@ -175,6 +183,21 @@ export function buildAmazonAdsSkuApplyPlanPayload(profileId: string, result: Rec
     },
     warning: "Review-only apply plan. Each payload still requires its own preview call and confirmation token before any Amazon Ads write."
   };
+}
+
+export function buildAmazonAdsSkuCampaignCreationCandidates(winnerTerms: Array<Record<string, any>>) {
+  return winnerTerms.slice(0, 3).map(term => ({
+    name: `ShopWeaver Exact | ${String(term.searchTerm ?? "winner term").trim()}`.slice(0, 128),
+    targetingType: "MANUAL" as const,
+    state: "PAUSED" as const,
+    startDate: new Date().toISOString().slice(0, 10),
+    budget: { budgetType: "DAILY" as const, budget: 5 },
+    dynamicBidding: {
+      strategy: "AUTO_FOR_SALES" as const,
+      placementBidding: []
+    },
+    reason: "Create paused exact campaign candidate from efficient winner term; review keywords, SKU fit, and budget before confirming."
+  }));
 }
 
 export function renderAmazonAdsSkuOptimizationSummary(result: Record<string, any>): string {

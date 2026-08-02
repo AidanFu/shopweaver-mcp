@@ -315,6 +315,12 @@ describe("parseAmazonAdsSkuOptimizeArgs", () => {
       bidKeywordPreview: {
         keywordBidUpdates: [{ keywordId: "keyword-1", bid: 0.6, reason: "Reduce wasted traffic." }],
         adGroupBidUpdates: [{ adGroupId: "adgroup-1", defaultBid: 0.45, reason: "Lower weak ad group bid." }],
+        winnerTerms: [{
+          campaignName: "Exact | Reviewed SKUs Focus",
+          searchTerm: "heated towel rack wall mounted",
+          acos: 22.4,
+          recommendation: "Protect this converting term."
+        }],
         negativeKeywords: [{
           campaignId: "campaign-1",
           adGroupId: "adgroup-1",
@@ -343,10 +349,28 @@ describe("parseAmazonAdsSkuOptimizeArgs", () => {
           campaignStateUpdates: 1,
           keywordBidUpdates: 1,
           adGroupBidUpdates: 1,
-          negativeKeywords: 1
+          negativeKeywords: 1,
+          campaignCreations: 1
         }
       },
       payloads: {
+        campaignCreations: {
+          tool: "amazon_ads_create_campaigns",
+          mode: "preview",
+          profileId: "profile-1",
+          campaigns: [{
+            name: "ShopWeaver Exact | heated towel rack wall mounted",
+            targetingType: "MANUAL",
+            state: "PAUSED",
+            startDate: "2026-08-02",
+            budget: { budgetType: "DAILY", budget: 5 },
+            dynamicBidding: {
+              strategy: "AUTO_FOR_SALES",
+              placementBidding: []
+            },
+            reason: "Create paused exact campaign candidate from efficient winner term; review keywords, SKU fit, and budget before confirming."
+          }]
+        },
         campaignStates: {
           tool: "amazon_ads_update_campaign_states",
           mode: "preview",

@@ -89,6 +89,7 @@ type AmazonAdsSkuApplyPlan = {
   profileId: string;
   reportId?: string;
   payloads?: {
+    campaignCreations?: { campaigns?: AmazonAdsCampaignCreate[] };
     campaignStates?: { campaigns?: AmazonAdsCampaignStateUpdate[] };
     campaignBudgets?: { campaigns?: AmazonAdsCampaignBudgetUpdate[] };
     keywordBids?: { keywords?: AmazonAdsKeywordBidUpdate[] };
@@ -422,11 +423,13 @@ export class AmazonAdsWriteService {
 
   async previewSkuApplyPlanActions(applyPlan: AmazonAdsSkuApplyPlan) {
     const previews: Record<string, unknown> = {};
+    const campaignCreations = applyPlan.payloads?.campaignCreations?.campaigns ?? [];
     const campaignStates = applyPlan.payloads?.campaignStates?.campaigns ?? [];
     const campaignBudgets = applyPlan.payloads?.campaignBudgets?.campaigns ?? [];
     const keywordBids = applyPlan.payloads?.keywordBids?.keywords ?? [];
     const adGroupBids = applyPlan.payloads?.adGroupBids?.adGroups ?? [];
     const negativeKeywords = applyPlan.payloads?.negativeKeywords?.negativeKeywords ?? [];
+    if (campaignCreations.length > 0) previews.campaignCreations = await this.previewCampaignCreations(applyPlan.profileId, campaignCreations);
     if (campaignStates.length > 0) previews.campaignStates = await this.previewCampaignStateUpdates(applyPlan.profileId, campaignStates);
     if (campaignBudgets.length > 0) previews.campaignBudgets = await this.previewCampaignBudgetUpdates(applyPlan.profileId, campaignBudgets);
     if (keywordBids.length > 0) previews.keywordBids = await this.previewKeywordBidUpdates(applyPlan.profileId, keywordBids);
@@ -1150,6 +1153,26 @@ export function registerAmazonTools(server: McpServer, store: CredentialStore, a
           profileId: z.string().min(1),
           reportId: z.string().optional(),
           payloads: z.object({
+            campaignCreations: z.object({
+              campaigns: z.array(z.object({
+                name: z.string().min(1),
+                targetingType: z.enum(["AUTO", "MANUAL"]),
+                state: z.enum(["ENABLED", "PAUSED"]),
+                startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+                budget: z.object({
+                  budgetType: z.literal("DAILY"),
+                  budget: z.number().positive()
+                }),
+                dynamicBidding: z.object({
+                  strategy: z.enum(["AUTO_FOR_SALES", "LEGACY_FOR_SALES", "MANUAL"]),
+                  placementBidding: z.array(z.object({
+                    placement: z.string().min(1),
+                    percentage: z.number().int().min(0).max(900)
+                  })).default([])
+                }),
+                reason: z.string().optional()
+              })).default([])
+            }).optional(),
             campaignStates: z.object({
               campaigns: z.array(z.object({
                 campaignId: z.string().min(1),
