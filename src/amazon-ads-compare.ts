@@ -54,6 +54,7 @@ async function main(): Promise<void> {
 export function renderAmazonAdsComparisonSummary(result: Record<string, any>): string {
   const actionSummary = result.appliedActionSummary ?? {};
   const learningPlan = result.appliedActionLearningPlan ?? {};
+  const nextOptimizationRules = result.nextOptimizationRules ?? [];
   const campaignChanges = result.campaignChanges ?? [];
   return [
     "Amazon Ads Optimization Comparison",
@@ -63,6 +64,10 @@ export function renderAmazonAdsComparisonSummary(result: Record<string, any>): s
     `Learning plan: ${learningPlan.actionMix ?? "collect_more_data"} | priority: ${learningPlan.priority ?? "normal"}`,
     ...lines(learningPlan.recommendations),
     `Cadence: ${learningPlan.cadence ?? "Run after each post-change report."}`,
+    ...(nextOptimizationRules.length > 0 ? [
+      "Next optimization rules:",
+      ...nextOptimizationRules.map((rule: any) => `- ${rule.rule} | priority: ${rule.priority} | ${rule.recommendation}`)
+    ] : []),
     "Campaign changes:",
     ...(campaignChanges.length > 0 ? campaignChanges.map((campaign: any) => `- ${campaign.campaignId} | ${campaign.campaignName} | ${campaign.verdict} | spend ${campaign.spendChange} | sales ${campaign.salesChange} | orders ${campaign.orderChange}`) : ["- none"])
   ].join("\n");

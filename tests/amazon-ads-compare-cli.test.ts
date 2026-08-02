@@ -66,6 +66,11 @@ describe("parseAmazonAdsCompareArgs", () => {
         ],
         cadence: "Review after 3-7 days of post-change traffic, then weekly once spend and order trend stabilize."
       },
+      nextOptimizationRules: [{
+        rule: "continue_budget_guardrails",
+        priority: "normal",
+        recommendation: "Keep budget reductions conservative and monitor for another report window before making deeper cuts."
+      }],
       campaignChanges: [{
         campaignId: "campaign-1",
         campaignName: "Exact Waste",
@@ -83,6 +88,8 @@ describe("parseAmazonAdsCompareArgs", () => {
       "- Compare the next Sponsored Products report against the pre-change baseline before applying another budget cut.",
       "- Track whether negative keywords reduced irrelevant clicks without reducing orders from adjacent converting terms.",
       "Cadence: Review after 3-7 days of post-change traffic, then weekly once spend and order trend stabilize.",
+      "Next optimization rules:",
+      "- continue_budget_guardrails | priority: normal | Keep budget reductions conservative and monitor for another report window before making deeper cuts.",
       "Campaign changes:",
       "- campaign-1 | Exact Waste | improved | spend -54.73 | sales 89.99 | orders 1"
     ].join("\n"));
