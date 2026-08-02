@@ -185,6 +185,12 @@ describe("parseAmazonAdsSkuOptimizeArgs", () => {
           { sku: "77-UM99-B96T", campaignName: "Exact | Reviewed SKUs Focus", spend: 14.08, recommendedNextStep: "Review listing conversion." }
         ]
       },
+      nextOptimizationRules: [{
+        rule: "continue_budget_guardrails",
+        priority: "normal",
+        recommendation: "Keep budget reductions conservative and monitor for another report window before making deeper cuts."
+      }],
+      guardrails: ["Suppressed 2 bid reduction payload(s) because the last bid-control change correlated with worse orders or sales."],
       applied: false
     })).toBe([
       "Amazon Ads SKU Optimization Summary",
@@ -206,6 +212,10 @@ describe("parseAmazonAdsSkuOptimizeArgs", () => {
       "SKU reviews:",
       "- DH-E37S-W6DM | Exact | Reviewed SKUs Focus | spend 22.37 | Review listing conversion.",
       "- 77-UM99-B96T | Exact | Reviewed SKUs Focus | spend 14.08 | Review listing conversion.",
+      "Learned optimization rules:",
+      "- continue_budget_guardrails | priority: normal | Keep budget reductions conservative and monitor for another report window before making deeper cuts.",
+      "Guardrails:",
+      "- Suppressed 2 bid reduction payload(s) because the last bid-control change correlated with worse orders or sales.",
       "Cadence: Run daily while spend is high, then weekly after ACOS and order trend stabilize."
     ].join("\n"));
   });

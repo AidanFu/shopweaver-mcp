@@ -229,6 +229,8 @@ export function renderAmazonAdsSkuOptimizationSummary(result: Record<string, any
   const budgetUpdates = result.budgetReviewPreview?.campaignBudgetUpdates ?? [];
   const skuReviews = result.controlPreview?.skuSpendReviews ?? [];
   const bidKeywordPreview = result.bidKeywordPreview ?? {};
+  const nextOptimizationRules = result.nextOptimizationRules ?? [];
+  const guardrails = result.guardrails ?? [];
   return [
     "Amazon Ads SKU Optimization Summary",
     `Status: ${result.status ?? "UNKNOWN"} | Report: ${result.reportId ?? ""} | Rows: ${result.rowCount ?? 0} | SKUs: ${result.skuCampaignCount ?? 0} | Applied: ${result.applied === true}`,
@@ -249,6 +251,14 @@ export function renderAmazonAdsSkuOptimizationSummary(result: Record<string, any
     ...winnerTermLines(bidKeywordPreview.winnerTerms),
     "SKU reviews:",
     ...(skuReviews.length > 0 ? skuReviews.map((review: any) => `- ${review.sku} | ${review.campaignName} | spend ${review.spend} | ${review.recommendedNextStep}`) : ["- none"]),
+    ...(nextOptimizationRules.length > 0 ? [
+      "Learned optimization rules:",
+      ...nextOptimizationRules.map((rule: any) => `- ${rule.rule} | priority: ${rule.priority} | ${rule.recommendation}`)
+    ] : []),
+    ...(guardrails.length > 0 ? [
+      "Guardrails:",
+      ...lines(guardrails)
+    ] : []),
     `Cadence: ${strategyPlan.cadence ?? "Run after each completed report."}`
   ].join("\n");
 }
