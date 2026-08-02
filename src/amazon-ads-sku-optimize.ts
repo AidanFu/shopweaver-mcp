@@ -11,6 +11,7 @@ import { ShopWeaverError } from "./errors.js";
 export interface AmazonAdsSkuOptimizeArgs extends AmazonAdsSkuOptimizationCycleInput {
   outputFormat: "json" | "summary" | "apply-plan" | "budget-preview" | "keyword-bids-preview" | "ad-group-bids-preview" | "negative-keywords-preview";
   salesSignalsPath?: string;
+  optimizationRulesPath?: string;
 }
 
 export function parseAmazonAdsSkuOptimizeArgs(args: string[]): AmazonAdsSkuOptimizeArgs {
@@ -35,6 +36,7 @@ export function parseAmazonAdsSkuOptimizeArgs(args: string[]): AmazonAdsSkuOptim
     nonTargetSkusWithSales: splitCsv(values.get("--non-target-skus-with-sales") ?? ""),
     outputFormat: outputFormat(values.get("--format")),
     ...(values.get("--sales-signals") ? { salesSignalsPath: values.get("--sales-signals") } : {}),
+    ...(values.get("--optimization-rules") ? { optimizationRulesPath: values.get("--optimization-rules") } : {}),
     ...(values.get("--report-id") ? { reportId: values.get("--report-id") } : {})
   };
 }
@@ -47,7 +49,10 @@ async function main(): Promise<void> {
     ...args,
     ...(args.salesSignalsPath ? { salesSignals: await loadAmazonAdsSkuSalesSignals(args.salesSignalsPath) } : {})
   });
-  stdout.write(`${renderAmazonAdsSkuOptimizationResult(args, result)}\n`);
+  const output = args.optimizationRulesPath
+    ? { ...result, nextOptimizationRules: await loadAmazonAdsSkuOptimizationRules(args.optimizationRulesPath) }
+    : result;
+  stdout.write(`${renderAmazonAdsSkuOptimizationResult(args, output)}\n`);
 }
 
 export async function loadAmazonAdsSkuSalesSignals(filePath: string): Promise<AmazonNormalizedSalesSignal[]> {
@@ -57,6 +62,15 @@ export async function loadAmazonAdsSkuSalesSignals(filePath: string): Promise<Am
   } | AmazonNormalizedSalesSignal[];
   if (Array.isArray(input)) return input;
   return input.adsOrderComparison?.salesSignals ?? input.salesSignals ?? [];
+}
+
+export async function loadAmazonAdsSkuOptimizationRules(filePath: string): Promise<Array<Record<string, unknown>>> {
+  const input = JSON.parse(await readFile(filePath, "utf8")) as {
+    nextOptimizationRules?: Array<Record<string, unknown>>;
+    adsComparison?: { nextOptimizationRules?: Array<Record<string, unknown>> };
+  } | Array<Record<string, unknown>>;
+  if (Array.isArray(input)) return input;
+  return input.adsComparison?.nextOptimizationRules ?? input.nextOptimizationRules ?? [];
 }
 
 function renderAmazonAdsSkuOptimizationResult(args: AmazonAdsSkuOptimizeArgs, result: Record<string, any>): string {
@@ -117,8 +131,13 @@ export function buildAmazonAdsSkuApplyPlanPayload(profileId: string, result: Rec
   const campaignCreations = buildAmazonAdsSkuCampaignCreationCandidates(result.bidKeywordPreview?.winnerTerms ?? []);
   const campaignStateUpdates = result.campaignStateReviewPreview?.campaignStateUpdates ?? [];
   const campaignBudgetUpdates = result.budgetReviewPreview?.campaignBudgetUpdates ?? [];
-  const keywordBidUpdates = result.bidKeywordPreview?.keywordBidUpdates ?? [];
-  const adGroupBidUpdates = result.bidKeywordPreview?.adGroupBidUpdates ?? [];
+  const nextOptimizationRules = result.nextOptimizationRules ?? [];
+  const suppressBidReductions = nextOptimizationRules.some((rule: any) => rule.rule === "restore_prior_converting_bids");
+  const originalKeywordBidUpdates = result.bidKeywordPreview?.keywordBidUpdates ?? [];
+  const originalAdGroupBidUpdates = result.bidKeywordPreview?.adGroupBidUpdates ?? [];
+  const suppressedBidReductionCount = suppressBidReductions ? originalKeywordBidUpdates.length + originalAdGroupBidUpdates.length : 0;
+  const keywordBidUpdates = suppressBidReductions ? [] : originalKeywordBidUpdates;
+  const adGroupBidUpdates = suppressBidReductions ? [] : originalAdGroupBidUpdates;
   const negativeKeywords = result.bidKeywordPreview?.negativeKeywords ?? [];
   return {
     operation: "preview_amazon_ads_sku_apply_plan" as const,
@@ -141,7 +160,9 @@ export function buildAmazonAdsSkuApplyPlanPayload(profileId: string, result: Rec
         adGroupBidUpdates: adGroupBidUpdates.length,
         negativeKeywords: negativeKeywords.length,
         campaignCreations: campaignCreations.length
-      }
+      },
+      ...(nextOptimizationRules.length ? { nextOptimizationRules } : {}),
+      ...(suppressedBidReductionCount > 0 ? { guardrails: [`Suppressed ${suppressedBidReductionCount} bid reduction payload(s) because the last bid-control change correlated with worse orders or sales.`] } : {})
     },
     payloads: {
       campaignCreations: {

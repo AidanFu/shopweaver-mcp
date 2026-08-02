@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { buildAmazonAdsSkuAdGroupBidsPreviewPayload, buildAmazonAdsSkuApplyPlanPayload, buildAmazonAdsSkuBudgetPreviewPayload, buildAmazonAdsSkuKeywordBidsPreviewPayload, buildAmazonAdsSkuNegativeKeywordsPreviewPayload, loadAmazonAdsSkuSalesSignals, parseAmazonAdsSkuOptimizeArgs, renderAmazonAdsSkuOptimizationSummary } from "../src/amazon-ads-sku-optimize.js";
+import { buildAmazonAdsSkuAdGroupBidsPreviewPayload, buildAmazonAdsSkuApplyPlanPayload, buildAmazonAdsSkuBudgetPreviewPayload, buildAmazonAdsSkuKeywordBidsPreviewPayload, buildAmazonAdsSkuNegativeKeywordsPreviewPayload, loadAmazonAdsSkuOptimizationRules, loadAmazonAdsSkuSalesSignals, parseAmazonAdsSkuOptimizeArgs, renderAmazonAdsSkuOptimizationSummary } from "../src/amazon-ads-sku-optimize.js";
 
 describe("parseAmazonAdsSkuOptimizeArgs", () => {
   it("parses SKU campaign optimization cycle arguments", () => {
@@ -14,6 +14,7 @@ describe("parseAmazonAdsSkuOptimizeArgs", () => {
       "--target-skus-with-sales", "5H-2EH1-7H77",
       "--non-target-skus-with-sales", "80-16Z5-E38T",
       "--sales-signals", "/tmp/sales-signals.json",
+      "--optimization-rules", "/tmp/ads-comparison.json",
       "--report-id", "sku-report-1"
     ])).toEqual({
       profileId: "749555662454438",
@@ -23,6 +24,7 @@ describe("parseAmazonAdsSkuOptimizeArgs", () => {
       targetSkusWithSales: ["5H-2EH1-7H77"],
       nonTargetSkusWithSales: ["80-16Z5-E38T"],
       salesSignalsPath: "/tmp/sales-signals.json",
+      optimizationRulesPath: "/tmp/ads-comparison.json",
       reportId: "sku-report-1",
       outputFormat: "json"
     });
@@ -49,6 +51,24 @@ describe("parseAmazonAdsSkuOptimizeArgs", () => {
       adSpend: 18,
       sellerOrders: 1,
       adsOrders: 0
+    }]);
+  });
+
+  it("loads next optimization rules from an Ads comparison JSON file", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "shopweaver-ads-sku-rules-"));
+    const filePath = join(dir, "ads-comparison.json");
+    await writeFile(filePath, JSON.stringify({
+      nextOptimizationRules: [{
+        rule: "restore_prior_converting_bids",
+        priority: "high",
+        recommendation: "Review recent bid reductions first."
+      }]
+    }));
+
+    await expect(loadAmazonAdsSkuOptimizationRules(filePath)).resolves.toEqual([{
+      rule: "restore_prior_converting_bids",
+      priority: "high",
+      recommendation: "Review recent bid reductions first."
     }]);
   });
 
@@ -418,6 +438,41 @@ describe("parseAmazonAdsSkuOptimizeArgs", () => {
         }
       },
       warning: "Review-only apply plan. Each payload still requires its own preview call and confirmation token before any Amazon Ads write."
+    });
+  });
+
+  it("applies learned rules to suppress new bid reductions after bid-control regression", () => {
+    expect(buildAmazonAdsSkuApplyPlanPayload("profile-1", {
+      status: "COMPLETED",
+      reportId: "report-1",
+      strategyPlan: {
+        strategy: "balance_sales_growth_and_budget_efficiency",
+        budgetProtection: { priority: "high" },
+        salesGrowth: { priority: "normal" },
+        listingConversion: { priority: "high" }
+      },
+      nextOptimizationRules: [{
+        rule: "restore_prior_converting_bids",
+        priority: "high",
+        recommendation: "Review recent bid reductions first; restore bids for terms or ad groups that previously produced orders before cutting more budget."
+      }],
+      bidKeywordPreview: {
+        keywordBidUpdates: [{ keywordId: "keyword-1", bid: 0.6, reason: "Reduce wasted traffic." }],
+        adGroupBidUpdates: [{ adGroupId: "adgroup-1", defaultBid: 0.45, reason: "Lower weak ad group bid." }],
+        negativeKeywords: []
+      }
+    })).toMatchObject({
+      summary: {
+        nextOptimizationRules: [{
+          rule: "restore_prior_converting_bids",
+          priority: "high"
+        }],
+        guardrails: ["Suppressed 2 bid reduction payload(s) because the last bid-control change correlated with worse orders or sales."]
+      },
+      payloads: {
+        keywordBids: { keywords: [] },
+        adGroupBids: { adGroups: [] }
+      }
     });
   });
 });
