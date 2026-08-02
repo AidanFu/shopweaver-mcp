@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildAmazonAdsSkuAdGroupBidsPreviewPayload, buildAmazonAdsSkuBudgetPreviewPayload, buildAmazonAdsSkuKeywordBidsPreviewPayload, buildAmazonAdsSkuNegativeKeywordsPreviewPayload, parseAmazonAdsSkuOptimizeArgs, renderAmazonAdsSkuOptimizationSummary } from "../src/amazon-ads-sku-optimize.js";
+import { buildAmazonAdsSkuAdGroupBidsPreviewPayload, buildAmazonAdsSkuApplyPlanPayload, buildAmazonAdsSkuBudgetPreviewPayload, buildAmazonAdsSkuKeywordBidsPreviewPayload, buildAmazonAdsSkuNegativeKeywordsPreviewPayload, parseAmazonAdsSkuOptimizeArgs, renderAmazonAdsSkuOptimizationSummary } from "../src/amazon-ads-sku-optimize.js";
 
 describe("parseAmazonAdsSkuOptimizeArgs", () => {
   it("parses SKU campaign optimization cycle arguments", () => {
@@ -65,6 +65,16 @@ describe("parseAmazonAdsSkuOptimizeArgs", () => {
       "--target-skus", "DH-E37S-W6DM",
       "--format", "negative-keywords-preview"
     ])).toMatchObject({ outputFormat: "negative-keywords-preview" });
+  });
+
+  it("parses the combined apply plan output format", () => {
+    expect(parseAmazonAdsSkuOptimizeArgs([
+      "--profile-id", "749555662454438",
+      "--start-date", "2026-07-29",
+      "--end-date", "2026-08-01",
+      "--target-skus", "DH-E37S-W6DM",
+      "--format", "apply-plan"
+    ])).toMatchObject({ outputFormat: "apply-plan" });
   });
 
   it("renders a compact SKU optimization summary for daily campaign decisions", () => {
@@ -246,6 +256,97 @@ describe("parseAmazonAdsSkuOptimizeArgs", () => {
       }],
       applied: false,
       warning: "Preview payload only. Use this as a direct negative-keyword review payload; Amazon write support still requires the gated negative-keyword confirmation flow."
+    });
+  });
+
+  it("builds a combined apply plan with every gated write payload", () => {
+    expect(buildAmazonAdsSkuApplyPlanPayload("profile-1", {
+      status: "COMPLETED",
+      reportId: "report-1",
+      strategyPlan: {
+        strategy: "balance_sales_growth_and_budget_efficiency",
+        budgetProtection: { priority: "high" },
+        salesGrowth: { priority: "normal" },
+        listingConversion: { priority: "high" }
+      },
+      budgetReviewPreview: {
+        campaignBudgetUpdates: [{
+          campaignId: "campaign-1",
+          budget: { budgetType: "DAILY", budget: 9 },
+          reason: "Reduce waste while preserving sales budget."
+        }]
+      },
+      bidKeywordPreview: {
+        keywordBidUpdates: [{ keywordId: "keyword-1", bid: 0.6, reason: "Reduce wasted traffic." }],
+        adGroupBidUpdates: [{ adGroupId: "adgroup-1", defaultBid: 0.45, reason: "Lower weak ad group bid." }],
+        negativeKeywords: [{
+          campaignId: "campaign-1",
+          adGroupId: "adgroup-1",
+          keywordText: "free towel rack manual",
+          matchType: "NEGATIVE_EXACT",
+          state: "ENABLED",
+          reason: "High clicks with no attributed orders."
+        }]
+      }
+    })).toEqual({
+      operation: "preview_amazon_ads_sku_apply_plan",
+      mode: "review_only",
+      profileId: "profile-1",
+      status: "COMPLETED",
+      reportId: "report-1",
+      applied: false,
+      summary: {
+        strategy: "balance_sales_growth_and_budget_efficiency",
+        priorities: {
+          budgetProtection: "high",
+          salesGrowth: "normal",
+          listingConversion: "high"
+        },
+        actionCounts: {
+          campaignBudgetUpdates: 1,
+          keywordBidUpdates: 1,
+          adGroupBidUpdates: 1,
+          negativeKeywords: 1
+        }
+      },
+      payloads: {
+        campaignBudgets: {
+          tool: "amazon_ads_update_campaign_budgets",
+          mode: "preview",
+          profileId: "profile-1",
+          campaigns: [{
+            campaignId: "campaign-1",
+            budget: { budgetType: "DAILY", budget: 9 },
+            reason: "Reduce waste while preserving sales budget."
+          }]
+        },
+        keywordBids: {
+          tool: "amazon_ads_update_keyword_bids",
+          mode: "preview",
+          profileId: "profile-1",
+          keywords: [{ keywordId: "keyword-1", bid: 0.6, reason: "Reduce wasted traffic." }]
+        },
+        adGroupBids: {
+          tool: "amazon_ads_update_ad_group_bids",
+          mode: "preview",
+          profileId: "profile-1",
+          adGroups: [{ adGroupId: "adgroup-1", defaultBid: 0.45, reason: "Lower weak ad group bid." }]
+        },
+        negativeKeywords: {
+          tool: "amazon_ads_create_negative_keywords",
+          mode: "preview",
+          profileId: "profile-1",
+          negativeKeywords: [{
+            campaignId: "campaign-1",
+            adGroupId: "adgroup-1",
+            keywordText: "free towel rack manual",
+            matchType: "NEGATIVE_EXACT",
+            state: "ENABLED",
+            reason: "High clicks with no attributed orders."
+          }]
+        }
+      },
+      warning: "Review-only apply plan. Each payload still requires its own preview call and confirmation token before any Amazon Ads write."
     });
   });
 });

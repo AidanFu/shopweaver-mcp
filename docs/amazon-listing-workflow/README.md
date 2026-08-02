@@ -106,10 +106,12 @@ The Ads loop is API-backed but still gated:
 
 1. Create or poll Sponsored Products reports.
 2. Run SKU-level analysis with balanced sales-growth and budget-efficiency recommendations.
-3. Review the compact summary or budget-preview payload.
-4. Use `amazon_ads_run_sku_budget_update_preview` to create a server-side preview token for recommended budget changes.
-5. Confirm only after reviewing the exact campaigns payload.
+3. Review the compact summary, `apply-plan`, or a single preview payload.
+4. Use the specific preview tool for the approved action type, such as `amazon_ads_run_sku_budget_update_preview` for recommended budget changes.
+5. Confirm only after reviewing the exact payload and confirmation token for that action type.
 6. Compare later reports against the local change log before making more changes.
+
+The `amazon:ads:sku` CLI supports `--format apply-plan` to show all review-only write candidates together: budget updates, keyword bid updates, ad group bid updates, and negative keywords. The combined plan is not a write command.
 
 No Ads write is automatic. Budget, bid, campaign, keyword, negative-keyword, and campaign-creation changes require an explicit confirmation token.
 
