@@ -119,6 +119,42 @@ describe("AmazonAdsWriteService", () => {
     }]);
   });
 
+  it("records confirmed direct negative keywords for later optimization analysis", async () => {
+    const amazonAds = {
+      createSponsoredProductsNegativeKeywords: vi.fn().mockResolvedValue({
+        negativeKeywords: { success: [{ index: 0, negativeKeywordId: "999" }], error: [] }
+      })
+    };
+    const auditLog = { record: vi.fn().mockResolvedValue(undefined) };
+    const service = new AmazonAdsWriteService(amazonAds, new ConfirmationStore(() => 1_000), auditLog);
+    const preview = await service.previewNegativeKeywords("profile-1", [{
+      campaignId: "campaign-1",
+      adGroupId: "adgroup-1",
+      keywordText: "free towel rack manual",
+      matchType: "NEGATIVE_EXACT",
+      state: "ENABLED"
+    }]);
+
+    await service.confirmNegativeKeywords("profile-1", preview.negativeKeywords, preview.confirmationToken);
+
+    expect(auditLog.record).toHaveBeenCalledWith(expect.objectContaining({
+      operation: "amazon_ads_create_negative_keywords",
+      profileId: "profile-1",
+      applied: true,
+      payload: {
+        negativeKeywords: [{
+          campaignId: "campaign-1",
+          adGroupId: "adgroup-1",
+          keywordText: "free towel rack manual",
+          matchType: "NEGATIVE_EXACT",
+          state: "ENABLED"
+        }]
+      },
+      result: { negativeKeywords: { success: [{ index: 0, negativeKeywordId: "999" }], error: [] } }
+    }));
+    expect(auditLog.record.mock.calls[0][0].createdAt).toEqual(expect.any(String));
+  });
+
   it("previews and confirms campaign state updates", async () => {
     const amazonAds = {
       createSponsoredProductsNegativeKeywords: vi.fn(),
@@ -256,6 +292,40 @@ describe("AmazonAdsWriteService", () => {
       campaignId: "campaign-1",
       budget: { budgetType: "DAILY", budget: 5 }
     }]);
+  });
+
+  it("records confirmed campaign budget updates for later optimization analysis", async () => {
+    const amazonAds = {
+      createSponsoredProductsNegativeKeywords: vi.fn(),
+      updateSponsoredProductsCampaigns: vi.fn().mockResolvedValue({
+        campaigns: { success: [{ index: 0, campaignId: "campaign-1" }], error: [] }
+      }),
+      createSponsoredProductsCampaigns: vi.fn()
+    };
+    const auditLog = { record: vi.fn().mockResolvedValue(undefined) };
+    const service = new AmazonAdsWriteService(amazonAds, new ConfirmationStore(() => 1_000), auditLog);
+    const preview = await service.previewCampaignBudgetUpdates("profile-1", [{
+      campaignId: "campaign-1",
+      budget: { budgetType: "DAILY", budget: 5 },
+      reason: "Reduce daily cost while waste terms are reviewed."
+    }]);
+
+    await service.confirmCampaignBudgetUpdates("profile-1", preview.campaigns, preview.confirmationToken);
+
+    expect(auditLog.record).toHaveBeenCalledWith(expect.objectContaining({
+      operation: "amazon_ads_update_campaign_budgets",
+      profileId: "profile-1",
+      applied: true,
+      payload: {
+        campaigns: [{
+          campaignId: "campaign-1",
+          budget: { budgetType: "DAILY", budget: 5 },
+          reason: "Reduce daily cost while waste terms are reviewed."
+        }]
+      },
+      result: { campaigns: { success: [{ index: 0, campaignId: "campaign-1" }], error: [] } }
+    }));
+    expect(auditLog.record.mock.calls[0][0].createdAt).toEqual(expect.any(String));
   });
 
   it("previews SKU optimizer budget updates through the existing budget confirmation flow", async () => {
@@ -559,6 +629,41 @@ describe("AmazonAdsWriteService", () => {
     }]);
   });
 
+  it("records confirmed keyword bid updates for later optimization analysis", async () => {
+    const amazonAds = {
+      createSponsoredProductsNegativeKeywords: vi.fn(),
+      updateSponsoredProductsCampaigns: vi.fn(),
+      createSponsoredProductsCampaigns: vi.fn(),
+      updateSponsoredProductsKeywords: vi.fn().mockResolvedValue({
+        keywords: { success: [{ index: 0, keywordId: "keyword-1" }], error: [] }
+      })
+    };
+    const auditLog = { record: vi.fn().mockResolvedValue(undefined) };
+    const service = new AmazonAdsWriteService(amazonAds, new ConfirmationStore(() => 1_000), auditLog);
+    const preview = await service.previewKeywordBidUpdates("profile-1", [{
+      keywordId: "keyword-1",
+      bid: 0.25,
+      reason: "Lower bid after report shows spend without orders."
+    }]);
+
+    await service.confirmKeywordBidUpdates("profile-1", preview.keywords, preview.confirmationToken);
+
+    expect(auditLog.record).toHaveBeenCalledWith(expect.objectContaining({
+      operation: "amazon_ads_update_keyword_bids",
+      profileId: "profile-1",
+      applied: true,
+      payload: {
+        keywords: [{
+          keywordId: "keyword-1",
+          bid: 0.25,
+          reason: "Lower bid after report shows spend without orders."
+        }]
+      },
+      result: { keywords: { success: [{ index: 0, keywordId: "keyword-1" }], error: [] } }
+    }));
+    expect(auditLog.record.mock.calls[0][0].createdAt).toEqual(expect.any(String));
+  });
+
   it("previews and confirms ad group default bid updates", async () => {
     const amazonAds = {
       createSponsoredProductsNegativeKeywords: vi.fn(),
@@ -602,5 +707,41 @@ describe("AmazonAdsWriteService", () => {
       adGroupId: "adgroup-1",
       defaultBid: 0.3
     }]);
+  });
+
+  it("records confirmed ad group default bid updates for later optimization analysis", async () => {
+    const amazonAds = {
+      createSponsoredProductsNegativeKeywords: vi.fn(),
+      updateSponsoredProductsCampaigns: vi.fn(),
+      createSponsoredProductsCampaigns: vi.fn(),
+      updateSponsoredProductsKeywords: vi.fn(),
+      updateSponsoredProductsAdGroups: vi.fn().mockResolvedValue({
+        adGroups: { success: [{ index: 0, adGroupId: "adgroup-1" }], error: [] }
+      })
+    };
+    const auditLog = { record: vi.fn().mockResolvedValue(undefined) };
+    const service = new AmazonAdsWriteService(amazonAds, new ConfirmationStore(() => 1_000), auditLog);
+    const preview = await service.previewAdGroupBidUpdates("profile-1", [{
+      adGroupId: "adgroup-1",
+      defaultBid: 0.3,
+      reason: "Lower ad group bid after broad spend runs ahead of orders."
+    }]);
+
+    await service.confirmAdGroupBidUpdates("profile-1", preview.adGroups, preview.confirmationToken);
+
+    expect(auditLog.record).toHaveBeenCalledWith(expect.objectContaining({
+      operation: "amazon_ads_update_ad_group_bids",
+      profileId: "profile-1",
+      applied: true,
+      payload: {
+        adGroups: [{
+          adGroupId: "adgroup-1",
+          defaultBid: 0.3,
+          reason: "Lower ad group bid after broad spend runs ahead of orders."
+        }]
+      },
+      result: { adGroups: { success: [{ index: 0, adGroupId: "adgroup-1" }], error: [] } }
+    }));
+    expect(auditLog.record.mock.calls[0][0].createdAt).toEqual(expect.any(String));
   });
 });

@@ -161,12 +161,15 @@ export class AmazonAdsWriteService {
   async confirmApprovedNegativeKeywords(profileId: string, filePath: string, confirmationToken: string) {
     const preview = await buildNegativeKeywordPreview(profileId, filePath);
     this.confirmations.consume(confirmationToken, "amazon_ads_create_negative_keywords", 0, preview);
-    return {
+    const result = await this.amazonAds.createSponsoredProductsNegativeKeywords(profileId, preview.negativeKeywords);
+    const applied = {
       operation: "amazon_ads_create_negative_keywords" as const,
       ...preview,
-      result: await this.amazonAds.createSponsoredProductsNegativeKeywords(profileId, preview.negativeKeywords),
-      applied: true
+      result,
+      applied: true as const
     };
+    await this.recordChange(applied.operation, profileId, { negativeKeywords: preview.negativeKeywords }, result);
+    return applied;
   }
 
   async previewNegativeKeywords(profileId: string, negativeKeywords: AmazonAdsNegativeKeywordInput[]) {
@@ -183,12 +186,15 @@ export class AmazonAdsWriteService {
   async confirmNegativeKeywords(profileId: string, negativeKeywords: AmazonAdsNegativeKeywordInput[], confirmationToken: string) {
     const preview = buildDirectNegativeKeywordPreview(profileId, negativeKeywords);
     this.confirmations.consume(confirmationToken, "amazon_ads_create_negative_keywords", 0, preview);
-    return {
+    const result = await this.amazonAds.createSponsoredProductsNegativeKeywords(profileId, preview.negativeKeywords);
+    const applied = {
       operation: "amazon_ads_create_negative_keywords" as const,
       ...preview,
-      result: await this.amazonAds.createSponsoredProductsNegativeKeywords(profileId, preview.negativeKeywords),
-      applied: true
+      result,
+      applied: true as const
     };
+    await this.recordChange(applied.operation, profileId, { negativeKeywords: preview.negativeKeywords }, result);
+    return applied;
   }
 
   async previewCampaignStateUpdates(profileId: string, campaigns: AmazonAdsCampaignStateUpdate[]) {
@@ -230,15 +236,18 @@ export class AmazonAdsWriteService {
   async confirmCampaignBudgetUpdates(profileId: string, campaigns: AmazonAdsCampaignBudgetUpdate[], confirmationToken: string) {
     const preview = buildCampaignBudgetPreview(profileId, campaigns);
     this.confirmations.consume(confirmationToken, "amazon_ads_update_campaign_budgets", 0, preview);
-    return {
+    const result = await this.amazonAds.updateSponsoredProductsCampaigns(profileId, preview.campaigns.map(campaign => ({
+      campaignId: campaign.campaignId,
+      budget: campaign.budget
+    })));
+    const applied = {
       operation: "amazon_ads_update_campaign_budgets" as const,
       ...preview,
-      result: await this.amazonAds.updateSponsoredProductsCampaigns(profileId, preview.campaigns.map(campaign => ({
-        campaignId: campaign.campaignId,
-        budget: campaign.budget
-      }))),
-      applied: true
+      result,
+      applied: true as const
     };
+    await this.recordChange(applied.operation, profileId, { campaigns: preview.campaigns }, result);
+    return applied;
   }
 
   async previewSkuOptimizerBudgetUpdates(input: AmazonAdsSkuOptimizationCycleInput) {
@@ -395,15 +404,18 @@ export class AmazonAdsWriteService {
   async confirmKeywordBidUpdates(profileId: string, keywords: AmazonAdsKeywordBidUpdate[], confirmationToken: string) {
     const preview = buildKeywordBidPreview(profileId, keywords);
     this.confirmations.consume(confirmationToken, "amazon_ads_update_keyword_bids", 0, preview);
-    return {
+    const result = await this.amazonAds.updateSponsoredProductsKeywords(profileId, preview.keywords.map(keyword => ({
+      keywordId: keyword.keywordId,
+      bid: keyword.bid
+    })));
+    const applied = {
       operation: "amazon_ads_update_keyword_bids" as const,
       ...preview,
-      result: await this.amazonAds.updateSponsoredProductsKeywords(profileId, preview.keywords.map(keyword => ({
-        keywordId: keyword.keywordId,
-        bid: keyword.bid
-      }))),
-      applied: true
+      result,
+      applied: true as const
     };
+    await this.recordChange(applied.operation, profileId, { keywords: preview.keywords }, result);
+    return applied;
   }
 
   async previewAdGroupBidUpdates(profileId: string, adGroups: AmazonAdsAdGroupBidUpdate[]) {
@@ -420,15 +432,18 @@ export class AmazonAdsWriteService {
   async confirmAdGroupBidUpdates(profileId: string, adGroups: AmazonAdsAdGroupBidUpdate[], confirmationToken: string) {
     const preview = buildAdGroupBidPreview(profileId, adGroups);
     this.confirmations.consume(confirmationToken, "amazon_ads_update_ad_group_bids", 0, preview);
-    return {
+    const result = await this.amazonAds.updateSponsoredProductsAdGroups(profileId, preview.adGroups.map(adGroup => ({
+      adGroupId: adGroup.adGroupId,
+      defaultBid: adGroup.defaultBid
+    })));
+    const applied = {
       operation: "amazon_ads_update_ad_group_bids" as const,
       ...preview,
-      result: await this.amazonAds.updateSponsoredProductsAdGroups(profileId, preview.adGroups.map(adGroup => ({
-        adGroupId: adGroup.adGroupId,
-        defaultBid: adGroup.defaultBid
-      }))),
-      applied: true
+      result,
+      applied: true as const
     };
+    await this.recordChange(applied.operation, profileId, { adGroups: preview.adGroups }, result);
+    return applied;
   }
 
   async previewCampaignCreations(profileId: string, campaigns: AmazonAdsCampaignCreate[]) {
