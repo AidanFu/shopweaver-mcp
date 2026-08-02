@@ -1,6 +1,6 @@
 # ShopWeaver MCP
 
-ShopWeaver MCP is a personal, noncommercial Codex plugin for seller workflow automation. The implemented Etsy path manages one Etsy seller account through Etsy Open API v3: it reads shop, listing, and minimized order information and performs preview-first writes to draft listings only. The early Amazon path is workbook-only planning from Google Drive product data; it does not call Amazon APIs or write to Amazon.
+ShopWeaver MCP is a personal, noncommercial Codex plugin for seller workflow automation. The implemented Etsy path manages one Etsy seller account through Etsy Open API v3: it reads shop, listing, and minimized order information and performs preview-first writes to draft listings only. The Amazon listing path still uses workbook-first planning from Google Drive product data, while Amazon Ads now supports read-only reporting plus preview/confirmation-gated campaign controls.
 
 > The term "Etsy" is a trademark of Etsy, Inc. This Application uses Etsy's API, but is not endorsed or certified by Etsy.
 
@@ -10,7 +10,7 @@ The local MCP server and Codex plugin are implemented. Automated verification co
 
 Live Etsy verification has confirmed OAuth connection and read-only shop/listing/order-summary access against one shop. Draft creation remains intentionally manual: preview the exact payload first, then confirm only if the draft should be created in Etsy.
 
-Amazon work currently stops at `Product Information - Amazon Listing.xlsx`, a review workbook generated from the approved Google Drive folder workflow. See [docs/amazon-listing-workflow/README.md](docs/amazon-listing-workflow/README.md).
+Amazon listing and A+ planning currently stop at `Product Information - Amazon Listing.xlsx`, a review workbook generated from the approved Google Drive folder workflow. Amazon Ads reporting and selected campaign controls are separate from that workbook path and remain preview/confirmation-gated. See [docs/amazon-listing-workflow/README.md](docs/amazon-listing-workflow/README.md).
 
 TikTok integration is not included in the current scope.
 
@@ -20,7 +20,7 @@ ShopWeaver can create drafts, edit supported draft fields, upload draft images, 
 
 ShopWeaver cannot publish, activate, or delete Etsy listings. It has no Etsy tools for ads, refunds, cancellations, shipments, Etsy Messages, or customer email. Order summaries exclude buyer email, shipping address, payment details, and messages.
 
-The Amazon workflow cannot submit listings, upload images, create A+ Content, create or modify ads, change bids or budgets, or access Amazon order/customer data. It writes a planning workbook only.
+The Amazon listing workflow cannot submit listings, upload images, or create A+ Content. Amazon Ads tools can read reporting data and preview selected campaign, bid, budget, keyword, negative-keyword, and campaign-creation changes. Any Amazon Ads write requires preview mode first, an unchanged payload, and an explicit confirmation token.
 
 ## Requirements
 
@@ -147,7 +147,39 @@ Use `shopweaver_write_amazon_listing_workbook` in preview mode first, then confi
 
 After Amazon metrics are pasted into the workbook, use `shopweaver_refresh_amazon_optimization_recommendations` in preview mode first, then confirm to refresh only the `Optimization Recommendations` sheet. This still does not call Amazon APIs or change listings, categories, bids, budgets, keywords, or ads.
 
-This is not an Amazon submission path. Future Amazon API phases should be designed separately with Product Type Definitions validation, local preview, and explicit approval before every write.
+This is not an Amazon listing submission path. Future listing API phases should be designed separately with Product Type Definitions validation, local preview, and explicit approval before every write.
+
+## Amazon Ads workflow
+
+Amazon Ads credentials are configured separately:
+
+```bash
+npm run amazon:ads:setup
+```
+
+Ads reporting starts read-only. Use Sponsored Products reports to analyze campaign performance, SKU spend, search-term waste, and efficient demand before changing anything.
+
+Useful local commands:
+
+```bash
+npm run amazon:ads:sku -- --profile-id PROFILE --start-date YYYY-MM-DD --end-date YYYY-MM-DD --target-skus SKU1,SKU2 --report-id REPORT_ID --format summary
+npm run amazon:ads:sku -- --profile-id PROFILE --start-date YYYY-MM-DD --end-date YYYY-MM-DD --target-skus SKU1,SKU2 --report-id REPORT_ID --format budget-preview
+```
+
+The `summary` format prints the balanced sales-growth and budget-efficiency plan. The `budget-preview` format prints the exact payload for the gated `amazon_ads_update_campaign_budgets` tool.
+
+MCP Ads write tools are preview/confirmation-gated:
+
+- `amazon_ads_update_campaign_budgets`
+- `amazon_ads_update_campaign_bidding`
+- `amazon_ads_update_campaign_states`
+- `amazon_ads_update_keyword_bids`
+- `amazon_ads_update_ad_group_bids`
+- `amazon_ads_create_negative_keywords_from_review`
+- `amazon_ads_create_campaigns`
+- `amazon_ads_run_sku_budget_update_preview`
+
+`amazon_ads_run_sku_budget_update_preview` runs the read-only SKU optimization cycle and returns a preview token for the exact budget updates it recommends. To apply a budget change, call `amazon_ads_update_campaign_budgets` in confirm mode with the unchanged campaigns payload and returned confirmation token.
 
 ## macOS Keychain prompts
 
@@ -200,6 +232,14 @@ The Codex plugin manifest uses `.mcp.json` to run the built server with stdio tr
 - `shopweaver_upload_drive_images_to_etsy_draft`
 - `shopweaver_write_amazon_listing_workbook`
 - `shopweaver_refresh_amazon_optimization_recommendations`
+- `amazon_ads_run_sku_budget_update_preview`
+- `amazon_ads_update_campaign_budgets`
+- `amazon_ads_update_campaign_bidding`
+- `amazon_ads_update_campaign_states`
+- `amazon_ads_update_keyword_bids`
+- `amazon_ads_update_ad_group_bids`
+- `amazon_ads_create_negative_keywords_from_review`
+- `amazon_ads_create_campaigns`
 
 For every write, run preview mode first, inspect the complete normalized payload, then explicitly confirm using the unchanged payload and returned confirmation token.
 
