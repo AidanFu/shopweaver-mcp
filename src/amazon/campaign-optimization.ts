@@ -182,6 +182,48 @@ export interface AmazonCampaignBudgetSalesPlan {
   cadence: string;
 }
 
+export interface AmazonAdsBidKeywordPreview {
+  operation: "preview_amazon_ads_bid_keyword_recommendations";
+  applied: false;
+  warning: string;
+  negativeKeywordCount: number;
+  keywordBidUpdateCount: number;
+  adGroupBidUpdateCount: number;
+  winnerTermCount: number;
+  negativeKeywords: Array<{
+    campaignId: string;
+    adGroupId: string;
+    keywordText: string;
+    matchType: "NEGATIVE_EXACT";
+    state: "ENABLED";
+    reason: string;
+  }>;
+  keywordBidUpdates: Array<{
+    keywordId: string;
+    bid: number;
+    reason: string;
+  }>;
+  adGroupBidUpdates: Array<{
+    adGroupId: string;
+    defaultBid: number;
+    reason: string;
+  }>;
+  winnerTerms: Array<{
+    campaignId: string;
+    campaignName: string;
+    adGroupId: string;
+    adGroupName: string;
+    keywordId: string;
+    searchTerm: string;
+    clicks: number;
+    spend: number;
+    sales: number;
+    orders: number;
+    acos: number;
+    recommendation: string;
+  }>;
+}
+
 export function analyzeAmazonCampaignMetrics(metrics: AmazonCampaignMetrics): AmazonCampaignRecommendation {
   if (metrics.spend >= 25 && metrics.clicks >= 30 && metrics.orders === 0) {
     return {
@@ -300,6 +342,97 @@ export function analyzeAmazonSearchTermReportRows(rows: Array<Record<string, unk
     wasteSearchTerms,
     efficientSearchTerms,
     recommendations: metrics.map(analyzeAmazonCampaignMetrics)
+  };
+}
+
+export function buildAmazonAdsBidKeywordPreview(rows: Array<Record<string, unknown>>): AmazonAdsBidKeywordPreview {
+  const negativeKeywords: AmazonAdsBidKeywordPreview["negativeKeywords"] = [];
+  const keywordBidUpdates: AmazonAdsBidKeywordPreview["keywordBidUpdates"] = [];
+  const adGroupBidUpdates: AmazonAdsBidKeywordPreview["adGroupBidUpdates"] = [];
+  const winnerTerms: AmazonAdsBidKeywordPreview["winnerTerms"] = [];
+  const seenNegatives = new Set<string>();
+  const seenKeywordBids = new Set<string>();
+  const seenAdGroupBids = new Set<string>();
+
+  for (const row of rows) {
+    const campaignId = fieldText(row, ["campaignId", "Campaign ID", "Campaign Id"]);
+    const adGroupId = fieldText(row, ["adGroupId", "Ad Group ID", "Ad Group Id"]);
+    const searchTerm = fieldText(row, ["searchTerm", "Customer Search Term", "Search Term"]);
+    const clicks = fieldNumber(row, ["clicks", "Clicks"]);
+    const spend = fieldNumber(row, ["cost", "Spend", "Cost"]);
+    const sales = fieldNumber(row, ["sales7d", "7 Day Total Sales", "Sales"]);
+    const orders = fieldNumber(row, ["purchases7d", "7 Day Total Orders (#)", "Orders"]);
+    const isWaste = Boolean(campaignId && adGroupId && searchTerm && orders === 0 && sales === 0 && (clicks >= 15 || spend >= 10));
+
+    if (isWaste) {
+      const negativeKey = `${campaignId}:${adGroupId}:${searchTerm.toLowerCase()}`;
+      if (!seenNegatives.has(negativeKey)) {
+        negativeKeywords.push({
+          campaignId,
+          adGroupId,
+          keywordText: searchTerm,
+          matchType: "NEGATIVE_EXACT",
+          state: "ENABLED",
+          reason: "High clicks or spend with no attributed orders; review before adding as negative exact."
+        });
+        seenNegatives.add(negativeKey);
+      }
+
+      const keywordId = fieldText(row, ["keywordId", "Keyword ID", "Keyword Id"]);
+      const currentBid = fieldNumber(row, ["bid", "Bid", "Keyword Bid", "Current Bid"]);
+      if (keywordId && currentBid > 0 && !seenKeywordBids.has(keywordId)) {
+        const bid = reducedBid(currentBid);
+        keywordBidUpdates.push({
+          keywordId,
+          bid,
+          reason: `Reduce bid from ${currentBid} to ${bid} for wasted traffic before increasing campaign budget.`
+        });
+        seenKeywordBids.add(keywordId);
+      }
+
+      const defaultBid = fieldNumber(row, ["defaultBid", "Default Bid", "Ad Group Default Bid"]);
+      if (!keywordId && adGroupId && defaultBid > 0 && !seenAdGroupBids.has(adGroupId)) {
+        const nextBid = reducedBid(defaultBid);
+        adGroupBidUpdates.push({
+          adGroupId,
+          defaultBid: nextBid,
+          reason: `Reduce ad group default bid from ${defaultBid} to ${nextBid} for wasted traffic without keyword-level bid data.`
+        });
+        seenAdGroupBids.add(adGroupId);
+      }
+    }
+
+    const acos = sales > 0 ? Number(((spend / sales) * 100).toFixed(2)) : 0;
+    if (campaignId && searchTerm && orders > 0 && acos > 0 && acos <= 35) {
+      winnerTerms.push({
+        campaignId,
+        campaignName: fieldText(row, ["campaignName", "Campaign Name"]) || campaignId,
+        adGroupId,
+        adGroupName: fieldText(row, ["adGroupName", "Ad Group Name"]),
+        keywordId: fieldText(row, ["keywordId", "Keyword ID", "Keyword Id"]),
+        searchTerm,
+        clicks,
+        spend,
+        sales,
+        orders,
+        acos,
+        recommendation: "Protect this converting term from budget cuts; consider exact-match isolation or modest bid growth only after waste reductions are reviewed."
+      });
+    }
+  }
+
+  return {
+    operation: "preview_amazon_ads_bid_keyword_recommendations",
+    applied: false,
+    warning: "Preview only. No bids, keywords, negative keywords, campaigns, ad groups, product ads, or listings were changed.",
+    negativeKeywordCount: negativeKeywords.length,
+    keywordBidUpdateCount: keywordBidUpdates.length,
+    adGroupBidUpdateCount: adGroupBidUpdates.length,
+    winnerTermCount: winnerTerms.length,
+    negativeKeywords,
+    keywordBidUpdates,
+    adGroupBidUpdates,
+    winnerTerms
   };
 }
 
@@ -584,6 +717,10 @@ function text(value: unknown): string {
 function number(value: unknown): number {
   const parsed = Number(String(value ?? 0).replace(/[$,%]/g, ""));
   return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function reducedBid(currentBid: number): number {
+  return Number(Math.max(0.15, currentBid * 0.75).toFixed(2));
 }
 
 function campaignBudget(campaign: Record<string, unknown>): number {

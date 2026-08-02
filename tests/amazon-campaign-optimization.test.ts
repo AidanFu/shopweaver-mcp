@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { analyzeAmazonCampaignMetrics, analyzeAmazonCampaignSkuSignals, analyzeAmazonSearchTermReportRows, buildAmazonCampaignBudgetSalesPlan, buildAmazonCampaignSkuActionPlan, buildAmazonCampaignSkuBudgetReviewPreview, buildAmazonCampaignSkuCampaignControlPreview, buildAmazonCampaignSkuControlPreview } from "../src/amazon/campaign-optimization.js";
+import { analyzeAmazonCampaignMetrics, analyzeAmazonCampaignSkuSignals, analyzeAmazonSearchTermReportRows, buildAmazonAdsBidKeywordPreview, buildAmazonCampaignBudgetSalesPlan, buildAmazonCampaignSkuActionPlan, buildAmazonCampaignSkuBudgetReviewPreview, buildAmazonCampaignSkuCampaignControlPreview, buildAmazonCampaignSkuControlPreview } from "../src/amazon/campaign-optimization.js";
 
 describe("analyzeAmazonCampaignMetrics", () => {
   it("flags spend with clicks but no orders for budget review", () => {
@@ -92,6 +92,35 @@ describe("analyzeAmazonCampaignMetrics", () => {
         sales: 0,
         orders: 0
       }]
+    });
+  });
+
+  it("previews keyword, bid, and negative keyword recommendations without applying them", () => {
+    expect(buildAmazonAdsBidKeywordPreview([
+      { campaignId: "campaign-1", campaignName: "Auto Discovery", adGroupId: "adgroup-1", adGroupName: "Discovery", keywordId: "keyword-1", searchTerm: "free crochet pattern", clicks: 28, cost: 18, sales7d: 0, purchases7d: 0, bid: 0.8 },
+      { campaignId: "campaign-2", campaignName: "Exact Winners", adGroupId: "adgroup-2", adGroupName: "Exact", keywordId: "keyword-2", searchTerm: "crochet bag charm", clicks: 42, cost: 26, sales7d: 160, purchases7d: 4, bid: 0.7 },
+      { campaignId: "campaign-3", campaignName: "Broad Discovery", adGroupId: "adgroup-3", adGroupName: "Broad", searchTerm: "free crochet pdf", clicks: 19, cost: 13, sales7d: 0, purchases7d: 0, defaultBid: 0.6 }
+    ])).toEqual({
+      operation: "preview_amazon_ads_bid_keyword_recommendations",
+      applied: false,
+      warning: "Preview only. No bids, keywords, negative keywords, campaigns, ad groups, product ads, or listings were changed.",
+      negativeKeywordCount: 2,
+      keywordBidUpdateCount: 1,
+      adGroupBidUpdateCount: 1,
+      winnerTermCount: 1,
+      negativeKeywords: [
+        { campaignId: "campaign-1", adGroupId: "adgroup-1", keywordText: "free crochet pattern", matchType: "NEGATIVE_EXACT", state: "ENABLED", reason: "High clicks or spend with no attributed orders; review before adding as negative exact." },
+        { campaignId: "campaign-3", adGroupId: "adgroup-3", keywordText: "free crochet pdf", matchType: "NEGATIVE_EXACT", state: "ENABLED", reason: "High clicks or spend with no attributed orders; review before adding as negative exact." }
+      ],
+      keywordBidUpdates: [
+        { keywordId: "keyword-1", bid: 0.6, reason: "Reduce bid from 0.8 to 0.6 for wasted traffic before increasing campaign budget." }
+      ],
+      adGroupBidUpdates: [
+        { adGroupId: "adgroup-3", defaultBid: 0.45, reason: "Reduce ad group default bid from 0.6 to 0.45 for wasted traffic without keyword-level bid data." }
+      ],
+      winnerTerms: [
+        { campaignId: "campaign-2", campaignName: "Exact Winners", adGroupId: "adgroup-2", adGroupName: "Exact", keywordId: "keyword-2", searchTerm: "crochet bag charm", clicks: 42, spend: 26, sales: 160, orders: 4, acos: 16.25, recommendation: "Protect this converting term from budget cuts; consider exact-match isolation or modest bid growth only after waste reductions are reviewed." }
+      ]
     });
   });
 

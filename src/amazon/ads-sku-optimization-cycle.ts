@@ -1,5 +1,5 @@
 import type { AmazonAdsClient } from "./ads-client.js";
-import { analyzeAmazonCampaignSkuSignals, analyzeAmazonSearchTermReportRows, buildAmazonCampaignBudgetSalesPlan, buildAmazonCampaignSkuActionPlan, buildAmazonCampaignSkuBudgetReviewPreview, buildAmazonCampaignSkuCampaignControlPreview, buildAmazonCampaignSkuControlPreview } from "./campaign-optimization.js";
+import { analyzeAmazonCampaignSkuSignals, analyzeAmazonSearchTermReportRows, buildAmazonAdsBidKeywordPreview, buildAmazonCampaignBudgetSalesPlan, buildAmazonCampaignSkuActionPlan, buildAmazonCampaignSkuBudgetReviewPreview, buildAmazonCampaignSkuCampaignControlPreview, buildAmazonCampaignSkuControlPreview } from "./campaign-optimization.js";
 
 type AmazonAdsSkuOptimizationClient = Pick<AmazonAdsClient, "createSponsoredProductsAdvertisedProductReport" | "getReport" | "downloadReportRows" | "listSponsoredProductsCampaigns">;
 
@@ -73,6 +73,7 @@ export async function runAmazonAdsSkuOptimizationCycle(amazonAds: AmazonAdsSkuOp
     controlPreview: buildAmazonCampaignSkuControlPreview(actionPlan),
     campaignControlPreview,
     budgetReviewPreview,
+    bidKeywordPreview: buildAmazonAdsBidKeywordPreview(rows),
     strategyPlan: buildAmazonCampaignBudgetSalesPlan({ searchTermAnalysis, actionPlan, budgetReviewPreview }),
     applied: false
   };

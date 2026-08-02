@@ -80,6 +80,21 @@ describe("parseAmazonAdsSkuOptimizeArgs", () => {
           reason: "Reduce daily budget from 18 to 9 only after reviewing SKU fit and ad group bids; 83.73% of spend is high-priority zero-sale SKU spend."
         }]
       },
+      bidKeywordPreview: {
+        negativeKeywordCount: 1,
+        keywordBidUpdateCount: 1,
+        adGroupBidUpdateCount: 0,
+        winnerTermCount: 1,
+        negativeKeywords: [
+          { campaignId: "72675144208564", adGroupId: "153245", keywordText: "free towel warmer manual" }
+        ],
+        keywordBidUpdates: [
+          { keywordId: "987654", bid: 0.6, reason: "Reduce bid from 0.8 to 0.6 for wasted traffic before increasing campaign budget." }
+        ],
+        winnerTerms: [
+          { campaignName: "Exact | Reviewed SKUs Focus", searchTerm: "heated towel rack wall mounted", acos: 22.4, recommendation: "Protect this converting term." }
+        ]
+      },
       controlPreview: {
         reviewCount: 2,
         skuSpendReviews: [
@@ -100,6 +115,11 @@ describe("parseAmazonAdsSkuOptimizeArgs", () => {
       "- Review listing conversion for 2 advertised SKU(s) with spend but no recent SKU-level sales before raising bids or budgets.",
       "Budget payloads:",
       "- campaign 72675144208564 -> DAILY 9: Reduce daily budget from 18 to 9 only after reviewing SKU fit and ad group bids; 83.73% of spend is high-priority zero-sale SKU spend.",
+      "Bid and keyword previews:",
+      "- negatives: 1 | keyword bid reductions: 1 | ad group bid reductions: 0 | winner terms: 1",
+      "- negative 72675144208564/153245: free towel warmer manual",
+      "- keyword 987654 -> bid 0.6: Reduce bid from 0.8 to 0.6 for wasted traffic before increasing campaign budget.",
+      "- winner Exact | Reviewed SKUs Focus: heated towel rack wall mounted | ACOS 22.4 | Protect this converting term.",
       "SKU reviews:",
       "- DH-E37S-W6DM | Exact | Reviewed SKUs Focus | spend 22.37 | Review listing conversion.",
       "- 77-UM99-B96T | Exact | Reviewed SKUs Focus | spend 14.08 | Review listing conversion.",

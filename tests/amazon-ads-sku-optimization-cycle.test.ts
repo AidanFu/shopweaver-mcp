@@ -58,8 +58,8 @@ describe("runAmazonAdsSkuOptimizationCycle", () => {
       async downloadReportRows(url: string) {
         expect(url).toBe("https://example.test/sku-report.gz");
         return [
-          { campaignId: "campaign-1", campaignName: "Exact Gold", adGroupId: "adgroup-1", advertisedSku: "DH-E37S-W6DM", searchTerm: "free crochet pattern", clicks: 18, cost: 32, purchases7d: 0, sales7d: 0 },
-          { campaignId: "campaign-2", campaignName: "Exact Silver", adGroupId: "adgroup-2", advertisedSku: "5H-2EH1-7H77", searchTerm: "crochet bag charm", clicks: 20, cost: 18, purchases7d: 1, sales7d: 184.9 }
+          { campaignId: "campaign-1", campaignName: "Exact Gold", adGroupId: "adgroup-1", advertisedSku: "DH-E37S-W6DM", keywordId: "keyword-1", searchTerm: "free crochet pattern", clicks: 18, cost: 32, purchases7d: 0, sales7d: 0, bid: 0.8 },
+          { campaignId: "campaign-2", campaignName: "Exact Silver", adGroupId: "adgroup-2", advertisedSku: "5H-2EH1-7H77", keywordId: "keyword-2", searchTerm: "crochet bag charm", clicks: 20, cost: 18, purchases7d: 1, sales7d: 184.9, bid: 0.7 }
         ];
       },
       async listSponsoredProductsCampaigns(profileId: string, body: Record<string, unknown>) {
@@ -121,6 +121,14 @@ describe("runAmazonAdsSkuOptimizationCycle", () => {
         campaignBudgetReviews: [
           { campaignId: "campaign-1", campaignName: "Exact Gold", currentBudget: { budgetType: "DAILY", budget: 10 }, suggestedBudget: { budgetType: "DAILY", budget: 5 } }
         ]
+      },
+      bidKeywordPreview: {
+        operation: "preview_amazon_ads_bid_keyword_recommendations",
+        applied: false,
+        negativeKeywordCount: 1,
+        keywordBidUpdateCount: 1,
+        adGroupBidUpdateCount: 0,
+        winnerTermCount: 1
       },
       strategyPlan: {
         operation: "preview_amazon_ads_budget_sales_strategy",

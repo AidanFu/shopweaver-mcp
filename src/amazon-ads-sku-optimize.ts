@@ -67,6 +67,7 @@ export function renderAmazonAdsSkuOptimizationSummary(result: Record<string, any
   const listingConversion = strategyPlan.listingConversion ?? {};
   const budgetUpdates = result.budgetReviewPreview?.campaignBudgetUpdates ?? [];
   const skuReviews = result.controlPreview?.skuSpendReviews ?? [];
+  const bidKeywordPreview = result.bidKeywordPreview ?? {};
   return [
     "Amazon Ads SKU Optimization Summary",
     `Status: ${result.status ?? "UNKNOWN"} | Report: ${result.reportId ?? ""} | Rows: ${result.rowCount ?? 0} | SKUs: ${result.skuCampaignCount ?? 0} | Applied: ${result.applied === true}`,
@@ -79,6 +80,12 @@ export function renderAmazonAdsSkuOptimizationSummary(result: Record<string, any
     ...lines(listingConversion.recommendedActions),
     "Budget payloads:",
     ...(budgetUpdates.length > 0 ? budgetUpdates.map((update: any) => `- campaign ${update.campaignId} -> ${update.budget?.budgetType} ${update.budget?.budget}: ${update.reason}`) : ["- none"]),
+    "Bid and keyword previews:",
+    `- negatives: ${bidKeywordPreview.negativeKeywordCount ?? 0} | keyword bid reductions: ${bidKeywordPreview.keywordBidUpdateCount ?? 0} | ad group bid reductions: ${bidKeywordPreview.adGroupBidUpdateCount ?? 0} | winner terms: ${bidKeywordPreview.winnerTermCount ?? 0}`,
+    ...negativeKeywordLines(bidKeywordPreview.negativeKeywords),
+    ...keywordBidLines(bidKeywordPreview.keywordBidUpdates),
+    ...adGroupBidLines(bidKeywordPreview.adGroupBidUpdates),
+    ...winnerTermLines(bidKeywordPreview.winnerTerms),
     "SKU reviews:",
     ...(skuReviews.length > 0 ? skuReviews.map((review: any) => `- ${review.sku} | ${review.campaignName} | spend ${review.spend} | ${review.recommendedNextStep}`) : ["- none"]),
     `Cadence: ${strategyPlan.cadence ?? "Run after each completed report."}`
@@ -97,6 +104,22 @@ function outputFormat(value: string | undefined): AmazonAdsSkuOptimizeArgs["outp
 
 function lines(values: unknown): string[] {
   return Array.isArray(values) ? values.map(value => `- ${String(value)}`) : [];
+}
+
+function negativeKeywordLines(values: unknown): string[] {
+  return Array.isArray(values) ? values.map((value: any) => `- negative ${value.campaignId}/${value.adGroupId}: ${value.keywordText}`) : [];
+}
+
+function keywordBidLines(values: unknown): string[] {
+  return Array.isArray(values) ? values.map((value: any) => `- keyword ${value.keywordId} -> bid ${value.bid}: ${value.reason}`) : [];
+}
+
+function adGroupBidLines(values: unknown): string[] {
+  return Array.isArray(values) ? values.map((value: any) => `- ad group ${value.adGroupId} -> default bid ${value.defaultBid}: ${value.reason}`) : [];
+}
+
+function winnerTermLines(values: unknown): string[] {
+  return Array.isArray(values) ? values.map((value: any) => `- winner ${value.campaignName}: ${value.searchTerm} | ACOS ${value.acos} | ${value.recommendation}`) : [];
 }
 
 function usageError() {
