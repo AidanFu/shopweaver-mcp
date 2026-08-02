@@ -268,6 +268,87 @@ export class AmazonAdsWriteService {
     };
   }
 
+  async previewSkuOptimizerKeywordBidUpdates(input: AmazonAdsSkuOptimizationCycleInput) {
+    const cycle = await runAmazonAdsSkuOptimizationCycle(this.amazonAds, input) as { operation?: string; status?: string; reportId?: string; bidKeywordPreview?: { keywordBidUpdates?: AmazonAdsKeywordBidUpdate[] } };
+    if (cycle.status !== "COMPLETED") {
+      return {
+        operation: "amazon_ads_update_keyword_bids" as const,
+        sourceOperation: cycle.operation,
+        sourceReportId: cycle.reportId,
+        status: cycle.status ?? "UNKNOWN",
+        profileId: input.profileId,
+        keywordBidUpdateCount: 0,
+        keywords: [],
+        applied: false,
+        warning: "The SKU optimization report is not completed yet. Poll again before creating a keyword bid update preview."
+      };
+    }
+    const preview = buildKeywordBidPreview(input.profileId, cycle.bidKeywordPreview?.keywordBidUpdates ?? []);
+    return {
+      operation: "amazon_ads_update_keyword_bids" as const,
+      sourceOperation: cycle.operation,
+      sourceReportId: cycle.reportId,
+      ...preview,
+      applied: false,
+      ...this.confirmations.issue("amazon_ads_update_keyword_bids", 0, preview),
+      warning: "This preview did not change Amazon Ads. Confirm with the returned token through amazon_ads_update_keyword_bids using the exact keywords payload."
+    };
+  }
+
+  async previewSkuOptimizerAdGroupBidUpdates(input: AmazonAdsSkuOptimizationCycleInput) {
+    const cycle = await runAmazonAdsSkuOptimizationCycle(this.amazonAds, input) as { operation?: string; status?: string; reportId?: string; bidKeywordPreview?: { adGroupBidUpdates?: AmazonAdsAdGroupBidUpdate[] } };
+    if (cycle.status !== "COMPLETED") {
+      return {
+        operation: "amazon_ads_update_ad_group_bids" as const,
+        sourceOperation: cycle.operation,
+        sourceReportId: cycle.reportId,
+        status: cycle.status ?? "UNKNOWN",
+        profileId: input.profileId,
+        adGroupBidUpdateCount: 0,
+        adGroups: [],
+        applied: false,
+        warning: "The SKU optimization report is not completed yet. Poll again before creating an ad group bid update preview."
+      };
+    }
+    const preview = buildAdGroupBidPreview(input.profileId, cycle.bidKeywordPreview?.adGroupBidUpdates ?? []);
+    return {
+      operation: "amazon_ads_update_ad_group_bids" as const,
+      sourceOperation: cycle.operation,
+      sourceReportId: cycle.reportId,
+      ...preview,
+      applied: false,
+      ...this.confirmations.issue("amazon_ads_update_ad_group_bids", 0, preview),
+      warning: "This preview did not change Amazon Ads. Confirm with the returned token through amazon_ads_update_ad_group_bids using the exact adGroups payload."
+    };
+  }
+
+  async previewSkuOptimizerNegativeKeywords(input: AmazonAdsSkuOptimizationCycleInput) {
+    const cycle = await runAmazonAdsSkuOptimizationCycle(this.amazonAds, input) as { operation?: string; status?: string; reportId?: string; bidKeywordPreview?: { negativeKeywords?: AmazonAdsNegativeKeywordInput[] } };
+    if (cycle.status !== "COMPLETED") {
+      return {
+        operation: "amazon_ads_create_negative_keywords" as const,
+        sourceOperation: cycle.operation,
+        sourceReportId: cycle.reportId,
+        status: cycle.status ?? "UNKNOWN",
+        profileId: input.profileId,
+        negativeKeywordCount: 0,
+        negativeKeywords: [],
+        applied: false,
+        warning: "The SKU optimization report is not completed yet. Poll again before creating a negative keyword preview."
+      };
+    }
+    const preview = buildDirectNegativeKeywordPreview(input.profileId, cycle.bidKeywordPreview?.negativeKeywords ?? []);
+    return {
+      operation: "amazon_ads_create_negative_keywords" as const,
+      sourceOperation: cycle.operation,
+      sourceReportId: cycle.reportId,
+      ...preview,
+      applied: false,
+      ...this.confirmations.issue("amazon_ads_create_negative_keywords", 0, preview),
+      warning: "This preview did not change Amazon Ads. Confirm with the returned token through amazon_ads_create_negative_keywords using the exact negativeKeywords payload."
+    };
+  }
+
   async previewCampaignBiddingUpdates(profileId: string, campaigns: AmazonAdsCampaignBiddingUpdate[]) {
     const preview = buildCampaignBiddingPreview(profileId, campaigns);
     return {
@@ -781,6 +862,45 @@ export function registerAmazonTools(server: McpServer, store: CredentialStore, a
         reportId: z.string().min(1).optional()
       }
     }, async input => result(await amazonAdsWrites.previewSkuOptimizerBudgetUpdates(input)));
+
+    server.registerTool("amazon_ads_run_sku_keyword_bid_update_preview", {
+      description: "Run the read-only SKU optimization cycle and create a preview token for the exact Sponsored Products keyword bid updates it recommends. This does not change keyword bids.",
+      inputSchema: {
+        profileId: z.string().min(1),
+        startDate: z.string().min(10),
+        endDate: z.string().min(10),
+        targetSkus: z.array(z.string().min(1)).min(1),
+        targetSkusWithSales: z.array(z.string().min(1)).default([]),
+        nonTargetSkusWithSales: z.array(z.string().min(1)).default([]),
+        reportId: z.string().min(1).optional()
+      }
+    }, async input => result(await amazonAdsWrites.previewSkuOptimizerKeywordBidUpdates(input)));
+
+    server.registerTool("amazon_ads_run_sku_ad_group_bid_update_preview", {
+      description: "Run the read-only SKU optimization cycle and create a preview token for the exact Sponsored Products ad group bid updates it recommends. This does not change ad group bids.",
+      inputSchema: {
+        profileId: z.string().min(1),
+        startDate: z.string().min(10),
+        endDate: z.string().min(10),
+        targetSkus: z.array(z.string().min(1)).min(1),
+        targetSkusWithSales: z.array(z.string().min(1)).default([]),
+        nonTargetSkusWithSales: z.array(z.string().min(1)).default([]),
+        reportId: z.string().min(1).optional()
+      }
+    }, async input => result(await amazonAdsWrites.previewSkuOptimizerAdGroupBidUpdates(input)));
+
+    server.registerTool("amazon_ads_run_sku_negative_keywords_preview", {
+      description: "Run the read-only SKU optimization cycle and create a preview token for the exact Sponsored Products negative keywords it recommends. This does not create negative keywords.",
+      inputSchema: {
+        profileId: z.string().min(1),
+        startDate: z.string().min(10),
+        endDate: z.string().min(10),
+        targetSkus: z.array(z.string().min(1)).min(1),
+        targetSkusWithSales: z.array(z.string().min(1)).default([]),
+        nonTargetSkusWithSales: z.array(z.string().min(1)).default([]),
+        reportId: z.string().min(1).optional()
+      }
+    }, async input => result(await amazonAdsWrites.previewSkuOptimizerNegativeKeywords(input)));
 
     server.registerTool("amazon_ads_update_campaign_bidding", {
       description: "Preview or confirm Sponsored Products campaign dynamic bidding strategy and placement multiplier updates. This changes campaign bidding only after confirmation.",

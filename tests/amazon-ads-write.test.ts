@@ -299,6 +299,130 @@ describe("AmazonAdsWriteService", () => {
     expect(amazonAds.updateSponsoredProductsCampaigns).not.toHaveBeenCalled();
   });
 
+  it("previews SKU optimizer keyword bid updates through the existing keyword bid confirmation flow", async () => {
+    const amazonAds = {
+      createSponsoredProductsNegativeKeywords: vi.fn(),
+      updateSponsoredProductsCampaigns: vi.fn(),
+      createSponsoredProductsCampaigns: vi.fn(),
+      updateSponsoredProductsKeywords: vi.fn(),
+      getReport: vi.fn().mockResolvedValue({ reportId: "sku-report-1", status: "COMPLETED", url: "https://example.test/sku-report.gz" }),
+      downloadReportRows: vi.fn().mockResolvedValue([
+        { campaignId: "campaign-1", campaignName: "Exact Gold", adGroupId: "adgroup-1", advertisedSku: "DH-E37S-W6DM", keywordId: "keyword-1", searchTerm: "free towel rack manual", clicks: 18, cost: 32, purchases7d: 0, sales7d: 0, bid: 0.8 }
+      ]),
+      listSponsoredProductsCampaigns: vi.fn().mockResolvedValue({ campaigns: [] })
+    };
+    const service = new AmazonAdsWriteService(amazonAds, new ConfirmationStore(() => 1_000));
+
+    const preview = await service.previewSkuOptimizerKeywordBidUpdates({
+      profileId: "profile-1",
+      reportId: "sku-report-1",
+      startDate: "2026-07-29",
+      endDate: "2026-08-01",
+      targetSkus: ["DH-E37S-W6DM"],
+      targetSkusWithSales: [],
+      nonTargetSkusWithSales: []
+    });
+
+    expect(preview).toMatchObject({
+      operation: "amazon_ads_update_keyword_bids",
+      sourceOperation: "amazon_ads_run_sku_optimization_cycle",
+      sourceReportId: "sku-report-1",
+      profileId: "profile-1",
+      keywordBidUpdateCount: 1,
+      applied: false,
+      keywords: [{
+        keywordId: "keyword-1",
+        bid: 0.6,
+        reason: "Reduce bid from 0.8 to 0.6 for wasted traffic before increasing campaign budget."
+      }]
+    });
+    expect(preview.confirmationToken).toEqual(expect.any(String));
+    expect(amazonAds.updateSponsoredProductsKeywords).not.toHaveBeenCalled();
+  });
+
+  it("previews SKU optimizer ad group bid updates through the existing ad group bid confirmation flow", async () => {
+    const amazonAds = {
+      createSponsoredProductsNegativeKeywords: vi.fn(),
+      updateSponsoredProductsCampaigns: vi.fn(),
+      createSponsoredProductsCampaigns: vi.fn(),
+      updateSponsoredProductsAdGroups: vi.fn(),
+      getReport: vi.fn().mockResolvedValue({ reportId: "sku-report-1", status: "COMPLETED", url: "https://example.test/sku-report.gz" }),
+      downloadReportRows: vi.fn().mockResolvedValue([
+        { campaignId: "campaign-1", campaignName: "Broad Gold", adGroupId: "adgroup-1", advertisedSku: "DH-E37S-W6DM", searchTerm: "free towel rack manual", clicks: 18, cost: 32, purchases7d: 0, sales7d: 0, defaultBid: 0.6 }
+      ]),
+      listSponsoredProductsCampaigns: vi.fn().mockResolvedValue({ campaigns: [] })
+    };
+    const service = new AmazonAdsWriteService(amazonAds, new ConfirmationStore(() => 1_000));
+
+    const preview = await service.previewSkuOptimizerAdGroupBidUpdates({
+      profileId: "profile-1",
+      reportId: "sku-report-1",
+      startDate: "2026-07-29",
+      endDate: "2026-08-01",
+      targetSkus: ["DH-E37S-W6DM"],
+      targetSkusWithSales: [],
+      nonTargetSkusWithSales: []
+    });
+
+    expect(preview).toMatchObject({
+      operation: "amazon_ads_update_ad_group_bids",
+      sourceOperation: "amazon_ads_run_sku_optimization_cycle",
+      sourceReportId: "sku-report-1",
+      profileId: "profile-1",
+      adGroupBidUpdateCount: 1,
+      applied: false,
+      adGroups: [{
+        adGroupId: "adgroup-1",
+        defaultBid: 0.45,
+        reason: "Reduce ad group default bid from 0.6 to 0.45 for wasted traffic without keyword-level bid data."
+      }]
+    });
+    expect(preview.confirmationToken).toEqual(expect.any(String));
+    expect(amazonAds.updateSponsoredProductsAdGroups).not.toHaveBeenCalled();
+  });
+
+  it("previews SKU optimizer negative keywords through the direct negative keyword confirmation flow", async () => {
+    const amazonAds = {
+      createSponsoredProductsNegativeKeywords: vi.fn(),
+      updateSponsoredProductsCampaigns: vi.fn(),
+      createSponsoredProductsCampaigns: vi.fn(),
+      getReport: vi.fn().mockResolvedValue({ reportId: "sku-report-1", status: "COMPLETED", url: "https://example.test/sku-report.gz" }),
+      downloadReportRows: vi.fn().mockResolvedValue([
+        { campaignId: "campaign-1", campaignName: "Exact Gold", adGroupId: "adgroup-1", advertisedSku: "DH-E37S-W6DM", searchTerm: "free towel rack manual", clicks: 18, cost: 32, purchases7d: 0, sales7d: 0 }
+      ]),
+      listSponsoredProductsCampaigns: vi.fn().mockResolvedValue({ campaigns: [] })
+    };
+    const service = new AmazonAdsWriteService(amazonAds, new ConfirmationStore(() => 1_000));
+
+    const preview = await service.previewSkuOptimizerNegativeKeywords({
+      profileId: "profile-1",
+      reportId: "sku-report-1",
+      startDate: "2026-07-29",
+      endDate: "2026-08-01",
+      targetSkus: ["DH-E37S-W6DM"],
+      targetSkusWithSales: [],
+      nonTargetSkusWithSales: []
+    });
+
+    expect(preview).toMatchObject({
+      operation: "amazon_ads_create_negative_keywords",
+      sourceOperation: "amazon_ads_run_sku_optimization_cycle",
+      sourceReportId: "sku-report-1",
+      profileId: "profile-1",
+      negativeKeywordCount: 1,
+      applied: false,
+      negativeKeywords: [{
+        campaignId: "campaign-1",
+        adGroupId: "adgroup-1",
+        keywordText: "free towel rack manual",
+        matchType: "NEGATIVE_EXACT",
+        state: "ENABLED"
+      }]
+    });
+    expect(preview.confirmationToken).toEqual(expect.any(String));
+    expect(amazonAds.createSponsoredProductsNegativeKeywords).not.toHaveBeenCalled();
+  });
+
   it("previews and confirms campaign dynamic bidding updates", async () => {
     const amazonAds = {
       createSponsoredProductsNegativeKeywords: vi.fn(),
