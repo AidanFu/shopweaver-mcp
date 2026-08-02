@@ -169,6 +169,28 @@ export class AmazonAdsWriteService {
     };
   }
 
+  async previewNegativeKeywords(profileId: string, negativeKeywords: AmazonAdsNegativeKeywordInput[]) {
+    const preview = buildDirectNegativeKeywordPreview(profileId, negativeKeywords);
+    return {
+      operation: "amazon_ads_create_negative_keywords" as const,
+      ...preview,
+      applied: false,
+      ...this.confirmations.issue("amazon_ads_create_negative_keywords", 0, preview),
+      warning: "This preview did not change Amazon Ads. Confirm with the returned token to create the exact negative keywords."
+    };
+  }
+
+  async confirmNegativeKeywords(profileId: string, negativeKeywords: AmazonAdsNegativeKeywordInput[], confirmationToken: string) {
+    const preview = buildDirectNegativeKeywordPreview(profileId, negativeKeywords);
+    this.confirmations.consume(confirmationToken, "amazon_ads_create_negative_keywords", 0, preview);
+    return {
+      operation: "amazon_ads_create_negative_keywords" as const,
+      ...preview,
+      result: await this.amazonAds.createSponsoredProductsNegativeKeywords(profileId, preview.negativeKeywords),
+      applied: true
+    };
+  }
+
   async previewCampaignStateUpdates(profileId: string, campaigns: AmazonAdsCampaignStateUpdate[]) {
     const preview = buildCampaignStatePreview(profileId, campaigns);
     return {
@@ -414,6 +436,20 @@ function buildAdGroupBidPreview(profileId: string, adGroups: AmazonAdsAdGroupBid
       adGroupId: adGroup.adGroupId,
       defaultBid: adGroup.defaultBid,
       ...(adGroup.reason ? { reason: adGroup.reason } : {})
+    }))
+  };
+}
+
+function buildDirectNegativeKeywordPreview(profileId: string, negativeKeywords: AmazonAdsNegativeKeywordInput[]) {
+  return {
+    profileId,
+    negativeKeywordCount: negativeKeywords.length,
+    negativeKeywords: negativeKeywords.map(keyword => ({
+      campaignId: keyword.campaignId,
+      adGroupId: keyword.adGroupId,
+      keywordText: keyword.keywordText,
+      matchType: keyword.matchType,
+      state: keyword.state
     }))
   };
 }
@@ -668,6 +704,24 @@ export function registerAmazonTools(server: McpServer, store: CredentialStore, a
   }
 
   if (amazonAdsWrites) {
+    server.registerTool("amazon_ads_create_negative_keywords", {
+      description: "Preview or confirm creating Sponsored Products negative exact keywords from a direct reviewed payload. This creates negative keywords only after confirmation.",
+      inputSchema: {
+        mode: z.enum(["preview", "confirm"]).default("preview"),
+        profileId: z.string().min(1),
+        negativeKeywords: z.array(z.object({
+          campaignId: z.string().min(1),
+          adGroupId: z.string().min(1),
+          keywordText: z.string().min(1),
+          matchType: z.literal("NEGATIVE_EXACT"),
+          state: z.literal("ENABLED")
+        })).min(1),
+        confirmationToken: z.string().min(20).optional()
+      }
+    }, async ({ mode, profileId, negativeKeywords, confirmationToken }) => result(mode === "preview"
+      ? await amazonAdsWrites.previewNegativeKeywords(profileId, negativeKeywords)
+      : await amazonAdsWrites.confirmNegativeKeywords(profileId, negativeKeywords, confirmationToken ?? "")));
+
     server.registerTool("amazon_ads_create_negative_keywords_from_review", {
       description: "Preview or confirm creating Sponsored Products negative exact keywords from approved rows in a reviewed Amazon Ads optimization workbook.",
       inputSchema: {

@@ -6,6 +6,7 @@ const allowed = [
   "amazon_ads_build_cost_control_plan",
   "amazon_ads_compare_report_files",
   "amazon_ads_create_campaigns",
+  "amazon_ads_create_negative_keywords",
   "amazon_ads_create_negative_keywords_from_review",
   "amazon_ads_create_sp_advertised_product_report",
   "amazon_ads_create_sp_search_term_report",
