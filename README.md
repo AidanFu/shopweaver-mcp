@@ -110,6 +110,14 @@ npm run google:setup
 
 Google tokens are stored in macOS Keychain. Allowed folder metadata is stored in ignored local config. Use `config.example.json` as the documented shape and keep real folder IDs out of Git.
 
+Before Drive import work, run:
+
+```bash
+npm run google:status
+```
+
+This validates stored Google Drive authorization without printing tokens. If it reports `refreshStatus: "failed"` or `connected: false`, run `npm run google:setup` to reconnect Google Drive.
+
 ## Google Drive folder layout
 
 ```text

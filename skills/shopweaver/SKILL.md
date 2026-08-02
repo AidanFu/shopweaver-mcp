@@ -17,6 +17,14 @@ Use the ShopWeaver MCP tools for one Etsy seller account. Keep all writes draft-
 6. Confirm using the unchanged payload and returned `confirmationToken`.
 7. Stop if the listing is not a draft, the token expired, the payload changed, or Etsy reports an uncertain creation result.
 
+Before Drive import work, run:
+
+```bash
+npm run google:status
+```
+
+This validates stored Google Drive authorization without printing tokens. If it reports `refreshStatus: "failed"` or `connected: false`, run `npm run google:setup` to reconnect Google Drive.
+
 ### Etsy variation drafts
 
 Use this when several Drive products should become one Etsy draft listing with options such as Color.
