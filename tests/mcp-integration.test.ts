@@ -60,6 +60,7 @@ describe("MCP integration", () => {
       "amazon_ads_run_sku_budget_update_preview",
       "amazon_ads_run_sku_keyword_bid_update_preview",
       "amazon_ads_run_sku_negative_keywords_preview",
+      "amazon_ads_summarize_change_log",
       "amazon_ads_update_ad_group_bids",
       "amazon_ads_update_campaign_bidding",
       "amazon_ads_update_campaign_budgets",
@@ -101,6 +102,75 @@ describe("MCP integration", () => {
       "shopweaver_write_amazon_listing_workbook",
       "shopweaver_write_enriched_workbook"
     ]);
+    await Promise.all([client.close(), server.close()]);
+  });
+
+  it("summarizes the local Amazon Ads change log through a read-only tool", async () => {
+    const store = new MemoryCredentialStore();
+    await store.set("shop", { userId: 1, shopId: 42 });
+    const clientApi = { request: vi.fn() } as never;
+    const listings = new ListingService(clientApi, store);
+    const orders = new OrderService(clientApi, store);
+    const writes = new DraftWriteService(clientApi, listings, store, new ConfirmationStore());
+    const googleFolders = new GoogleFolderToolService({} as never);
+    const driveImports = new DriveImportService({} as never);
+    const driveImageUploads = new DriveImageUploadService(clientApi, listings, {} as never, store, new ConfirmationStore());
+    const amazonAds = new AmazonAdsClient(store, vi.fn());
+    const amazonSpApi = new AmazonSpApiClient(store, vi.fn());
+    const amazonListingWrites = new AmazonListingWriteService(store, amazonSpApi, new ConfirmationStore());
+    const amazonAdsWrites = new AmazonAdsWriteService(amazonAds, new ConfirmationStore());
+    const amazonAdsChangeLog = {
+      record: vi.fn(),
+      read: vi.fn().mockResolvedValue({
+        operation: "read_amazon_ads_change_log",
+        recordCount: 2,
+        records: [{
+          createdAt: "2026-07-30T20:45:00.000Z",
+          operation: "amazon_ads_update_campaign_budgets",
+          profileId: "profile-1",
+          applied: true,
+          payload: { campaigns: [{ campaignId: "campaign-1" }] },
+          result: {}
+        }, {
+          createdAt: "2026-07-30T20:50:00.000Z",
+          operation: "amazon_ads_create_negative_keywords",
+          profileId: "profile-1",
+          applied: true,
+          payload: { negativeKeywords: [{ campaignId: "campaign-1", adGroupId: "adgroup-1", keywordText: "free manual" }] },
+          result: {}
+        }]
+      })
+    };
+    const server = createServer({ store, listings, orders, writes, googleFolders, driveImports, driveImageUploads, amazonAds, amazonSpApi, amazonListingWrites, amazonAdsWrites, amazonAdsChangeLog });
+    const client = new Client({ name: "test", version: "1" });
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
+
+    const response = await client.callTool({
+      name: "amazon_ads_summarize_change_log",
+      arguments: { profileId: "profile-1", campaignId: "campaign-1", limit: 25 }
+    });
+
+    expect(amazonAdsChangeLog.read).toHaveBeenCalledWith({ profileId: "profile-1", campaignId: "campaign-1", limit: 25 });
+    expect(response.structuredContent).toMatchObject({
+      operation: "summarize_amazon_ads_change_log",
+      filters: {
+        profileId: "profile-1",
+        campaignId: "campaign-1",
+        limit: 25
+      },
+      sourceRecordCount: 2,
+      summary: {
+        actionCount: 2,
+        operationCounts: {
+          amazon_ads_create_negative_keywords: 1,
+          amazon_ads_update_campaign_budgets: 1
+        },
+        campaignIdCount: 1,
+        negativeKeywordCount: 1,
+        campaignBudgetUpdateCount: 1
+      }
+    });
     await Promise.all([client.close(), server.close()]);
   });
 });

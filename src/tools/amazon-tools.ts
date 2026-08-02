@@ -5,7 +5,7 @@ import { writeAmazonAplusOptimizationWorkbook } from "../amazon/aplus-workbook.j
 import { buildAmazonAdsCostControlPlanFromReportUrl } from "../amazon/ads-cost-control-plan.js";
 import { runAmazonAdsCampaignOptimizationCycle } from "../amazon/ads-optimization-cycle.js";
 import { runAmazonAdsSkuOptimizationCycle, type AmazonAdsSkuOptimizationCycleInput } from "../amazon/ads-sku-optimization-cycle.js";
-import { compareAmazonAdsOptimizationReportFiles } from "../amazon/ads-optimization-history.js";
+import { compareAmazonAdsOptimizationReportFiles, summarizeAmazonAdsAppliedActions } from "../amazon/ads-optimization-history.js";
 import { analyzeAmazonSearchTermReportFile, previewAmazonAdsApprovedActions, readAmazonAdsActionDecisions, writeAmazonSearchTermOptimizationWorkbook } from "../amazon/campaign-report-file.js";
 import { analyzeAmazonCampaignMetrics, analyzeAmazonSearchTermReportRows } from "../amazon/campaign-optimization.js";
 import { analyzeAmazonExistingListing, buildAmazonListingCopyPatch } from "../amazon/listing-optimization.js";
@@ -1054,6 +1054,24 @@ export function registerAmazonTools(server: McpServer, store: CredentialStore, a
         limit: z.number().int().min(1).max(500).optional()
       }
     }, async (input) => result(await amazonAdsChangeLog.read(input)));
+
+    server.registerTool("amazon_ads_summarize_change_log", {
+      description: "Summarize the local append-only history of confirmed Amazon Ads write actions by operation and payload type. This is read-only and does not change ads.",
+      inputSchema: {
+        profileId: z.string().min(1).optional(),
+        operation: z.string().min(1).optional(),
+        campaignId: z.string().min(1).optional(),
+        limit: z.number().int().min(1).max(500).optional()
+      }
+    }, async (input) => {
+      const records = await amazonAdsChangeLog.read(input);
+      return result({
+        operation: "summarize_amazon_ads_change_log",
+        filters: input,
+        sourceRecordCount: records.recordCount,
+        summary: summarizeAmazonAdsAppliedActions(records.records)
+      });
+    });
   }
 
   server.registerTool("amazon_ads_compare_report_files", {
