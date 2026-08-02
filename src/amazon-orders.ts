@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { stdout } from "node:process";
 import { pathToFileURL } from "node:url";
+import { readAmazonSearchTermReportRows } from "./amazon/campaign-report-file.js";
 import { AmazonSpApiClient } from "./amazon/sp-api-client.js";
 import { KeychainCredentialStore } from "./credentials/keychain.js";
 import { ShopWeaverError } from "./errors.js";
@@ -14,6 +15,7 @@ interface AmazonOrdersArgs {
   nextToken?: string;
   includeItems?: boolean;
   targetSkus?: string[];
+  adsReportFilePath?: string;
 }
 
 type AmazonOrdersResponse = {
@@ -71,7 +73,8 @@ export function parseAmazonOrdersArgs(args: string[]): AmazonOrdersArgs {
     ...(maxResults ? { maxResultsPerPage: Number(maxResults) } : {}),
     ...(values.get("--next-token") ? { nextToken: values.get("--next-token") } : {}),
     ...(values.get("--include-items") === "true" ? { includeItems: true } : {}),
-    ...(values.get("--target-skus") ? { targetSkus: splitCsv(values.get("--target-skus") ?? "") } : {})
+    ...(values.get("--target-skus") ? { targetSkus: splitCsv(values.get("--target-skus") ?? "") } : {}),
+    ...(values.get("--ads-report-file") ? { adsReportFilePath: values.get("--ads-report-file") } : {})
   };
 }
 
@@ -131,6 +134,58 @@ export function analyzeAmazonOrderSkuSignals(summary: AmazonOrdersSummary, targe
   return { targetSkus, targetSkusWithSales, targetSkusWithoutSales, nonTargetSkusWithSales, recommendations };
 }
 
+export function compareAmazonAdsSkuSalesToOrders(summary: AmazonOrdersSummary, adsRows: Array<Record<string, unknown>>, targetSkus: string[]) {
+  const sellerSales = new Map(summary.skuSales.map(row => [row.sku, row]));
+  const adsSales = new Map<string, { adsOrders: number; adsSales: number; adSpend: number }>();
+  for (const row of adsRows) {
+    const sku = text(row.advertisedSku ?? row["Advertised SKU"] ?? row.SKU);
+    if (!sku) continue;
+    const current = adsSales.get(sku) ?? { adsOrders: 0, adsSales: 0, adSpend: 0 };
+    current.adsOrders += number(row.purchases7d ?? row.Orders);
+    current.adsSales = roundCurrency(current.adsSales + number(row.sales7d ?? row.Sales));
+    current.adSpend = roundCurrency(current.adSpend + number(row.cost ?? row.Spend));
+    adsSales.set(sku, current);
+  }
+  const skuComparisons = targetSkus.map(sku => {
+    const ads = adsSales.get(sku) ?? { adsOrders: 0, adsSales: 0, adSpend: 0 };
+    const seller = sellerSales.get(sku);
+    const sellerOrders = seller?.quantityOrdered ?? 0;
+    const signal = ads.adsOrders > 0 && sellerOrders > 0
+      ? "matched_ads_and_seller_sales"
+      : ads.adsOrders > 0
+        ? "ads_attributed_without_seller_order"
+        : sellerOrders > 0
+          ? "seller_order_without_ads_attribution"
+          : "no_ads_or_seller_sales";
+    return {
+      sku,
+      ...ads,
+      sellerOrders,
+      sellerSalesByCurrency: seller?.totalAmountByCurrency ?? {},
+      signal,
+      recommendation: adsSellerRecommendation(sku, signal)
+    };
+  });
+  return {
+    operation: "compare_amazon_ads_sku_sales_to_seller_orders" as const,
+    applied: false as const,
+    targetSkuCount: targetSkus.length,
+    matchedSalesCount: skuComparisons.filter(row => row.signal === "matched_ads_and_seller_sales").length,
+    adsOnlySalesCount: skuComparisons.filter(row => row.signal === "ads_attributed_without_seller_order").length,
+    sellerOnlySalesCount: skuComparisons.filter(row => row.signal === "seller_order_without_ads_attribution").length,
+    noSalesCount: skuComparisons.filter(row => row.signal === "no_ads_or_seller_sales").length,
+    skuComparisons
+  };
+}
+
+export function buildAmazonOrdersAnalysisResult(summary: ReturnType<typeof summarizeAmazonOrders>, input: Pick<AmazonOrdersArgs, "targetSkus">, adsRows: Array<Record<string, unknown>> = []) {
+  return {
+    ...summary,
+    ...(input.targetSkus ? { skuSignals: analyzeAmazonOrderSkuSignals(summary, input.targetSkus) } : {}),
+    ...(input.targetSkus && adsRows.length > 0 ? { adsOrderComparison: compareAmazonAdsSkuSalesToOrders(summary, adsRows, input.targetSkus) } : {})
+  };
+}
+
 async function main(): Promise<void> {
   const store = new KeychainCredentialStore();
   const amazon = new AmazonSpApiClient(store);
@@ -143,10 +198,8 @@ async function main(): Promise<void> {
     }
   }
   const summary = summarizeAmazonOrders(orders, orderItemsByOrderId);
-  stdout.write(`${JSON.stringify({
-    ...summary,
-    ...(input.targetSkus ? { skuSignals: analyzeAmazonOrderSkuSignals(summary, input.targetSkus) } : {})
-  }, null, 2)}\n`);
+  const adsRows = input.adsReportFilePath ? await readAmazonSearchTermReportRows(input.adsReportFilePath) : [];
+  stdout.write(`${JSON.stringify(buildAmazonOrdersAnalysisResult(summary, input, adsRows), null, 2)}\n`);
 }
 
 function splitCsv(value: string): string[] {
@@ -157,8 +210,24 @@ function roundCurrency(value: number): number {
   return Math.round(value * 100) / 100;
 }
 
+function text(value: unknown): string {
+  return String(value ?? "").trim();
+}
+
+function number(value: unknown): number {
+  const parsed = Number(String(value ?? 0).replace(/[$,%]/g, ""));
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function adsSellerRecommendation(sku: string, signal: string): string {
+  if (signal === "matched_ads_and_seller_sales") return `Keep monitoring ${sku}; Ads attribution and Seller orders both show recent sales.`;
+  if (signal === "ads_attributed_without_seller_order") return `Reconcile Ads attribution and Seller orders for ${sku} before scaling spend; Ads shows sales but recent order items do not.`;
+  if (signal === "seller_order_without_ads_attribution") return `Protect ${sku} from unnecessary budget cuts; Seller orders exist even though Ads attribution is weak or delayed.`;
+  return `Review listing conversion, price, images, A+ content, and campaign targeting for ${sku} before adding budget.`;
+}
+
 function usageError() {
-  return new ShopWeaverError("AMAZON_ORDERS_ARGS_INVALID", "Usage: npm run amazon:orders -- --created-after ISO_DATE [--created-before ISO_DATE] [--status Unshipped,Shipped] [--max-results 50] [--marketplace-ids ATVPDKIKX0DER] [--next-token TOKEN]");
+  return new ShopWeaverError("AMAZON_ORDERS_ARGS_INVALID", "Usage: npm run amazon:orders -- --created-after ISO_DATE [--created-before ISO_DATE] [--status Unshipped,Shipped] [--max-results 50] [--marketplace-ids ATVPDKIKX0DER] [--next-token TOKEN] [--include-items true] [--target-skus SKU1,SKU2] [--ads-report-file /absolute/path.csv]");
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

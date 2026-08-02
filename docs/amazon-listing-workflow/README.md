@@ -119,8 +119,11 @@ The Ads loop is API-backed but still gated:
 4. Use the specific preview tool for the approved action type, such as `amazon_ads_run_sku_budget_update_preview` for recommended budget changes.
 5. Confirm only after reviewing the exact payload and confirmation token for that action type.
 6. Compare later reports against the local change log before making more changes.
+7. Pull recent seller orders with item details and compare them with Ads-attributed SKU sales before increasing spend.
 
 The `amazon:ads:sku` CLI supports `--format apply-plan` to show all review-only write candidates together: budget updates, keyword bid updates, ad group bid updates, and negative keywords. The combined plan is not a write command.
+
+The `amazon:orders` CLI supports `--include-items true --target-skus SKU1,SKU2 --ads-report-file /absolute/path.csv` to compare Seller order item sales with Ads-attributed SKU sales. This is read-only and helps avoid cutting budget from SKUs that are selling in Seller Central but not clearly attributed in Ads.
 
 No Ads write is automatic. Budget, bid, campaign, keyword, negative-keyword, and campaign-creation changes require an explicit confirmation token.
 

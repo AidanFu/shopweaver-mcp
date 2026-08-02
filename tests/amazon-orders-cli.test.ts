@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { analyzeAmazonOrderSkuSignals, parseAmazonOrdersArgs, summarizeAmazonOrders } from "../src/amazon-orders.js";
+import { analyzeAmazonOrderSkuSignals, buildAmazonOrdersAnalysisResult, compareAmazonAdsSkuSalesToOrders, parseAmazonOrdersArgs, summarizeAmazonOrders } from "../src/amazon-orders.js";
 
 describe("parseAmazonOrdersArgs", () => {
   it("parses a read-only Amazon order lookup window", () => {
@@ -9,14 +9,16 @@ describe("parseAmazonOrdersArgs", () => {
       "--status", "Unshipped,Shipped",
       "--max-results", "50",
       "--include-items", "true",
-      "--target-skus", "DH-E37S-W6DM,77-UM99-B96T"
+      "--target-skus", "DH-E37S-W6DM,77-UM99-B96T",
+      "--ads-report-file", "/tmp/advertised-products.csv"
     ])).toEqual({
       createdAfter: "2026-07-29T00:00:00Z",
       createdBefore: "2026-08-01T00:00:00Z",
       orderStatuses: ["Unshipped", "Shipped"],
       maxResultsPerPage: 50,
       includeItems: true,
-      targetSkus: ["DH-E37S-W6DM", "77-UM99-B96T"]
+      targetSkus: ["DH-E37S-W6DM", "77-UM99-B96T"],
+      adsReportFilePath: "/tmp/advertised-products.csv"
     });
   });
 
@@ -124,6 +126,84 @@ describe("parseAmazonOrdersArgs", () => {
         "Review traffic, price, offer, images, and campaign targeting for DH-E37S-W6DM and 77-UM99-B96T because they had no recent SKU-level sales.",
         "Review 80-16Z5-E38T as unexpected demand; decide whether to protect budget, improve listing copy, or separate campaign tracking."
       ]
+    });
+  });
+
+  it("compares Ads-attributed SKU sales with Seller order item sales", () => {
+    expect(compareAmazonAdsSkuSalesToOrders({
+      skuSales: [
+        { sku: "5H-2EH1-7H77", quantityOrdered: 1, totalAmountByCurrency: { USD: 184.9 } },
+        { sku: "80-16Z5-E38T", quantityOrdered: 1, totalAmountByCurrency: { USD: 15 } }
+      ]
+    }, [
+      { advertisedSku: "DH-E37S-W6DM", purchases7d: 1, sales7d: 189.9, cost: 32 },
+      { advertisedSku: "77-UM99-B96T", purchases7d: 0, sales7d: 0, cost: 26 },
+      { advertisedSku: "5H-2EH1-7H77", purchases7d: 0, sales7d: 0, cost: 18 }
+    ], ["DH-E37S-W6DM", "77-UM99-B96T", "5H-2EH1-7H77"])).toEqual({
+      operation: "compare_amazon_ads_sku_sales_to_seller_orders",
+      applied: false,
+      targetSkuCount: 3,
+      matchedSalesCount: 0,
+      adsOnlySalesCount: 1,
+      sellerOnlySalesCount: 1,
+      noSalesCount: 1,
+      skuComparisons: [{
+        sku: "DH-E37S-W6DM",
+        adsOrders: 1,
+        adsSales: 189.9,
+        adSpend: 32,
+        sellerOrders: 0,
+        sellerSalesByCurrency: {},
+        signal: "ads_attributed_without_seller_order",
+        recommendation: "Reconcile Ads attribution and Seller orders for DH-E37S-W6DM before scaling spend; Ads shows sales but recent order items do not."
+      }, {
+        sku: "77-UM99-B96T",
+        adsOrders: 0,
+        adsSales: 0,
+        adSpend: 26,
+        sellerOrders: 0,
+        sellerSalesByCurrency: {},
+        signal: "no_ads_or_seller_sales",
+        recommendation: "Review listing conversion, price, images, A+ content, and campaign targeting for 77-UM99-B96T before adding budget."
+      }, {
+        sku: "5H-2EH1-7H77",
+        adsOrders: 0,
+        adsSales: 0,
+        adSpend: 18,
+        sellerOrders: 1,
+        sellerSalesByCurrency: { USD: 184.9 },
+        signal: "seller_order_without_ads_attribution",
+        recommendation: "Protect 5H-2EH1-7H77 from unnecessary budget cuts; Seller orders exist even though Ads attribution is weak or delayed."
+      }]
+    });
+  });
+
+  it("builds an order analysis result with Ads comparison when report rows are provided", () => {
+    expect(buildAmazonOrdersAnalysisResult({
+      createdBefore: "2026-08-01T12:34:37Z",
+      orderCount: 1,
+      totalAmountByCurrency: { USD: 184.9 },
+      statusCounts: { Shipped: 1 },
+      skuSales: [
+        { sku: "5H-2EH1-7H77", quantityOrdered: 1, totalAmountByCurrency: { USD: 184.9 } }
+      ],
+      orders: []
+    }, {
+      targetSkus: ["DH-E37S-W6DM", "5H-2EH1-7H77"]
+    }, [
+      { advertisedSku: "DH-E37S-W6DM", purchases7d: 0, sales7d: 0, cost: 32 },
+      { advertisedSku: "5H-2EH1-7H77", purchases7d: 1, sales7d: 184.9, cost: 18 }
+    ])).toMatchObject({
+      orderCount: 1,
+      skuSignals: {
+        targetSkusWithSales: ["5H-2EH1-7H77"],
+        targetSkusWithoutSales: ["DH-E37S-W6DM"]
+      },
+      adsOrderComparison: {
+        operation: "compare_amazon_ads_sku_sales_to_seller_orders",
+        matchedSalesCount: 1,
+        noSalesCount: 1
+      }
     });
   });
 });
