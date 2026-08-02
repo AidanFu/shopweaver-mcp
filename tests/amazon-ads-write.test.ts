@@ -631,6 +631,96 @@ describe("AmazonAdsWriteService", () => {
     expect(amazonAds.createSponsoredProductsNegativeKeywords).not.toHaveBeenCalled();
   });
 
+  it("promotes a combined SKU apply plan into exact action previews without writing", async () => {
+    const amazonAds = {
+      createSponsoredProductsNegativeKeywords: vi.fn(),
+      updateSponsoredProductsCampaigns: vi.fn(),
+      createSponsoredProductsCampaigns: vi.fn(),
+      updateSponsoredProductsKeywords: vi.fn(),
+      updateSponsoredProductsAdGroups: vi.fn()
+    };
+    const service = new AmazonAdsWriteService(amazonAds, new ConfirmationStore(() => 1_000));
+
+    const previews = await service.previewSkuApplyPlanActions({
+      operation: "preview_amazon_ads_sku_apply_plan",
+      profileId: "profile-1",
+      reportId: "sku-report-1",
+      payloads: {
+        campaignBudgets: {
+          tool: "amazon_ads_update_campaign_budgets",
+          mode: "preview",
+          profileId: "profile-1",
+          campaigns: [{
+            campaignId: "campaign-1",
+            budget: { budgetType: "DAILY" as const, budget: 5 },
+            reason: "Reduce waste while preserving sales budget."
+          }]
+        },
+        keywordBids: {
+          tool: "amazon_ads_update_keyword_bids",
+          mode: "preview",
+          profileId: "profile-1",
+          keywords: [{ keywordId: "keyword-1", bid: 0.6, reason: "Reduce wasted traffic." }]
+        },
+        adGroupBids: {
+          tool: "amazon_ads_update_ad_group_bids",
+          mode: "preview",
+          profileId: "profile-1",
+          adGroups: []
+        },
+        negativeKeywords: {
+          tool: "amazon_ads_create_negative_keywords",
+          mode: "preview",
+          profileId: "profile-1",
+          negativeKeywords: [{
+            campaignId: "campaign-1",
+            adGroupId: "adgroup-1",
+            keywordText: "free towel rack manual",
+            matchType: "NEGATIVE_EXACT" as const,
+            state: "ENABLED" as const
+          }]
+        }
+      }
+    });
+
+    expect(previews).toMatchObject({
+      operation: "preview_amazon_ads_sku_apply_plan_actions",
+      sourceOperation: "preview_amazon_ads_sku_apply_plan",
+      sourceReportId: "sku-report-1",
+      profileId: "profile-1",
+      applied: false,
+      previewCount: 3,
+      previews: {
+        campaignBudgets: {
+          operation: "amazon_ads_update_campaign_budgets",
+          campaignBudgetUpdateCount: 1,
+          campaigns: [{ campaignId: "campaign-1", budget: { budgetType: "DAILY", budget: 5 } }],
+          applied: false
+        },
+        keywordBids: {
+          operation: "amazon_ads_update_keyword_bids",
+          keywordBidUpdateCount: 1,
+          keywords: [{ keywordId: "keyword-1", bid: 0.6 }],
+          applied: false
+        },
+        negativeKeywords: {
+          operation: "amazon_ads_create_negative_keywords",
+          negativeKeywordCount: 1,
+          negativeKeywords: [{ keywordText: "free towel rack manual" }],
+          applied: false
+        }
+      }
+    });
+    expect(previews.previews.campaignBudgets.confirmationToken).toEqual(expect.any(String));
+    expect(previews.previews.keywordBids.confirmationToken).toEqual(expect.any(String));
+    expect(previews.previews.negativeKeywords.confirmationToken).toEqual(expect.any(String));
+    expect(previews.previews).not.toHaveProperty("adGroupBids");
+    expect(amazonAds.updateSponsoredProductsCampaigns).not.toHaveBeenCalled();
+    expect(amazonAds.updateSponsoredProductsKeywords).not.toHaveBeenCalled();
+    expect(amazonAds.updateSponsoredProductsAdGroups).not.toHaveBeenCalled();
+    expect(amazonAds.createSponsoredProductsNegativeKeywords).not.toHaveBeenCalled();
+  });
+
   it("previews and confirms campaign dynamic bidding updates", async () => {
     const amazonAds = {
       createSponsoredProductsNegativeKeywords: vi.fn(),

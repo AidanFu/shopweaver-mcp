@@ -75,6 +75,17 @@ type AmazonAdsCampaignCreate = {
   };
   reason?: string;
 };
+type AmazonAdsSkuApplyPlan = {
+  operation?: string;
+  profileId: string;
+  reportId?: string;
+  payloads?: {
+    campaignBudgets?: { campaigns?: AmazonAdsCampaignBudgetUpdate[] };
+    keywordBids?: { keywords?: AmazonAdsKeywordBidUpdate[] };
+    adGroupBids?: { adGroups?: AmazonAdsAdGroupBidUpdate[] };
+    negativeKeywords?: { negativeKeywords?: AmazonAdsNegativeKeywordInput[] };
+  };
+};
 
 export async function amazonConnectionStatus(store: CredentialStore) {
   const [app, auth] = await Promise.all([store.get("amazonSpApiApp"), store.get("amazonSpApiAuth")]);
@@ -397,6 +408,28 @@ export class AmazonAdsWriteService {
   async previewSkuOptimizerApplyPlan(input: AmazonAdsSkuOptimizationCycleInput) {
     const cycle = await runAmazonAdsSkuOptimizationCycle(this.amazonAds, input) as Record<string, any>;
     return buildAmazonAdsSkuApplyPlanPayload(input.profileId, cycle);
+  }
+
+  async previewSkuApplyPlanActions(applyPlan: AmazonAdsSkuApplyPlan) {
+    const previews: Record<string, unknown> = {};
+    const campaignBudgets = applyPlan.payloads?.campaignBudgets?.campaigns ?? [];
+    const keywordBids = applyPlan.payloads?.keywordBids?.keywords ?? [];
+    const adGroupBids = applyPlan.payloads?.adGroupBids?.adGroups ?? [];
+    const negativeKeywords = applyPlan.payloads?.negativeKeywords?.negativeKeywords ?? [];
+    if (campaignBudgets.length > 0) previews.campaignBudgets = await this.previewCampaignBudgetUpdates(applyPlan.profileId, campaignBudgets);
+    if (keywordBids.length > 0) previews.keywordBids = await this.previewKeywordBidUpdates(applyPlan.profileId, keywordBids);
+    if (adGroupBids.length > 0) previews.adGroupBids = await this.previewAdGroupBidUpdates(applyPlan.profileId, adGroupBids);
+    if (negativeKeywords.length > 0) previews.negativeKeywords = await this.previewNegativeKeywords(applyPlan.profileId, negativeKeywords);
+    return {
+      operation: "preview_amazon_ads_sku_apply_plan_actions" as const,
+      sourceOperation: applyPlan.operation,
+      sourceReportId: applyPlan.reportId,
+      profileId: applyPlan.profileId,
+      applied: false as const,
+      previewCount: Object.keys(previews).length,
+      previews,
+      warning: "Review-only previews. Confirm each action through its matching Amazon Ads write tool with the returned confirmation token and exact unchanged payload."
+    };
   }
 
   async previewCampaignBiddingUpdates(profileId: string, campaigns: AmazonAdsCampaignBiddingUpdate[]) {
@@ -1039,6 +1072,52 @@ export function registerAmazonTools(server: McpServer, store: CredentialStore, a
         reportId: z.string().min(1).optional()
       }
     }, async input => result(await amazonAdsWrites.previewSkuOptimizerApplyPlan(input)));
+
+    server.registerTool("amazon_ads_preview_sku_apply_plan_actions", {
+      description: "Convert a reviewed SKU apply plan into exact per-action preview tokens. This does not change Ads; each action still needs its own confirm call.",
+      inputSchema: {
+        applyPlan: z.object({
+          operation: z.string().optional(),
+          profileId: z.string().min(1),
+          reportId: z.string().optional(),
+          payloads: z.object({
+            campaignBudgets: z.object({
+              campaigns: z.array(z.object({
+                campaignId: z.string().min(1),
+                budget: z.object({
+                  budgetType: z.literal("DAILY"),
+                  budget: z.number().positive()
+                }),
+                reason: z.string().optional()
+              })).default([])
+            }).optional(),
+            keywordBids: z.object({
+              keywords: z.array(z.object({
+                keywordId: z.string().min(1),
+                bid: z.number().positive(),
+                reason: z.string().optional()
+              })).default([])
+            }).optional(),
+            adGroupBids: z.object({
+              adGroups: z.array(z.object({
+                adGroupId: z.string().min(1),
+                defaultBid: z.number().positive(),
+                reason: z.string().optional()
+              })).default([])
+            }).optional(),
+            negativeKeywords: z.object({
+              negativeKeywords: z.array(z.object({
+                campaignId: z.string().min(1),
+                adGroupId: z.string().min(1),
+                keywordText: z.string().min(1),
+                matchType: z.literal("NEGATIVE_EXACT"),
+                state: z.literal("ENABLED")
+              })).default([])
+            }).optional()
+          }).default({})
+        })
+      }
+    }, async ({ applyPlan }) => result(await amazonAdsWrites.previewSkuApplyPlanActions(applyPlan)));
 
     server.registerTool("amazon_ads_update_campaign_bidding", {
       description: "Preview or confirm Sponsored Products campaign dynamic bidding strategy and placement multiplier updates. This changes campaign bidding only after confirmation.",

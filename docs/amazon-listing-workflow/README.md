@@ -40,6 +40,7 @@ amazon_ads_run_sku_budget_update_preview
 amazon_ads_run_sku_keyword_bid_update_preview
 amazon_ads_run_sku_ad_group_bid_update_preview
 amazon_ads_run_sku_negative_keywords_preview
+amazon_ads_preview_sku_apply_plan_actions
 amazon_ads_update_campaign_budgets
 amazon_ads_update_campaign_bidding
 amazon_ads_update_campaign_states
@@ -58,6 +59,8 @@ Run preview mode first. Confirm mode writes only the workbook back to the allowe
 `amazon_ads_run_sku_budget_update_preview` runs the read-only SKU optimization cycle and returns a confirmation token for exact budget updates recommended by the optimizer. Confirming still happens through `amazon_ads_update_campaign_budgets` with the unchanged campaigns payload and returned token.
 
 `amazon_ads_run_sku_apply_plan_preview` runs the same read-only SKU optimization cycle and returns a combined review-only plan for budget, bid, and negative-keyword candidates. It does not issue confirmation tokens or change Amazon Ads.
+
+`amazon_ads_preview_sku_apply_plan_actions` converts a reviewed apply plan into separate exact action previews with confirmation tokens for each non-empty action group. It still does not change Amazon Ads; each action must be confirmed through its matching write tool.
 
 ## Workbook Contents
 
