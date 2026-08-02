@@ -210,6 +210,47 @@ describe("AmazonAdsWriteService", () => {
     }]);
   });
 
+  it("previews SKU optimizer budget updates through the existing budget confirmation flow", async () => {
+    const amazonAds = {
+      createSponsoredProductsNegativeKeywords: vi.fn(),
+      updateSponsoredProductsCampaigns: vi.fn(),
+      createSponsoredProductsCampaigns: vi.fn(),
+      getReport: vi.fn().mockResolvedValue({ reportId: "sku-report-1", status: "COMPLETED", url: "https://example.test/sku-report.gz" }),
+      downloadReportRows: vi.fn().mockResolvedValue([
+        { campaignId: "campaign-1", campaignName: "Exact Gold", adGroupId: "adgroup-1", advertisedSku: "DH-E37S-W6DM", searchTerm: "heated towel rack", clicks: 18, cost: 32, purchases7d: 0, sales7d: 0 },
+        { campaignId: "campaign-2", campaignName: "Exact Silver", adGroupId: "adgroup-2", advertisedSku: "5H-2EH1-7H77", searchTerm: "towel warmer", clicks: 20, cost: 18, purchases7d: 1, sales7d: 184.9 }
+      ]),
+      listSponsoredProductsCampaigns: vi.fn().mockResolvedValue({ campaigns: [{ campaignId: "campaign-1", budget: { budgetType: "DAILY", budget: 10 } }] })
+    };
+    const service = new AmazonAdsWriteService(amazonAds, new ConfirmationStore(() => 1_000));
+
+    const preview = await service.previewSkuOptimizerBudgetUpdates({
+      profileId: "profile-1",
+      reportId: "sku-report-1",
+      startDate: "2026-07-29",
+      endDate: "2026-08-01",
+      targetSkus: ["DH-E37S-W6DM", "5H-2EH1-7H77"],
+      targetSkusWithSales: ["5H-2EH1-7H77"],
+      nonTargetSkusWithSales: []
+    });
+
+    expect(preview).toMatchObject({
+      operation: "amazon_ads_update_campaign_budgets",
+      sourceOperation: "amazon_ads_run_sku_optimization_cycle",
+      sourceReportId: "sku-report-1",
+      profileId: "profile-1",
+      campaignBudgetUpdateCount: 1,
+      applied: false,
+      campaigns: [{
+        campaignId: "campaign-1",
+        budget: { budgetType: "DAILY", budget: 5 },
+        reason: "Reduce daily budget from 10 to 5 only after reviewing SKU fit and ad group bids; 100% of spend is high-priority zero-sale SKU spend."
+      }]
+    });
+    expect(preview.confirmationToken).toEqual(expect.any(String));
+    expect(amazonAds.updateSponsoredProductsCampaigns).not.toHaveBeenCalled();
+  });
+
   it("previews and confirms campaign dynamic bidding updates", async () => {
     const amazonAds = {
       createSponsoredProductsNegativeKeywords: vi.fn(),

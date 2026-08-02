@@ -4,6 +4,7 @@ import { analyzeAmazonAplusContent, buildOptimizedAmazonAplusContentDocument } f
 import { writeAmazonAplusOptimizationWorkbook } from "../amazon/aplus-workbook.js";
 import { buildAmazonAdsCostControlPlanFromReportUrl } from "../amazon/ads-cost-control-plan.js";
 import { runAmazonAdsCampaignOptimizationCycle } from "../amazon/ads-optimization-cycle.js";
+import { runAmazonAdsSkuOptimizationCycle, type AmazonAdsSkuOptimizationCycleInput } from "../amazon/ads-sku-optimization-cycle.js";
 import { compareAmazonAdsOptimizationReportFiles } from "../amazon/ads-optimization-history.js";
 import { analyzeAmazonSearchTermReportFile, previewAmazonAdsApprovedActions, readAmazonAdsActionDecisions, writeAmazonSearchTermOptimizationWorkbook } from "../amazon/campaign-report-file.js";
 import { analyzeAmazonCampaignMetrics, analyzeAmazonSearchTermReportRows } from "../amazon/campaign-optimization.js";
@@ -141,7 +142,7 @@ export class AmazonListingWriteService {
 
 export class AmazonAdsWriteService {
   constructor(
-    private readonly amazonAds: Pick<AmazonAdsClient, "createSponsoredProductsNegativeKeywords" | "updateSponsoredProductsCampaigns" | "createSponsoredProductsCampaigns" | "updateSponsoredProductsKeywords" | "updateSponsoredProductsAdGroups">,
+    private readonly amazonAds: Pick<AmazonAdsClient, "createSponsoredProductsNegativeKeywords" | "updateSponsoredProductsCampaigns" | "createSponsoredProductsCampaigns" | "updateSponsoredProductsKeywords" | "updateSponsoredProductsAdGroups" | "createSponsoredProductsAdvertisedProductReport" | "getReport" | "downloadReportRows" | "listSponsoredProductsCampaigns">,
     private readonly confirmations: ConfirmationStore,
     private readonly changeLog?: AmazonAdsChangeLog
   ) {}
@@ -215,6 +216,33 @@ export class AmazonAdsWriteService {
         budget: campaign.budget
       }))),
       applied: true
+    };
+  }
+
+  async previewSkuOptimizerBudgetUpdates(input: AmazonAdsSkuOptimizationCycleInput) {
+    const cycle = await runAmazonAdsSkuOptimizationCycle(this.amazonAds, input) as { operation?: string; status?: string; reportId?: string; budgetReviewPreview?: { campaignBudgetUpdates?: AmazonAdsCampaignBudgetUpdate[] } };
+    if (cycle.status !== "COMPLETED") {
+      return {
+        operation: "amazon_ads_update_campaign_budgets" as const,
+        sourceOperation: cycle.operation,
+        sourceReportId: cycle.reportId,
+        status: cycle.status ?? "UNKNOWN",
+        profileId: input.profileId,
+        campaignBudgetUpdateCount: 0,
+        campaigns: [],
+        applied: false,
+        warning: "The SKU optimization report is not completed yet. Poll again before creating a budget update preview."
+      };
+    }
+    const preview = buildCampaignBudgetPreview(input.profileId, cycle.budgetReviewPreview?.campaignBudgetUpdates ?? []);
+    return {
+      operation: "amazon_ads_update_campaign_budgets" as const,
+      sourceOperation: cycle.operation,
+      sourceReportId: cycle.reportId,
+      ...preview,
+      applied: false,
+      ...this.confirmations.issue("amazon_ads_update_campaign_budgets", 0, preview),
+      warning: "This preview did not change Amazon Ads. Confirm with the returned token through amazon_ads_update_campaign_budgets using the exact campaigns payload."
     };
   }
 
@@ -686,6 +714,19 @@ export function registerAmazonTools(server: McpServer, store: CredentialStore, a
     }, async ({ mode, profileId, campaigns, confirmationToken }) => result(mode === "preview"
       ? await amazonAdsWrites.previewCampaignBudgetUpdates(profileId, campaigns)
       : await amazonAdsWrites.confirmCampaignBudgetUpdates(profileId, campaigns, confirmationToken ?? "")));
+
+    server.registerTool("amazon_ads_run_sku_budget_update_preview", {
+      description: "Run the read-only SKU optimization cycle and create a preview token for the exact Sponsored Products campaign budget updates it recommends. This does not change budgets.",
+      inputSchema: {
+        profileId: z.string().min(1),
+        startDate: z.string().min(10),
+        endDate: z.string().min(10),
+        targetSkus: z.array(z.string().min(1)).min(1),
+        targetSkusWithSales: z.array(z.string().min(1)).default([]),
+        nonTargetSkusWithSales: z.array(z.string().min(1)).default([]),
+        reportId: z.string().min(1).optional()
+      }
+    }, async input => result(await amazonAdsWrites.previewSkuOptimizerBudgetUpdates(input)));
 
     server.registerTool("amazon_ads_update_campaign_bidding", {
       description: "Preview or confirm Sponsored Products campaign dynamic bidding strategy and placement multiplier updates. This changes campaign bidding only after confirmation.",
