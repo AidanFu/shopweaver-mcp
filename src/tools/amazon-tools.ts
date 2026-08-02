@@ -10,7 +10,7 @@ import { buildAmazonAdsAppliedActionLearningPlan, compareAmazonAdsOptimizationRe
 import { analyzeAmazonSearchTermReportFile, previewAmazonAdsApprovedActions, readAmazonAdsActionDecisions, writeAmazonSearchTermOptimizationWorkbook } from "../amazon/campaign-report-file.js";
 import { analyzeAmazonCampaignMetrics, analyzeAmazonSearchTermReportRows } from "../amazon/campaign-optimization.js";
 import { analyzeAmazonExistingListing, buildAmazonListingCopyPatch } from "../amazon/listing-optimization.js";
-import { writeAmazonExistingListingOptimizationWorkbook } from "../amazon/listing-optimization-workbook.js";
+import { previewAmazonExistingListingApprovedCopyUpdates, readAmazonExistingListingCopyDecisions, writeAmazonExistingListingOptimizationWorkbook } from "../amazon/listing-optimization-workbook.js";
 import type { AmazonAdsChangeLog } from "../amazon/ads-change-log.js";
 import type { AmazonAdsClient } from "../amazon/ads-client.js";
 import type { AmazonSpApiClient } from "../amazon/sp-api-client.js";
@@ -809,6 +809,22 @@ export function registerAmazonTools(server: McpServer, store: CredentialStore, a
     productType,
     listings: await Promise.all(skus.map(sku => amazon.getListingItem(sku) as Promise<never>))
   })));
+
+  server.registerTool("amazon_read_existing_listing_copy_decisions", {
+    description: "Read approved, rejected, or deferred optimized listing copy rows from a reviewed local Amazon existing-listing workbook. This is read-only and does not change listings.",
+    inputSchema: {
+      filePath: z.string().min(1)
+    }
+  }, async ({ filePath }) => result(await readAmazonExistingListingCopyDecisions(filePath)));
+
+  server.registerTool("amazon_preview_existing_listing_approved_copy_updates", {
+    description: "Convert approved optimized listing copy rows from a reviewed local workbook into Listings Items API patch previews. This does not change listings.",
+    inputSchema: {
+      filePath: z.string().min(1),
+      marketplaceId: z.string().min(1),
+      productType: z.string().min(1)
+    }
+  }, async ({ filePath, marketplaceId, productType }) => result(await previewAmazonExistingListingApprovedCopyUpdates(filePath, { marketplaceId, productType })));
 
   server.registerTool("amazon_validate_listing_copy_update", {
     description: "Build optimized copy for one existing Amazon listing and submit an SP-API validation preview. This does not apply listing changes.",
