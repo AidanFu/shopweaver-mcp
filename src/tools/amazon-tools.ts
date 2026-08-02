@@ -2,6 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { analyzeAmazonAplusContent, buildOptimizedAmazonAplusContentDocument } from "../amazon/aplus-optimization.js";
 import { writeAmazonAplusOptimizationWorkbook } from "../amazon/aplus-workbook.js";
+import { writeAmazonBrandStoreWorkbook } from "../amazon/brand-store.js";
 import { buildAmazonAdsCostControlPlanFromReportUrl } from "../amazon/ads-cost-control-plan.js";
 import { runAmazonAdsCampaignOptimizationCycle } from "../amazon/ads-optimization-cycle.js";
 import { runAmazonAdsSkuOptimizationCycle, type AmazonAdsSkuOptimizationCycleInput } from "../amazon/ads-sku-optimization-cycle.js";
@@ -765,6 +766,28 @@ export function registerAmazonTools(server: McpServer, store: CredentialStore, a
     }
     return result(await writeAmazonAplusOptimizationWorkbook({ outputPath, items }));
   });
+
+  server.registerTool("amazon_write_brand_store_workbook", {
+    description: "Write a local review workbook for Amazon Brand Store page planning from product and campaign context. This does not create, update, publish, or submit a Brand Store, listing, A+ Content, or Ads change.",
+    inputSchema: {
+      outputPath: z.string().min(1),
+      brandName: z.string().min(1),
+      primaryCategory: z.string().min(1),
+      products: z.array(z.object({
+        asin: z.string().min(1),
+        sku: z.string().min(1).optional(),
+        title: z.string().min(1),
+        finish: z.string().min(1).optional(),
+        price: z.number().positive().optional(),
+        imageUrl: z.string().min(1).optional(),
+        priority: z.enum(["hero", "standard"]).optional()
+      })).min(1),
+      campaignInsights: z.object({
+        efficientSearchTerms: z.array(z.string().min(1)).optional(),
+        wasteSearchTerms: z.array(z.string().min(1)).optional()
+      }).optional()
+    }
+  }, async (input) => result(await writeAmazonBrandStoreWorkbook(input)));
 
   server.registerTool("amazon_optimize_existing_listing", {
     description: "Read one existing Amazon listing by seller SKU and return review-only optimization recommendations. This does not change the listing.",

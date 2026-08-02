@@ -1,6 +1,10 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
+import { mkdtemp, readFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
+import * as XLSX from "xlsx";
 import { AmazonAdsClient } from "../src/amazon/ads-client.js";
 import { AmazonSpApiClient } from "../src/amazon/sp-api-client.js";
 import { MemoryCredentialStore } from "../src/credentials/memory.js";
@@ -82,6 +86,7 @@ describe("MCP integration", () => {
       "amazon_validate_listing_copy_update",
       "amazon_validate_optimized_aplus_content",
       "amazon_write_aplus_optimization_workbook",
+      "amazon_write_brand_store_workbook",
       "etsy_connection_status",
       "etsy_create_draft_listing",
       "etsy_get_listing",
@@ -176,6 +181,62 @@ describe("MCP integration", () => {
         actionMix: "balanced_cost_and_query_cleanup",
         priority: "high"
       }
+    });
+    await Promise.all([client.close(), server.close()]);
+  });
+
+  it("writes a local Amazon Brand Store review workbook through a read-only tool", async () => {
+    const store = new MemoryCredentialStore();
+    await store.set("shop", { userId: 1, shopId: 42 });
+    const clientApi = { request: vi.fn() } as never;
+    const listings = new ListingService(clientApi, store);
+    const orders = new OrderService(clientApi, store);
+    const writes = new DraftWriteService(clientApi, listings, store, new ConfirmationStore());
+    const googleFolders = new GoogleFolderToolService({} as never);
+    const driveImports = new DriveImportService({} as never);
+    const driveImageUploads = new DriveImageUploadService(clientApi, listings, {} as never, store, new ConfirmationStore());
+    const amazonAds = new AmazonAdsClient(store, vi.fn());
+    const amazonSpApi = new AmazonSpApiClient(store, vi.fn());
+    const amazonListingWrites = new AmazonListingWriteService(store, amazonSpApi, new ConfirmationStore());
+    const amazonAdsWrites = new AmazonAdsWriteService(amazonAds, new ConfirmationStore());
+    const amazonAdsChangeLog = { record: vi.fn(), read: vi.fn() };
+    const server = createServer({ store, listings, orders, writes, googleFolders, driveImports, driveImageUploads, amazonAds, amazonSpApi, amazonListingWrites, amazonAdsWrites, amazonAdsChangeLog });
+    const client = new Client({ name: "test", version: "1" });
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
+    const dir = await mkdtemp(join(tmpdir(), "shopweaver-brand-store-tool-"));
+    const outputPath = join(dir, "brand-store.xlsx");
+
+    const response = await client.callTool({
+      name: "amazon_write_brand_store_workbook",
+      arguments: {
+        outputPath,
+        brandName: "Senplus Momokids",
+        primaryCategory: "Electric towel warmer racks",
+        products: [{
+          asin: "B0GDPKVXSZ",
+          sku: "DH-E37S-W6DM",
+          title: "Electric Towel Warmer Rack",
+          finish: "Gold",
+          price: 49.99,
+          priority: "hero"
+        }],
+        campaignInsights: {
+          efficientSearchTerms: ["electric towel warmer gold"],
+          wasteSearchTerms: ["free towel warmer manual"]
+        }
+      }
+    });
+
+    expect(response.structuredContent).toMatchObject({
+      operation: "write_amazon_brand_store_workbook",
+      outputPath,
+      productCount: 1
+    });
+    const workbook = XLSX.read(await readFile(outputPath));
+    expect(XLSX.utils.sheet_to_json(workbook.Sheets["Ads Learning Hooks"])[0]).toMatchObject({
+      "Signal": "efficient_search_terms",
+      "Recommendation": "Use converting Sponsored Products terms in Store headline and tile copy: electric towel warmer gold."
     });
     await Promise.all([client.close(), server.close()]);
   });
