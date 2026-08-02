@@ -54,6 +54,8 @@ type AmazonOrdersSummary = {
   }>;
 };
 
+type AmazonAdsSkuSalesComparison = ReturnType<typeof compareAmazonAdsSkuSalesToOrders>;
+
 export function parseAmazonOrdersArgs(args: string[]): AmazonOrdersArgs {
   const values = new Map<string, string>();
   for (let index = 0; index < args.length; index += 2) {
@@ -178,11 +180,28 @@ export function compareAmazonAdsSkuSalesToOrders(summary: AmazonOrdersSummary, a
   };
 }
 
+export function buildAmazonListingOptimizationActionsFromSalesComparison(comparison: AmazonAdsSkuSalesComparison) {
+  const actions = comparison.skuComparisons.map(row => ({
+    sku: row.sku,
+    ...listingOptimizationActionForComparison(row.signal, row.adSpend)
+  }));
+  return {
+    operation: "build_amazon_listing_optimization_actions_from_sales_comparison" as const,
+    applied: false as const,
+    actionCount: actions.length,
+    actions
+  };
+}
+
 export function buildAmazonOrdersAnalysisResult(summary: ReturnType<typeof summarizeAmazonOrders>, input: Pick<AmazonOrdersArgs, "targetSkus">, adsRows: Array<Record<string, unknown>> = []) {
+  const adsOrderComparison = input.targetSkus && adsRows.length > 0 ? compareAmazonAdsSkuSalesToOrders(summary, adsRows, input.targetSkus) : undefined;
   return {
     ...summary,
     ...(input.targetSkus ? { skuSignals: analyzeAmazonOrderSkuSignals(summary, input.targetSkus) } : {}),
-    ...(input.targetSkus && adsRows.length > 0 ? { adsOrderComparison: compareAmazonAdsSkuSalesToOrders(summary, adsRows, input.targetSkus) } : {})
+    ...(adsOrderComparison ? {
+      adsOrderComparison,
+      listingOptimizationActions: buildAmazonListingOptimizationActionsFromSalesComparison(adsOrderComparison)
+    } : {})
   };
 }
 
@@ -224,6 +243,51 @@ function adsSellerRecommendation(sku: string, signal: string): string {
   if (signal === "ads_attributed_without_seller_order") return `Reconcile Ads attribution and Seller orders for ${sku} before scaling spend; Ads shows sales but recent order items do not.`;
   if (signal === "seller_order_without_ads_attribution") return `Protect ${sku} from unnecessary budget cuts; Seller orders exist even though Ads attribution is weak or delayed.`;
   return `Review listing conversion, price, images, A+ content, and campaign targeting for ${sku} before adding budget.`;
+}
+
+function listingOptimizationActionForComparison(signal: string, adSpend: number) {
+  if (signal === "matched_ads_and_seller_sales") {
+    return {
+      priority: "medium" as const,
+      focus: "harvest_and_monitor",
+      actions: [
+        "Keep the current listing direction and harvest converting search terms into controlled exact or phrase targets.",
+        "Monitor conversion, ACOS, and Seller order volume before making additional copy changes.",
+        "Use future A+ or image tests only when the SKU has enough traffic to compare results."
+      ]
+    };
+  }
+  if (signal === "ads_attributed_without_seller_order") {
+    return {
+      priority: adSpend >= 25 ? "high" as const : "medium" as const,
+      focus: "reconcile_attribution_before_scaling",
+      actions: [
+        "Compare the Ads attribution window with Seller order dates before increasing this SKU budget.",
+        "Check whether the optimized listing is winning traffic but orders are outside the selected Seller order window.",
+        "Keep budget changes conservative until Ads and Seller order data agree."
+      ]
+    };
+  }
+  if (signal === "seller_order_without_ads_attribution") {
+    return {
+      priority: "medium" as const,
+      focus: "protect_seller_order_signal",
+      actions: [
+        "Avoid cutting this SKU solely from weak Ads attribution because Seller orders exist.",
+        "Review search-term reports for unattributed discovery paths and protect efficient exact targets.",
+        "Use listing changes only for clear conversion gaps, not because Ads attribution is delayed."
+      ]
+    };
+  }
+  return {
+    priority: adSpend >= 25 ? "high" as const : "medium" as const,
+    focus: "listing_conversion_review",
+    actions: [
+      "Review title, first image, price, coupon, and delivery promise before adding more traffic.",
+      "Improve bullets around customer benefits, installation confidence, worry removal, and after-sale support.",
+      "Add or revise A+ modules that show dimensions, use scenes, gift value, and trust signals."
+    ]
+  };
 }
 
 function usageError() {

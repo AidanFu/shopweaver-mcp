@@ -128,6 +128,13 @@ The `amazon:orders` CLI supports `--include-items true --target-skus SKU1,SKU2 -
 
 The `amazon_compare_orders_to_ads_sales` MCP tool runs the same read-only seller-order and local Ads report comparison from the normal tool surface.
 
+The comparison also returns `listingOptimizationActions`. These review-only actions translate each SKU signal into the next listing or campaign investigation:
+
+- Ads and Seller sales match: keep monitoring, harvest winning search terms, and avoid unnecessary listing churn.
+- Ads shows sales but Seller orders do not: reconcile attribution windows before scaling spend.
+- Seller orders exist but Ads attribution is weak: protect the SKU from automatic cuts and inspect unattributed discovery paths.
+- Neither Ads nor Seller orders show sales: review title, first image, price, coupon, delivery promise, bullets, and A+ content before adding traffic.
+
 No Ads write is automatic. Budget, bid, campaign, keyword, negative-keyword, and campaign-creation changes require an explicit confirmation token.
 
 ## Safety Boundary

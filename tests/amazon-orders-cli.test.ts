@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { analyzeAmazonOrderSkuSignals, buildAmazonOrdersAnalysisResult, compareAmazonAdsSkuSalesToOrders, parseAmazonOrdersArgs, summarizeAmazonOrders } from "../src/amazon-orders.js";
+import { analyzeAmazonOrderSkuSignals, buildAmazonListingOptimizationActionsFromSalesComparison, buildAmazonOrdersAnalysisResult, compareAmazonAdsSkuSalesToOrders, parseAmazonOrdersArgs, summarizeAmazonOrders } from "../src/amazon-orders.js";
 
 describe("parseAmazonOrdersArgs", () => {
   it("parses a read-only Amazon order lookup window", () => {
@@ -174,6 +174,52 @@ describe("parseAmazonOrdersArgs", () => {
         sellerSalesByCurrency: { USD: 184.9 },
         signal: "seller_order_without_ads_attribution",
         recommendation: "Protect 5H-2EH1-7H77 from unnecessary budget cuts; Seller orders exist even though Ads attribution is weak or delayed."
+      }]
+    });
+  });
+
+  it("recommends listing optimization actions from Ads and Seller order comparison signals", () => {
+    const comparison = compareAmazonAdsSkuSalesToOrders({
+      skuSales: [
+        { sku: "5H-2EH1-7H77", quantityOrdered: 1, totalAmountByCurrency: { USD: 184.9 } }
+      ]
+    }, [
+      { advertisedSku: "DH-E37S-W6DM", purchases7d: 1, sales7d: 189.9, cost: 32 },
+      { advertisedSku: "77-UM99-B96T", purchases7d: 0, sales7d: 0, cost: 26 },
+      { advertisedSku: "5H-2EH1-7H77", purchases7d: 0, sales7d: 0, cost: 18 }
+    ], ["DH-E37S-W6DM", "77-UM99-B96T", "5H-2EH1-7H77"]);
+
+    expect(buildAmazonListingOptimizationActionsFromSalesComparison(comparison)).toEqual({
+      operation: "build_amazon_listing_optimization_actions_from_sales_comparison",
+      applied: false,
+      actionCount: 3,
+      actions: [{
+        sku: "DH-E37S-W6DM",
+        priority: "high",
+        focus: "reconcile_attribution_before_scaling",
+        actions: [
+          "Compare the Ads attribution window with Seller order dates before increasing this SKU budget.",
+          "Check whether the optimized listing is winning traffic but orders are outside the selected Seller order window.",
+          "Keep budget changes conservative until Ads and Seller order data agree."
+        ]
+      }, {
+        sku: "77-UM99-B96T",
+        priority: "high",
+        focus: "listing_conversion_review",
+        actions: [
+          "Review title, first image, price, coupon, and delivery promise before adding more traffic.",
+          "Improve bullets around customer benefits, installation confidence, worry removal, and after-sale support.",
+          "Add or revise A+ modules that show dimensions, use scenes, gift value, and trust signals."
+        ]
+      }, {
+        sku: "5H-2EH1-7H77",
+        priority: "medium",
+        focus: "protect_seller_order_signal",
+        actions: [
+          "Avoid cutting this SKU solely from weak Ads attribution because Seller orders exist.",
+          "Review search-term reports for unattributed discovery paths and protect efficient exact targets.",
+          "Use listing changes only for clear conversion gaps, not because Ads attribution is delayed."
+        ]
       }]
     });
   });
