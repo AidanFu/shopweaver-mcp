@@ -243,15 +243,18 @@ export class AmazonAdsWriteService {
   async confirmCampaignStateUpdates(profileId: string, campaigns: AmazonAdsCampaignStateUpdate[], confirmationToken: string) {
     const preview = buildCampaignStatePreview(profileId, campaigns);
     this.confirmations.consume(confirmationToken, "amazon_ads_update_campaign_states", 0, preview);
-    return {
+    const result = await this.amazonAds.updateSponsoredProductsCampaigns(profileId, preview.campaigns.map(campaign => ({
+      campaignId: campaign.campaignId,
+      state: campaign.state
+    })));
+    const applied = {
       operation: "amazon_ads_update_campaign_states" as const,
       ...preview,
-      result: await this.amazonAds.updateSponsoredProductsCampaigns(profileId, preview.campaigns.map(campaign => ({
-        campaignId: campaign.campaignId,
-        state: campaign.state
-      }))),
-      applied: true
+      result,
+      applied: true as const
     };
+    await this.recordChange(applied.operation, profileId, { campaigns: preview.campaigns }, result);
+    return applied;
   }
 
   async previewCampaignBudgetUpdates(profileId: string, campaigns: AmazonAdsCampaignBudgetUpdate[]) {
@@ -492,19 +495,22 @@ export class AmazonAdsWriteService {
   async confirmCampaignCreations(profileId: string, campaigns: AmazonAdsCampaignCreate[], confirmationToken: string) {
     const preview = buildCampaignCreatePreview(profileId, campaigns);
     this.confirmations.consume(confirmationToken, "amazon_ads_create_campaigns", 0, preview);
-    return {
+    const result = await this.amazonAds.createSponsoredProductsCampaigns(profileId, preview.campaigns.map(campaign => ({
+      name: campaign.name,
+      targetingType: campaign.targetingType,
+      state: campaign.state,
+      startDate: campaign.startDate,
+      budget: campaign.budget,
+      dynamicBidding: campaign.dynamicBidding
+    })));
+    const applied = {
       operation: "amazon_ads_create_campaigns" as const,
       ...preview,
-      result: await this.amazonAds.createSponsoredProductsCampaigns(profileId, preview.campaigns.map(campaign => ({
-        name: campaign.name,
-        targetingType: campaign.targetingType,
-        state: campaign.state,
-        startDate: campaign.startDate,
-        budget: campaign.budget,
-        dynamicBidding: campaign.dynamicBidding
-      }))),
-      applied: true
+      result,
+      applied: true as const
     };
+    await this.recordChange(applied.operation, profileId, { campaigns: preview.campaigns }, result);
+    return applied;
   }
 }
 

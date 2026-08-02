@@ -197,6 +197,39 @@ describe("AmazonAdsWriteService", () => {
     }]);
   });
 
+  it("records confirmed campaign state updates for later optimization analysis", async () => {
+    const amazonAds = {
+      createSponsoredProductsNegativeKeywords: vi.fn(),
+      updateSponsoredProductsCampaigns: vi.fn().mockResolvedValue({
+        campaigns: { success: [{ index: 0, campaignId: "campaign-1" }], error: [] }
+      })
+    };
+    const auditLog = { record: vi.fn().mockResolvedValue(undefined) };
+    const service = new AmazonAdsWriteService(amazonAds, new ConfirmationStore(() => 1_000), auditLog);
+    const preview = await service.previewCampaignStateUpdates("profile-1", [{
+      campaignId: "campaign-1",
+      state: "PAUSED",
+      reason: "Pause spend while listing conversion is reviewed."
+    }]);
+
+    await service.confirmCampaignStateUpdates("profile-1", preview.campaigns, preview.confirmationToken);
+
+    expect(auditLog.record).toHaveBeenCalledWith(expect.objectContaining({
+      operation: "amazon_ads_update_campaign_states",
+      profileId: "profile-1",
+      applied: true,
+      payload: {
+        campaigns: [{
+          campaignId: "campaign-1",
+          state: "PAUSED",
+          reason: "Pause spend while listing conversion is reviewed."
+        }]
+      },
+      result: { campaigns: { success: [{ index: 0, campaignId: "campaign-1" }], error: [] } }
+    }));
+    expect(auditLog.record.mock.calls[0][0].createdAt).toEqual(expect.any(String));
+  });
+
   it("previews and confirms campaign creation", async () => {
     const campaign = {
       name: "ShopWeaver Exact | Towel Warmer Winners",
@@ -249,6 +282,42 @@ describe("AmazonAdsWriteService", () => {
         placementBidding: []
       }
     }]);
+  });
+
+  it("records confirmed campaign creation for later optimization analysis", async () => {
+    const campaign = {
+      name: "ShopWeaver Exact | Towel Warmer Winners",
+      targetingType: "MANUAL" as const,
+      state: "PAUSED" as const,
+      startDate: "2026-07-30",
+      budget: { budgetType: "DAILY" as const, budget: 5 },
+      dynamicBidding: {
+        strategy: "AUTO_FOR_SALES" as const,
+        placementBidding: []
+      },
+      reason: "Launch paused until keywords and product targets are reviewed."
+    };
+    const amazonAds = {
+      createSponsoredProductsNegativeKeywords: vi.fn(),
+      updateSponsoredProductsCampaigns: vi.fn(),
+      createSponsoredProductsCampaigns: vi.fn().mockResolvedValue({
+        campaigns: { success: [{ index: 0, campaignId: "campaign-2" }], error: [] }
+      })
+    };
+    const auditLog = { record: vi.fn().mockResolvedValue(undefined) };
+    const service = new AmazonAdsWriteService(amazonAds, new ConfirmationStore(() => 1_000), auditLog);
+    const preview = await service.previewCampaignCreations("profile-1", [campaign]);
+
+    await service.confirmCampaignCreations("profile-1", preview.campaigns, preview.confirmationToken);
+
+    expect(auditLog.record).toHaveBeenCalledWith(expect.objectContaining({
+      operation: "amazon_ads_create_campaigns",
+      profileId: "profile-1",
+      applied: true,
+      payload: { campaigns: [campaign] },
+      result: { campaigns: { success: [{ index: 0, campaignId: "campaign-2" }], error: [] } }
+    }));
+    expect(auditLog.record.mock.calls[0][0].createdAt).toEqual(expect.any(String));
   });
 
   it("previews and confirms campaign budget updates", async () => {
