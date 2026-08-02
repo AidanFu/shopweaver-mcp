@@ -193,6 +193,11 @@ describe("Amazon Ads optimization history", () => {
         action: "monitor",
         reason: "Recent Amazon Ads actions correlate with lower spend and stable or improved orders."
       }],
+      nextOptimizationRules: [{
+        rule: "continue_budget_guardrails",
+        priority: "normal",
+        recommendation: "Keep budget reductions conservative and monitor for another report window before making deeper cuts."
+      }],
       campaignChanges: [{
         campaignId: "campaign-1",
         appliedActionCount: 1,
@@ -235,6 +240,11 @@ describe("Amazon Ads optimization history", () => {
       followUpRecommendations: [{
         action: "review",
         reason: "Recent Amazon Ads actions need review because spend, sales, or orders did not clearly improve."
+      }],
+      nextOptimizationRules: [{
+        rule: "restore_prior_converting_bids",
+        priority: "high",
+        recommendation: "Review recent bid reductions first; restore bids for terms or ad groups that previously produced orders before cutting more budget."
       }],
       campaignChanges: [{
         campaignId: "campaign-1",

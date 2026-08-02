@@ -70,7 +70,7 @@ export function summarizeAmazonAdsAppliedActions(actions: AmazonAdsChangeLogReco
 
 export function buildAmazonAdsAppliedActionLearningPlan(summary: AmazonAdsAppliedActionSummary) {
   const hasBudgetControl = summary.campaignBudgetUpdateCount > 0;
-  const hasBidControl = summary.keywordBidUpdateCount > 0 || summary.adGroupBidUpdateCount > 0 || (summary.operationCounts.amazon_ads_update_campaign_bidding ?? 0) > 0;
+  const hasBidControl = hasAppliedBidControl(summary);
   const hasQueryCleanup = summary.negativeKeywordCount > 0;
   const recommendations = [
     ...(hasBudgetControl ? ["Compare the next Sponsored Products report against the pre-change baseline before applying another budget cut."] : []),
@@ -153,6 +153,7 @@ export function compareAmazonAdsOptimizationSnapshots(before: AmazonAdsOptimizat
       appliedActions: appliedActions.map(actionSummary)
     } : {}),
     ...(appliedActions.length ? { followUpRecommendations: overallRecommendations(spendChange, salesChange, orderChange) } : {}),
+    ...(appliedActions.length ? { nextOptimizationRules: nextOptimizationRules(appliedActionSummary, spendChange, salesChange, orderChange) } : {}),
     campaignChanges
   };
 }
@@ -260,6 +261,44 @@ function overallRecommendations(spendChange: number, salesChange: number, orderC
     action: "review" as const,
     reason: "Recent Amazon Ads actions need review because spend, sales, or orders did not clearly improve."
   }];
+}
+
+function nextOptimizationRules(summary: AmazonAdsAppliedActionSummary, spendChange: number, salesChange: number, orderChange: number) {
+  const outcome = verdict(spendChange, salesChange, orderChange, 0);
+  if (outcome === "regressed" && hasAppliedBidControl(summary)) {
+    return [{
+      rule: "restore_prior_converting_bids" as const,
+      priority: "high" as const,
+      recommendation: "Review recent bid reductions first; restore bids for terms or ad groups that previously produced orders before cutting more budget."
+    }];
+  }
+  if (outcome === "regressed" && summary.campaignBudgetUpdateCount > 0) {
+    return [{
+      rule: "pause_deeper_budget_cuts" as const,
+      priority: "high" as const,
+      recommendation: "Pause deeper budget cuts and review whether budget reductions reduced order volume before changing more campaigns."
+    }];
+  }
+  if (outcome === "improved") {
+    return [{
+      rule: "continue_budget_guardrails" as const,
+      priority: "normal" as const,
+      recommendation: "Keep budget reductions conservative and monitor for another report window before making deeper cuts."
+    }];
+  }
+  return [{
+    rule: "collect_more_post_change_data" as const,
+    priority: "normal" as const,
+    recommendation: "Collect another post-change report before applying stronger campaign, bid, or budget changes."
+  }];
+}
+
+function hasAppliedBidControl(summary: AmazonAdsAppliedActionSummary): boolean {
+  return summary.keywordBidUpdateCount > 0
+    || summary.adGroupBidUpdateCount > 0
+    || (summary.operationCounts.amazon_ads_update_campaign_bidding ?? 0) > 0
+    || (summary.operationCounts.amazon_ads_update_keyword_bids ?? 0) > 0
+    || (summary.operationCounts.amazon_ads_update_ad_group_bids ?? 0) > 0;
 }
 
 function followUpRecommendation(campaignVerdict: "improved" | "regressed" | "mixed", spendChange: number, salesChange: number, orderChange: number) {
