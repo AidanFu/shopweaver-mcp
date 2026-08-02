@@ -1,5 +1,6 @@
 import { ShopWeaverError } from "../errors.js";
 import type { GoogleDriveService } from "../google/drive.js";
+import type { GoogleDriveHealthService } from "../google/status.js";
 import { parseProductInformationWorkbook, refreshAmazonOptimizationRecommendations, summarizeAmazonOptimizationRefresh, writeAmazonListingWorkbook, writeEnrichedWorkbook, type AmazonListingWorkbookRow, type EnrichedWorkbookRow } from "./excel.js";
 import { matchProductsToImages } from "./matcher.js";
 
@@ -8,9 +9,17 @@ const GOOGLE_SHEET_TYPE = "application/vnd.google-apps.spreadsheet";
 const XLSX_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
 export class DriveImportService {
-  constructor(private readonly drive: GoogleDriveService) {}
+  constructor(
+    private readonly drive: GoogleDriveService,
+    private readonly health?: Pick<GoogleDriveHealthService, "assertReady">
+  ) {}
+
+  private async preflight() {
+    await this.health?.assertReady();
+  }
 
   async importFolder(folderId: string) {
+    await this.preflight();
     const rootChildren = await this.drive.listFolderChildren(folderId);
     const workbook = rootChildren.find(file => file.name === "Product Information.xlsx" || file.name === "Product Information");
     const imagesFolder = rootChildren.find(file => file.name === "Images" && file.mimeType === FOLDER_TYPE);
@@ -41,16 +50,19 @@ export class DriveImportService {
   }
 
   async writeEnrichedWorkbook(folderId: string, rows: EnrichedWorkbookRow[]) {
+    await this.preflight();
     const bytes = writeEnrichedWorkbook(rows);
     return this.drive.uploadFile(folderId, "Product Information - Etsy Draft.xlsx", bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
   }
 
   async writeAmazonListingWorkbook(folderId: string, rows: AmazonListingWorkbookRow[]) {
+    await this.preflight();
     const bytes = writeAmazonListingWorkbook(rows);
     return this.drive.uploadFile(folderId, "Product Information - Amazon Listing.xlsx", bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
   }
 
   async refreshAmazonOptimizationRecommendations(folderId: string) {
+    await this.preflight();
     const rootChildren = await this.drive.listFolderChildren(folderId);
     const workbook = rootChildren.find(file => file.name === "Product Information - Amazon Listing.xlsx");
     if (!workbook) throw new ShopWeaverError("DRIVE_AMAZON_WORKBOOK_MISSING", "Allowed Drive folder must contain Product Information - Amazon Listing.xlsx.");

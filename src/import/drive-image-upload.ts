@@ -4,6 +4,7 @@ import type { EtsyClient } from "../etsy/client.js";
 import type { ListingService } from "../etsy/listings.js";
 import { ListingImageSchema } from "../etsy/schemas.js";
 import type { GoogleDriveService } from "../google/drive.js";
+import type { GoogleDriveHealthService } from "../google/status.js";
 import type { ConfirmationStore } from "../writes/confirmations.js";
 
 const FOLDER_TYPE = "application/vnd.google-apps.folder";
@@ -47,8 +48,13 @@ export class DriveImageUploadService {
     private readonly listings: ListingService,
     private readonly drive: GoogleDriveService,
     private readonly store: CredentialStore,
-    private readonly confirmations: ConfirmationStore
+    private readonly confirmations: ConfirmationStore,
+    private readonly health?: Pick<GoogleDriveHealthService, "assertReady">
   ) {}
+
+  private async preflight() {
+    await this.health?.assertReady();
+  }
 
   private async shopId(): Promise<number> {
     const shop = await this.store.get("shop");
@@ -60,6 +66,7 @@ export class DriveImageUploadService {
     if (await this.listings.getListingState(input.listingId) !== "draft") {
       throw new ShopWeaverError("DRAFT_REQUIRED", "Images can be uploaded only to Etsy drafts.");
     }
+    await this.preflight();
     const rootChildren = await this.drive.listFolderChildren(input.folderId);
     const imagesRoot = rootChildren.find(file => file.name === "Images" && file.mimeType === FOLDER_TYPE);
     if (!imagesRoot) throw new ShopWeaverError("DRIVE_IMAGES_FOLDER_MISSING", "Allowed Drive folder must contain Images folder.");
@@ -91,6 +98,7 @@ export class DriveImageUploadService {
     if (await this.listings.getListingState(input.listingId) !== "draft") {
       throw new ShopWeaverError("DRAFT_REQUIRED", "Images can be uploaded only to Etsy drafts.");
     }
+    await this.preflight();
     const rootChildren = await this.drive.listFolderChildren(input.folderId);
     const imagesRoot = rootChildren.find(file => file.name === "Images" && file.mimeType === FOLDER_TYPE);
     if (!imagesRoot) throw new ShopWeaverError("DRIVE_IMAGES_FOLDER_MISSING", "Allowed Drive folder must contain Images folder.");

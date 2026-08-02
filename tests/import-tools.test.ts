@@ -10,6 +10,18 @@ function workbookBytes() {
 }
 
 describe("DriveImportService", () => {
+  it("runs Google health preflight before Drive import listing", async () => {
+    const drive = {
+      listFolderChildren: vi.fn()
+    };
+    const health = {
+      assertReady: vi.fn().mockRejectedValue(new Error("Google Drive authorization expired or was revoked. Run npm run google:setup to reconnect Google Drive."))
+    };
+    const service = new DriveImportService(drive as never, health as never);
+    await expect(service.importFolder("folder")).rejects.toThrow("Google Drive authorization expired");
+    expect(drive.listFolderChildren).not.toHaveBeenCalled();
+  });
+
   it("imports workbook records and matched images from an allowed folder", async () => {
     const drive = {
       listFolderChildren: vi.fn().mockResolvedValue([

@@ -62,6 +62,31 @@ describe("DriveImageUploadService", () => {
     expect(client.request).not.toHaveBeenCalled();
   });
 
+  it("runs Google health preflight before Drive image upload preview", async () => {
+    const store = new MemoryCredentialStore();
+    await store.set("shop", { userId: 1, shopId: 42 });
+    const drive = {
+      listFolderChildren: vi.fn(),
+      listChildrenByParentId: vi.fn(),
+      downloadFile: vi.fn()
+    };
+    const listings = { getListingState: vi.fn().mockResolvedValue("draft") };
+    const client = { request: vi.fn() };
+    const health = {
+      assertReady: vi.fn().mockRejectedValue(new Error("Google Drive authorization expired or was revoked. Run npm run google:setup to reconnect Google Drive."))
+    };
+    const service = new DriveImageUploadService(client as never, listings as never, drive as never, store, new ConfirmationStore(), health as never);
+    await expect(service.previewUpload({
+      listingId: 9,
+      folderId: "root",
+      productName: "产品一"
+    })).rejects.toThrow("Google Drive authorization expired");
+    expect(drive.listFolderChildren).not.toHaveBeenCalled();
+    expect(drive.listChildrenByParentId).not.toHaveBeenCalled();
+    expect(drive.downloadFile).not.toHaveBeenCalled();
+    expect(client.request).not.toHaveBeenCalled();
+  });
+
   it("previews grouped variant image uploads in rank order", async () => {
     const { service, drive } = await dependencies();
     mockVariantFolders(drive, {
