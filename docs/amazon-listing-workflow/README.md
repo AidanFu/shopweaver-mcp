@@ -35,7 +35,11 @@ The workflow reuses `shopweaver_import_drive_folder` to find product rows and ma
 ```text
 shopweaver_write_amazon_listing_workbook
 shopweaver_refresh_amazon_optimization_recommendations
+amazon_ads_run_sku_apply_plan_preview
 amazon_ads_run_sku_budget_update_preview
+amazon_ads_run_sku_keyword_bid_update_preview
+amazon_ads_run_sku_ad_group_bid_update_preview
+amazon_ads_run_sku_negative_keywords_preview
 amazon_ads_update_campaign_budgets
 amazon_ads_update_campaign_bidding
 amazon_ads_update_campaign_states
@@ -52,6 +56,8 @@ Run preview mode first. Confirm mode writes only the workbook back to the allowe
 `shopweaver_refresh_amazon_optimization_recommendations` reads pasted metrics from the existing Amazon workbook, refreshes only the `Optimization Recommendations` sheet, and uploads the same workbook back to Drive.
 
 `amazon_ads_run_sku_budget_update_preview` runs the read-only SKU optimization cycle and returns a confirmation token for exact budget updates recommended by the optimizer. Confirming still happens through `amazon_ads_update_campaign_budgets` with the unchanged campaigns payload and returned token.
+
+`amazon_ads_run_sku_apply_plan_preview` runs the same read-only SKU optimization cycle and returns a combined review-only plan for budget, bid, and negative-keyword candidates. It does not issue confirmation tokens or change Amazon Ads.
 
 ## Workbook Contents
 

@@ -23,6 +23,7 @@ const allowed = [
   "amazon_ads_read_change_log",
   "amazon_ads_run_campaign_optimization_cycle",
   "amazon_ads_run_sku_ad_group_bid_update_preview",
+  "amazon_ads_run_sku_apply_plan_preview",
   "amazon_ads_run_sku_budget_update_preview",
   "amazon_ads_run_sku_keyword_bid_update_preview",
   "amazon_ads_run_sku_negative_keywords_preview",

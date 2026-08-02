@@ -11,6 +11,7 @@ import { analyzeAmazonSearchTermReportFile, previewAmazonAdsApprovedActions, rea
 import { analyzeAmazonCampaignMetrics, analyzeAmazonSearchTermReportRows } from "../amazon/campaign-optimization.js";
 import { analyzeAmazonExistingListing, buildAmazonListingCopyPatch } from "../amazon/listing-optimization.js";
 import { previewAmazonExistingListingApprovedCopyUpdates, readAmazonExistingListingCopyDecisions, writeAmazonExistingListingOptimizationWorkbook } from "../amazon/listing-optimization-workbook.js";
+import { buildAmazonAdsSkuApplyPlanPayload } from "../amazon-ads-sku-optimize.js";
 import type { AmazonAdsChangeLog } from "../amazon/ads-change-log.js";
 import type { AmazonAdsClient } from "../amazon/ads-client.js";
 import type { AmazonSpApiClient } from "../amazon/sp-api-client.js";
@@ -391,6 +392,11 @@ export class AmazonAdsWriteService {
       ...this.confirmations.issue("amazon_ads_create_negative_keywords", 0, preview),
       warning: "This preview did not change Amazon Ads. Confirm with the returned token through amazon_ads_create_negative_keywords using the exact negativeKeywords payload."
     };
+  }
+
+  async previewSkuOptimizerApplyPlan(input: AmazonAdsSkuOptimizationCycleInput) {
+    const cycle = await runAmazonAdsSkuOptimizationCycle(this.amazonAds, input) as Record<string, any>;
+    return buildAmazonAdsSkuApplyPlanPayload(input.profileId, cycle);
   }
 
   async previewCampaignBiddingUpdates(profileId: string, campaigns: AmazonAdsCampaignBiddingUpdate[]) {
@@ -1020,6 +1026,19 @@ export function registerAmazonTools(server: McpServer, store: CredentialStore, a
         reportId: z.string().min(1).optional()
       }
     }, async input => result(await amazonAdsWrites.previewSkuOptimizerNegativeKeywords(input)));
+
+    server.registerTool("amazon_ads_run_sku_apply_plan_preview", {
+      description: "Run the read-only SKU optimization cycle and return all recommended Ads write candidates in one review-only plan. This does not issue confirmation tokens or change Ads.",
+      inputSchema: {
+        profileId: z.string().min(1),
+        startDate: z.string().min(10),
+        endDate: z.string().min(10),
+        targetSkus: z.array(z.string().min(1)).min(1),
+        targetSkusWithSales: z.array(z.string().min(1)).default([]),
+        nonTargetSkusWithSales: z.array(z.string().min(1)).default([]),
+        reportId: z.string().min(1).optional()
+      }
+    }, async input => result(await amazonAdsWrites.previewSkuOptimizerApplyPlan(input)));
 
     server.registerTool("amazon_ads_update_campaign_bidding", {
       description: "Preview or confirm Sponsored Products campaign dynamic bidding strategy and placement multiplier updates. This changes campaign bidding only after confirmation.",

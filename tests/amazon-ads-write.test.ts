@@ -562,6 +562,75 @@ describe("AmazonAdsWriteService", () => {
     expect(amazonAds.createSponsoredProductsNegativeKeywords).not.toHaveBeenCalled();
   });
 
+  it("previews a combined SKU optimizer apply plan without issuing confirmation tokens", async () => {
+    const amazonAds = {
+      createSponsoredProductsNegativeKeywords: vi.fn(),
+      updateSponsoredProductsCampaigns: vi.fn(),
+      createSponsoredProductsCampaigns: vi.fn(),
+      updateSponsoredProductsKeywords: vi.fn(),
+      updateSponsoredProductsAdGroups: vi.fn(),
+      getReport: vi.fn().mockResolvedValue({ reportId: "sku-report-1", status: "COMPLETED", url: "https://example.test/sku-report.gz" }),
+      downloadReportRows: vi.fn().mockResolvedValue([
+        { campaignId: "campaign-1", campaignName: "Exact Gold", adGroupId: "adgroup-1", advertisedSku: "DH-E37S-W6DM", keywordId: "keyword-1", searchTerm: "free towel rack manual", clicks: 18, cost: 32, purchases7d: 0, sales7d: 0, bid: 0.8 },
+        { campaignId: "campaign-2", campaignName: "Exact Silver", adGroupId: "adgroup-2", advertisedSku: "5H-2EH1-7H77", keywordId: "keyword-2", searchTerm: "heated towel rack wall mounted", clicks: 20, cost: 18, purchases7d: 1, sales7d: 184.9 }
+      ]),
+      listSponsoredProductsCampaigns: vi.fn().mockResolvedValue({ campaigns: [{ campaignId: "campaign-1", budget: { budgetType: "DAILY", budget: 10 } }] })
+    };
+    const service = new AmazonAdsWriteService(amazonAds, new ConfirmationStore(() => 1_000));
+
+    const preview = await service.previewSkuOptimizerApplyPlan({
+      profileId: "profile-1",
+      reportId: "sku-report-1",
+      startDate: "2026-07-29",
+      endDate: "2026-08-01",
+      targetSkus: ["DH-E37S-W6DM", "5H-2EH1-7H77"],
+      targetSkusWithSales: ["5H-2EH1-7H77"],
+      nonTargetSkusWithSales: []
+    });
+
+    expect(preview).toMatchObject({
+      operation: "preview_amazon_ads_sku_apply_plan",
+      mode: "review_only",
+      profileId: "profile-1",
+      status: "COMPLETED",
+      reportId: "sku-report-1",
+      applied: false,
+      summary: {
+        strategy: "balance_sales_growth_and_budget_efficiency",
+        actionCounts: {
+          campaignBudgetUpdates: 1,
+          keywordBidUpdates: 1,
+          negativeKeywords: 1
+        }
+      },
+      payloads: {
+        campaignBudgets: {
+          tool: "amazon_ads_update_campaign_budgets",
+          mode: "preview",
+          campaigns: [{
+            campaignId: "campaign-1",
+            budget: { budgetType: "DAILY", budget: 5 }
+          }]
+        },
+        keywordBids: {
+          tool: "amazon_ads_update_keyword_bids",
+          mode: "preview",
+          keywords: [{ keywordId: "keyword-1", bid: 0.6 }]
+        },
+        negativeKeywords: {
+          tool: "amazon_ads_create_negative_keywords",
+          mode: "preview",
+          negativeKeywords: [{ keywordText: "free towel rack manual" }]
+        }
+      }
+    });
+    expect(preview).not.toHaveProperty("confirmationToken");
+    expect(amazonAds.updateSponsoredProductsCampaigns).not.toHaveBeenCalled();
+    expect(amazonAds.updateSponsoredProductsKeywords).not.toHaveBeenCalled();
+    expect(amazonAds.updateSponsoredProductsAdGroups).not.toHaveBeenCalled();
+    expect(amazonAds.createSponsoredProductsNegativeKeywords).not.toHaveBeenCalled();
+  });
+
   it("previews and confirms campaign dynamic bidding updates", async () => {
     const amazonAds = {
       createSponsoredProductsNegativeKeywords: vi.fn(),
