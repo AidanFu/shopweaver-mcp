@@ -80,6 +80,7 @@ type AmazonAdsSkuApplyPlan = {
   profileId: string;
   reportId?: string;
   payloads?: {
+    campaignStates?: { campaigns?: AmazonAdsCampaignStateUpdate[] };
     campaignBudgets?: { campaigns?: AmazonAdsCampaignBudgetUpdate[] };
     keywordBids?: { keywords?: AmazonAdsKeywordBidUpdate[] };
     adGroupBids?: { adGroups?: AmazonAdsAdGroupBidUpdate[] };
@@ -412,10 +413,12 @@ export class AmazonAdsWriteService {
 
   async previewSkuApplyPlanActions(applyPlan: AmazonAdsSkuApplyPlan) {
     const previews: Record<string, unknown> = {};
+    const campaignStates = applyPlan.payloads?.campaignStates?.campaigns ?? [];
     const campaignBudgets = applyPlan.payloads?.campaignBudgets?.campaigns ?? [];
     const keywordBids = applyPlan.payloads?.keywordBids?.keywords ?? [];
     const adGroupBids = applyPlan.payloads?.adGroupBids?.adGroups ?? [];
     const negativeKeywords = applyPlan.payloads?.negativeKeywords?.negativeKeywords ?? [];
+    if (campaignStates.length > 0) previews.campaignStates = await this.previewCampaignStateUpdates(applyPlan.profileId, campaignStates);
     if (campaignBudgets.length > 0) previews.campaignBudgets = await this.previewCampaignBudgetUpdates(applyPlan.profileId, campaignBudgets);
     if (keywordBids.length > 0) previews.keywordBids = await this.previewKeywordBidUpdates(applyPlan.profileId, keywordBids);
     if (adGroupBids.length > 0) previews.adGroupBids = await this.previewAdGroupBidUpdates(applyPlan.profileId, adGroupBids);
@@ -1081,6 +1084,13 @@ export function registerAmazonTools(server: McpServer, store: CredentialStore, a
           profileId: z.string().min(1),
           reportId: z.string().optional(),
           payloads: z.object({
+            campaignStates: z.object({
+              campaigns: z.array(z.object({
+                campaignId: z.string().min(1),
+                state: z.enum(["ENABLED", "PAUSED", "ARCHIVED"]),
+                reason: z.string().optional()
+              })).default([])
+            }).optional(),
             campaignBudgets: z.object({
               campaigns: z.array(z.object({
                 campaignId: z.string().min(1),

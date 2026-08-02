@@ -159,6 +159,26 @@ export interface AmazonCampaignSkuBudgetReviewPreview {
   }>;
 }
 
+export interface AmazonCampaignSkuStateReviewPreview {
+  operation: "preview_amazon_ads_sku_campaign_state_reviews";
+  applied: false;
+  warning: string;
+  stateReviewCount: number;
+  campaignStateReviews: Array<{
+    campaignId: string;
+    campaignName: string;
+    suggestedState: "PAUSED";
+    reason: string;
+    affectedSkus: string[];
+    sellerApprovalRequired: true;
+  }>;
+  campaignStateUpdates: Array<{
+    campaignId: string;
+    state: "PAUSED";
+    reason: string;
+  }>;
+}
+
 export interface AmazonCampaignBudgetSalesPlan {
   operation: "preview_amazon_ads_budget_sales_strategy";
   applied: false;
@@ -631,6 +651,34 @@ export function buildAmazonCampaignSkuBudgetReviewPreview(campaignPreview: Amazo
     campaignBudgetUpdates: campaignBudgetReviews.map(review => ({
       campaignId: review.campaignId,
       budget: review.suggestedBudget,
+      reason: review.reason
+    }))
+  };
+}
+
+export function buildAmazonCampaignSkuStateReviewPreview(campaignPreview: AmazonCampaignSkuCampaignControlPreview): AmazonCampaignSkuStateReviewPreview {
+  const campaignStateReviews = campaignPreview.campaignReviews
+    .filter(review => review.totalSpend >= 25 && review.highPrioritySpendRatio === 100 && review.sales === 0 && review.orders === 0)
+    .map(review => {
+      const reason = `Pause only after review; this campaign has ${review.totalSpend} spend, no sales or orders, and ${review.highPrioritySpendRatio}% high-priority zero-sale SKU spend.`;
+      return {
+        campaignId: review.campaignId,
+        campaignName: review.campaignName,
+        suggestedState: "PAUSED" as const,
+        reason,
+        affectedSkus: review.affectedSkus,
+        sellerApprovalRequired: true as const
+      };
+    });
+  return {
+    operation: "preview_amazon_ads_sku_campaign_state_reviews",
+    applied: false,
+    warning: "Preview only. No campaign states were changed. Confirm through the existing campaign state update flow before pausing any exact campaign payload.",
+    stateReviewCount: campaignStateReviews.length,
+    campaignStateReviews,
+    campaignStateUpdates: campaignStateReviews.map(review => ({
+      campaignId: review.campaignId,
+      state: review.suggestedState,
       reason: review.reason
     }))
   };

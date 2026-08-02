@@ -98,6 +98,7 @@ export function buildAmazonAdsSkuNegativeKeywordsPreviewPayload(profileId: strin
 }
 
 export function buildAmazonAdsSkuApplyPlanPayload(profileId: string, result: Record<string, any>) {
+  const campaignStateUpdates = result.campaignStateReviewPreview?.campaignStateUpdates ?? [];
   const campaignBudgetUpdates = result.budgetReviewPreview?.campaignBudgetUpdates ?? [];
   const keywordBidUpdates = result.bidKeywordPreview?.keywordBidUpdates ?? [];
   const adGroupBidUpdates = result.bidKeywordPreview?.adGroupBidUpdates ?? [];
@@ -117,6 +118,7 @@ export function buildAmazonAdsSkuApplyPlanPayload(profileId: string, result: Rec
         listingConversion: result.strategyPlan?.listingConversion?.priority ?? "normal"
       },
       actionCounts: {
+        campaignStateUpdates: campaignStateUpdates.length,
         campaignBudgetUpdates: campaignBudgetUpdates.length,
         keywordBidUpdates: keywordBidUpdates.length,
         adGroupBidUpdates: adGroupBidUpdates.length,
@@ -124,6 +126,12 @@ export function buildAmazonAdsSkuApplyPlanPayload(profileId: string, result: Rec
       }
     },
     payloads: {
+      campaignStates: {
+        tool: "amazon_ads_update_campaign_states" as const,
+        mode: "preview" as const,
+        profileId,
+        campaigns: campaignStateUpdates
+      },
       campaignBudgets: {
         tool: "amazon_ads_update_campaign_budgets" as const,
         mode: "preview" as const,

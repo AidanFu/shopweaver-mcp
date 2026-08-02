@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { analyzeAmazonCampaignMetrics, analyzeAmazonCampaignSkuSignals, analyzeAmazonSearchTermReportRows, buildAmazonAdsBidKeywordPreview, buildAmazonCampaignBudgetSalesPlan, buildAmazonCampaignSkuActionPlan, buildAmazonCampaignSkuBudgetReviewPreview, buildAmazonCampaignSkuCampaignControlPreview, buildAmazonCampaignSkuControlPreview } from "../src/amazon/campaign-optimization.js";
+import { analyzeAmazonCampaignMetrics, analyzeAmazonCampaignSkuSignals, analyzeAmazonSearchTermReportRows, buildAmazonAdsBidKeywordPreview, buildAmazonCampaignBudgetSalesPlan, buildAmazonCampaignSkuActionPlan, buildAmazonCampaignSkuBudgetReviewPreview, buildAmazonCampaignSkuCampaignControlPreview, buildAmazonCampaignSkuControlPreview, buildAmazonCampaignSkuStateReviewPreview } from "../src/amazon/campaign-optimization.js";
 
 describe("analyzeAmazonCampaignMetrics", () => {
   it("flags spend with clicks but no orders for budget review", () => {
@@ -292,6 +292,67 @@ describe("analyzeAmazonCampaignMetrics", () => {
         campaignId: "campaign-1",
         budget: { budgetType: "DAILY", budget: 6 },
         reason: "Reduce daily budget from 12 to 6 only after reviewing SKU fit and ad group bids; 83.33% of spend is high-priority zero-sale SKU spend."
+      }]
+    });
+  });
+
+  it("builds campaign pause review payloads only for pure zero-sale waste campaigns", () => {
+    expect(buildAmazonCampaignSkuStateReviewPreview({
+      operation: "preview_amazon_ads_sku_campaign_reviews",
+      applied: false,
+      warning: "Preview only.",
+      campaignReviewCount: 3,
+      campaignReviews: [{
+        campaignId: "campaign-1",
+        campaignName: "Exact Gold",
+        totalSpend: 60,
+        highPrioritySpend: 60,
+        highPrioritySpendRatio: 100,
+        sales: 0,
+        orders: 0,
+        affectedSkus: ["DH-E37S-W6DM"],
+        recommendedNextStep: "Review campaign budget.",
+        sellerApprovalRequired: true
+      }, {
+        campaignId: "campaign-2",
+        campaignName: "Exact Mixed",
+        totalSpend: 60,
+        highPrioritySpend: 42,
+        highPrioritySpendRatio: 70,
+        sales: 0,
+        orders: 0,
+        affectedSkus: ["77-UM99-B96T"],
+        recommendedNextStep: "Review campaign budget.",
+        sellerApprovalRequired: true
+      }, {
+        campaignId: "campaign-3",
+        campaignName: "Exact Winner",
+        totalSpend: 60,
+        highPrioritySpend: 60,
+        highPrioritySpendRatio: 100,
+        sales: 120,
+        orders: 2,
+        affectedSkus: ["5H-2EH1-7H77"],
+        recommendedNextStep: "Review campaign budget.",
+        sellerApprovalRequired: true
+      }]
+    })).toEqual({
+      operation: "preview_amazon_ads_sku_campaign_state_reviews",
+      applied: false,
+      warning: "Preview only. No campaign states were changed. Confirm through the existing campaign state update flow before pausing any exact campaign payload.",
+      stateReviewCount: 1,
+      campaignStateReviews: [{
+        campaignId: "campaign-1",
+        campaignName: "Exact Gold",
+        suggestedState: "PAUSED",
+        reason: "Pause only after review; this campaign has 60 spend, no sales or orders, and 100% high-priority zero-sale SKU spend.",
+        affectedSkus: ["DH-E37S-W6DM"],
+        sellerApprovalRequired: true
+      }],
+      campaignStateUpdates: [{
+        campaignId: "campaign-1",
+        state: "PAUSED",
+        reason: "Pause only after review; this campaign has 60 spend, no sales or orders, and 100% high-priority zero-sale SKU spend."
       }]
     });
   });

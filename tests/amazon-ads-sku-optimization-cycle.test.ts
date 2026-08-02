@@ -122,6 +122,14 @@ describe("runAmazonAdsSkuOptimizationCycle", () => {
           { campaignId: "campaign-1", campaignName: "Exact Gold", currentBudget: { budgetType: "DAILY", budget: 10 }, suggestedBudget: { budgetType: "DAILY", budget: 5 } }
         ]
       },
+      campaignStateReviewPreview: {
+        operation: "preview_amazon_ads_sku_campaign_state_reviews",
+        applied: false,
+        stateReviewCount: 1,
+        campaignStateUpdates: [
+          { campaignId: "campaign-1", state: "PAUSED" }
+        ]
+      },
       bidKeywordPreview: {
         operation: "preview_amazon_ads_bid_keyword_recommendations",
         applied: false,

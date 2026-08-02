@@ -1,5 +1,5 @@
 import type { AmazonAdsClient } from "./ads-client.js";
-import { analyzeAmazonCampaignSkuSignals, analyzeAmazonSearchTermReportRows, buildAmazonAdsBidKeywordPreview, buildAmazonCampaignBudgetSalesPlan, buildAmazonCampaignSkuActionPlan, buildAmazonCampaignSkuBudgetReviewPreview, buildAmazonCampaignSkuCampaignControlPreview, buildAmazonCampaignSkuControlPreview } from "./campaign-optimization.js";
+import { analyzeAmazonCampaignSkuSignals, analyzeAmazonSearchTermReportRows, buildAmazonAdsBidKeywordPreview, buildAmazonCampaignBudgetSalesPlan, buildAmazonCampaignSkuActionPlan, buildAmazonCampaignSkuBudgetReviewPreview, buildAmazonCampaignSkuCampaignControlPreview, buildAmazonCampaignSkuControlPreview, buildAmazonCampaignSkuStateReviewPreview } from "./campaign-optimization.js";
 
 type AmazonAdsSkuOptimizationClient = Pick<AmazonAdsClient, "createSponsoredProductsAdvertisedProductReport" | "getReport" | "downloadReportRows" | "listSponsoredProductsCampaigns">;
 
@@ -62,6 +62,7 @@ export async function runAmazonAdsSkuOptimizationCycle(amazonAds: AmazonAdsSkuOp
   const campaignControlPreview = buildAmazonCampaignSkuCampaignControlPreview(analysis, actionPlan);
   const campaignsResponse = await amazonAds.listSponsoredProductsCampaigns(input.profileId, { maxResults: 100 }) as { campaigns?: Array<Record<string, unknown>> };
   const budgetReviewPreview = buildAmazonCampaignSkuBudgetReviewPreview(campaignControlPreview, campaignsResponse.campaigns ?? []);
+  const campaignStateReviewPreview = buildAmazonCampaignSkuStateReviewPreview(campaignControlPreview);
   return {
     operation: "amazon_ads_run_sku_optimization_cycle" as const,
     status: "COMPLETED",
@@ -73,6 +74,7 @@ export async function runAmazonAdsSkuOptimizationCycle(amazonAds: AmazonAdsSkuOp
     controlPreview: buildAmazonCampaignSkuControlPreview(actionPlan),
     campaignControlPreview,
     budgetReviewPreview,
+    campaignStateReviewPreview,
     bidKeywordPreview: buildAmazonAdsBidKeywordPreview(rows),
     strategyPlan: buildAmazonCampaignBudgetSalesPlan({ searchTermAnalysis, actionPlan, budgetReviewPreview }),
     applied: false

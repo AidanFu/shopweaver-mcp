@@ -276,6 +276,13 @@ describe("parseAmazonAdsSkuOptimizeArgs", () => {
           reason: "Reduce waste while preserving sales budget."
         }]
       },
+      campaignStateReviewPreview: {
+        campaignStateUpdates: [{
+          campaignId: "campaign-1",
+          state: "PAUSED",
+          reason: "Pause pure zero-sale waste campaign after review."
+        }]
+      },
       bidKeywordPreview: {
         keywordBidUpdates: [{ keywordId: "keyword-1", bid: 0.6, reason: "Reduce wasted traffic." }],
         adGroupBidUpdates: [{ adGroupId: "adgroup-1", defaultBid: 0.45, reason: "Lower weak ad group bid." }],
@@ -304,12 +311,23 @@ describe("parseAmazonAdsSkuOptimizeArgs", () => {
         },
         actionCounts: {
           campaignBudgetUpdates: 1,
+          campaignStateUpdates: 1,
           keywordBidUpdates: 1,
           adGroupBidUpdates: 1,
           negativeKeywords: 1
         }
       },
       payloads: {
+        campaignStates: {
+          tool: "amazon_ads_update_campaign_states",
+          mode: "preview",
+          profileId: "profile-1",
+          campaigns: [{
+            campaignId: "campaign-1",
+            state: "PAUSED",
+            reason: "Pause pure zero-sale waste campaign after review."
+          }]
+        },
         campaignBudgets: {
           tool: "amazon_ads_update_campaign_budgets",
           mode: "preview",

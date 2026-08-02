@@ -604,6 +604,15 @@ describe("AmazonAdsWriteService", () => {
         }
       },
       payloads: {
+        campaignStates: {
+          tool: "amazon_ads_update_campaign_states",
+          mode: "preview",
+          profileId: "profile-1",
+          campaigns: [{
+            campaignId: "campaign-1",
+            state: "PAUSED" as const
+          }]
+        },
         campaignBudgets: {
           tool: "amazon_ads_update_campaign_budgets",
           mode: "preview",
@@ -646,6 +655,16 @@ describe("AmazonAdsWriteService", () => {
       profileId: "profile-1",
       reportId: "sku-report-1",
       payloads: {
+        campaignStates: {
+          tool: "amazon_ads_update_campaign_states",
+          mode: "preview",
+          profileId: "profile-1",
+          campaigns: [{
+            campaignId: "campaign-1",
+            state: "PAUSED" as const,
+            reason: "Pause pure zero-sale campaign."
+          }]
+        },
         campaignBudgets: {
           tool: "amazon_ads_update_campaign_budgets",
           mode: "preview",
@@ -689,8 +708,14 @@ describe("AmazonAdsWriteService", () => {
       sourceReportId: "sku-report-1",
       profileId: "profile-1",
       applied: false,
-      previewCount: 3,
+      previewCount: 4,
       previews: {
+        campaignStates: {
+          operation: "amazon_ads_update_campaign_states",
+          campaignUpdateCount: 1,
+          campaigns: [{ campaignId: "campaign-1", state: "PAUSED" }],
+          applied: false
+        },
         campaignBudgets: {
           operation: "amazon_ads_update_campaign_budgets",
           campaignBudgetUpdateCount: 1,
@@ -711,6 +736,7 @@ describe("AmazonAdsWriteService", () => {
         }
       }
     });
+    expect(previews.previews.campaignStates.confirmationToken).toEqual(expect.any(String));
     expect(previews.previews.campaignBudgets.confirmationToken).toEqual(expect.any(String));
     expect(previews.previews.keywordBids.confirmationToken).toEqual(expect.any(String));
     expect(previews.previews.negativeKeywords.confirmationToken).toEqual(expect.any(String));
