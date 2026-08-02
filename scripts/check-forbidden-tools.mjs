@@ -48,6 +48,7 @@ const allowed = [
   "amazon_validate_optimized_aplus_content",
   "amazon_write_aplus_optimization_workbook",
   "amazon_write_brand_store_workbook",
+  "amazon_write_existing_listing_optimization_workbook",
   "etsy_connection_status",
   "etsy_create_draft_listing",
   "etsy_get_listing",

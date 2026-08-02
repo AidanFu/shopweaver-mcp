@@ -10,6 +10,7 @@ import { buildAmazonAdsAppliedActionLearningPlan, compareAmazonAdsOptimizationRe
 import { analyzeAmazonSearchTermReportFile, previewAmazonAdsApprovedActions, readAmazonAdsActionDecisions, writeAmazonSearchTermOptimizationWorkbook } from "../amazon/campaign-report-file.js";
 import { analyzeAmazonCampaignMetrics, analyzeAmazonSearchTermReportRows } from "../amazon/campaign-optimization.js";
 import { analyzeAmazonExistingListing, buildAmazonListingCopyPatch } from "../amazon/listing-optimization.js";
+import { writeAmazonExistingListingOptimizationWorkbook } from "../amazon/listing-optimization-workbook.js";
 import type { AmazonAdsChangeLog } from "../amazon/ads-change-log.js";
 import type { AmazonAdsClient } from "../amazon/ads-client.js";
 import type { AmazonSpApiClient } from "../amazon/sp-api-client.js";
@@ -793,6 +794,21 @@ export function registerAmazonTools(server: McpServer, store: CredentialStore, a
     description: "Read one existing Amazon listing by seller SKU and return review-only optimization recommendations. This does not change the listing.",
     inputSchema: { sku: z.string().min(1) }
   }, async ({ sku }) => result(analyzeAmazonExistingListing(await amazon.getListingItem(sku) as never)));
+
+  server.registerTool("amazon_write_existing_listing_optimization_workbook", {
+    description: "Read existing Amazon listings by seller SKU and write a local review workbook with optimized copy and patch previews. This does not change listings.",
+    inputSchema: {
+      outputPath: z.string().min(1),
+      skus: z.array(z.string().min(1)).min(1),
+      marketplaceId: z.string().min(1),
+      productType: z.string().min(1)
+    }
+  }, async ({ outputPath, skus, marketplaceId, productType }) => result(await writeAmazonExistingListingOptimizationWorkbook({
+    outputPath,
+    marketplaceId,
+    productType,
+    listings: await Promise.all(skus.map(sku => amazon.getListingItem(sku) as Promise<never>))
+  })));
 
   server.registerTool("amazon_validate_listing_copy_update", {
     description: "Build optimized copy for one existing Amazon listing and submit an SP-API validation preview. This does not apply listing changes.",

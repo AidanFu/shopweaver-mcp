@@ -87,6 +87,7 @@ describe("MCP integration", () => {
       "amazon_validate_optimized_aplus_content",
       "amazon_write_aplus_optimization_workbook",
       "amazon_write_brand_store_workbook",
+      "amazon_write_existing_listing_optimization_workbook",
       "etsy_connection_status",
       "etsy_create_draft_listing",
       "etsy_get_listing",
@@ -237,6 +238,75 @@ describe("MCP integration", () => {
     expect(XLSX.utils.sheet_to_json(workbook.Sheets["Ads Learning Hooks"])[0]).toMatchObject({
       "Signal": "efficient_search_terms",
       "Recommendation": "Use converting Sponsored Products terms in Store headline and tile copy: electric towel warmer gold."
+    });
+    await Promise.all([client.close(), server.close()]);
+  });
+
+  it("writes a local existing-listing optimization workbook through read-only listing fetches", async () => {
+    const store = new MemoryCredentialStore();
+    await store.set("shop", { userId: 1, shopId: 42 });
+    const clientApi = { request: vi.fn() } as never;
+    const listings = new ListingService(clientApi, store);
+    const orders = new OrderService(clientApi, store);
+    const writes = new DraftWriteService(clientApi, listings, store, new ConfirmationStore());
+    const googleFolders = new GoogleFolderToolService({} as never);
+    const driveImports = new DriveImportService({} as never);
+    const driveImageUploads = new DriveImageUploadService(clientApi, listings, {} as never, store, new ConfirmationStore());
+    const amazonAds = new AmazonAdsClient(store, vi.fn());
+    const amazonSpApi = {
+      getListingItem: vi.fn().mockResolvedValue({
+        sku: "DH-E37S-W6DM",
+        summaries: [{
+          itemName: "Vertical Electric Towel Warmer Rack, Wall Mounted, Stainless Steel, Silver, 38 Inch Height, 3 Bar, Digital Timer with LED Display, Plug-in or Hardwired (Gold)",
+          mainImage: { link: "https://example.com/main.jpg" }
+        }],
+        attributes: {
+          bullet_point: [
+            { value: "Fast warming towel rail for bathroom comfort." },
+            { value: "Wall mounted design saves floor space." },
+            { value: "Stainless steel construction supports daily use." },
+            { value: "Digital timer helps reduce unnecessary run time." },
+            { value: "Plug-in or hardwired installation supports different bathrooms." },
+            { value: "Extra bullet one." }
+          ],
+          product_description: [{ value: "A vertical electric towel warmer rack for bathrooms, designed with stainless steel, a digital timer, and flexible plug-in or hardwired installation options." }],
+          generic_keyword: [{ value: "Electric Heated Towel Rack" }]
+        },
+        issues: []
+      })
+    } as unknown as AmazonSpApiClient;
+    const amazonListingWrites = new AmazonListingWriteService(store, amazonSpApi, new ConfirmationStore());
+    const amazonAdsWrites = new AmazonAdsWriteService(amazonAds, new ConfirmationStore());
+    const amazonAdsChangeLog = { record: vi.fn(), read: vi.fn() };
+    const server = createServer({ store, listings, orders, writes, googleFolders, driveImports, driveImageUploads, amazonAds, amazonSpApi, amazonListingWrites, amazonAdsWrites, amazonAdsChangeLog });
+    const client = new Client({ name: "test", version: "1" });
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
+    const dir = await mkdtemp(join(tmpdir(), "shopweaver-existing-listing-tool-"));
+    const outputPath = join(dir, "existing-listing-optimization.xlsx");
+
+    const response = await client.callTool({
+      name: "amazon_write_existing_listing_optimization_workbook",
+      arguments: {
+        outputPath,
+        skus: ["DH-E37S-W6DM"],
+        marketplaceId: "ATVPDKIKX0DER",
+        productType: "TOWEL_HOLDER"
+      }
+    });
+
+    expect(amazonSpApi.getListingItem).toHaveBeenCalledWith("DH-E37S-W6DM");
+    expect(response.structuredContent).toMatchObject({
+      operation: "write_amazon_existing_listing_optimization_workbook",
+      outputPath,
+      listingCount: 1,
+      optimizedPatchCount: 1,
+      applied: false
+    });
+    const workbook = XLSX.read(await readFile(outputPath));
+    expect(XLSX.utils.sheet_to_json(workbook.Sheets["Optimized Copy"])[0]).toMatchObject({
+      "SKU": "DH-E37S-W6DM",
+      "Optimized Title": "Electric Towel Warmer Rack, Wall Mount 3-Bar Stainless Steel, 38 in, Gold"
     });
     await Promise.all([client.close(), server.close()]);
   });
