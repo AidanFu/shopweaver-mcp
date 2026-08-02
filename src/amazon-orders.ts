@@ -176,6 +176,13 @@ export function compareAmazonAdsSkuSalesToOrders(summary: AmazonOrdersSummary, a
     adsOnlySalesCount: skuComparisons.filter(row => row.signal === "ads_attributed_without_seller_order").length,
     sellerOnlySalesCount: skuComparisons.filter(row => row.signal === "seller_order_without_ads_attribution").length,
     noSalesCount: skuComparisons.filter(row => row.signal === "no_ads_or_seller_sales").length,
+    salesSignals: skuComparisons.map(row => ({
+      sku: row.sku,
+      signal: row.signal,
+      adSpend: row.adSpend,
+      sellerOrders: row.sellerOrders,
+      adsOrders: row.adsOrders
+    })),
     skuComparisons
   };
 }

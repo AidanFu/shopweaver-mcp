@@ -147,6 +147,25 @@ describe("parseAmazonOrdersArgs", () => {
       adsOnlySalesCount: 1,
       sellerOnlySalesCount: 1,
       noSalesCount: 1,
+      salesSignals: [{
+        sku: "DH-E37S-W6DM",
+        signal: "ads_attributed_without_seller_order",
+        adSpend: 32,
+        sellerOrders: 0,
+        adsOrders: 1
+      }, {
+        sku: "77-UM99-B96T",
+        signal: "no_ads_or_seller_sales",
+        adSpend: 26,
+        sellerOrders: 0,
+        adsOrders: 0
+      }, {
+        sku: "5H-2EH1-7H77",
+        signal: "seller_order_without_ads_attribution",
+        adSpend: 18,
+        sellerOrders: 1,
+        adsOrders: 0
+      }],
       skuComparisons: [{
         sku: "DH-E37S-W6DM",
         adsOrders: 1,

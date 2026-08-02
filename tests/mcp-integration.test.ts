@@ -270,7 +270,20 @@ describe("MCP integration", () => {
       adsOrderComparison: {
         operation: "compare_amazon_ads_sku_sales_to_seller_orders",
         matchedSalesCount: 1,
-        noSalesCount: 1
+        noSalesCount: 1,
+        salesSignals: [{
+          sku: "DH-E37S-W6DM",
+          signal: "no_ads_or_seller_sales",
+          adSpend: 32,
+          sellerOrders: 0,
+          adsOrders: 0
+        }, {
+          sku: "5H-2EH1-7H77",
+          signal: "matched_ads_and_seller_sales",
+          adSpend: 18,
+          sellerOrders: 1,
+          adsOrders: 1
+        }]
       },
       listingOptimizationActions: {
         operation: "build_amazon_listing_optimization_actions_from_sales_comparison",
