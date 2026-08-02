@@ -22,6 +22,7 @@
     "amazon:ads:compare": "tsx src/amazon-ads-compare.ts",
     "amazon:ads:history": "tsx src/amazon-ads-history.ts",
     "amazon:aplus:workbook": "tsx src/amazon-aplus-workbook.ts",
+    "amazon:brand-store:workbook": "tsx src/amazon-brand-store.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "check:safety": "node scripts/check-forbidden-tools.mjs",
