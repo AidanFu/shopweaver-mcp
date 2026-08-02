@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildAmazonAdsSkuBudgetPreviewPayload, parseAmazonAdsSkuOptimizeArgs, renderAmazonAdsSkuOptimizationSummary } from "../src/amazon-ads-sku-optimize.js";
+import { buildAmazonAdsSkuAdGroupBidsPreviewPayload, buildAmazonAdsSkuBudgetPreviewPayload, buildAmazonAdsSkuKeywordBidsPreviewPayload, buildAmazonAdsSkuNegativeKeywordsPreviewPayload, parseAmazonAdsSkuOptimizeArgs, renderAmazonAdsSkuOptimizationSummary } from "../src/amazon-ads-sku-optimize.js";
 
 describe("parseAmazonAdsSkuOptimizeArgs", () => {
   it("parses SKU campaign optimization cycle arguments", () => {
@@ -41,6 +41,30 @@ describe("parseAmazonAdsSkuOptimizeArgs", () => {
       "--target-skus", "DH-E37S-W6DM",
       "--format", "budget-preview"
     ])).toMatchObject({ outputFormat: "budget-preview" });
+  });
+
+  it("parses bid and keyword preview output formats", () => {
+    expect(parseAmazonAdsSkuOptimizeArgs([
+      "--profile-id", "749555662454438",
+      "--start-date", "2026-07-29",
+      "--end-date", "2026-08-01",
+      "--target-skus", "DH-E37S-W6DM",
+      "--format", "keyword-bids-preview"
+    ])).toMatchObject({ outputFormat: "keyword-bids-preview" });
+    expect(parseAmazonAdsSkuOptimizeArgs([
+      "--profile-id", "749555662454438",
+      "--start-date", "2026-07-29",
+      "--end-date", "2026-08-01",
+      "--target-skus", "DH-E37S-W6DM",
+      "--format", "ad-group-bids-preview"
+    ])).toMatchObject({ outputFormat: "ad-group-bids-preview" });
+    expect(parseAmazonAdsSkuOptimizeArgs([
+      "--profile-id", "749555662454438",
+      "--start-date", "2026-07-29",
+      "--end-date", "2026-08-01",
+      "--target-skus", "DH-E37S-W6DM",
+      "--format", "negative-keywords-preview"
+    ])).toMatchObject({ outputFormat: "negative-keywords-preview" });
   });
 
   it("renders a compact SKU optimization summary for daily campaign decisions", () => {
@@ -147,6 +171,81 @@ describe("parseAmazonAdsSkuOptimizeArgs", () => {
       }],
       applied: false,
       warning: "Preview payload only. Submit this to amazon_ads_update_campaign_budgets in preview mode, then confirm with the returned token to write."
+    });
+  });
+
+  it("builds the exact keyword bid preview payload from SKU optimizer output", () => {
+    expect(buildAmazonAdsSkuKeywordBidsPreviewPayload("profile-1", {
+      bidKeywordPreview: {
+        keywordBidUpdates: [{
+          keywordId: "keyword-1",
+          bid: 0.6,
+          reason: "Reduce wasted traffic."
+        }]
+      }
+    })).toEqual({
+      tool: "amazon_ads_update_keyword_bids",
+      mode: "preview",
+      profileId: "profile-1",
+      keywords: [{
+        keywordId: "keyword-1",
+        bid: 0.6,
+        reason: "Reduce wasted traffic."
+      }],
+      applied: false,
+      warning: "Preview payload only. Submit this to amazon_ads_update_keyword_bids in preview mode, then confirm with the returned token to write."
+    });
+  });
+
+  it("builds the exact ad group bid preview payload from SKU optimizer output", () => {
+    expect(buildAmazonAdsSkuAdGroupBidsPreviewPayload("profile-1", {
+      bidKeywordPreview: {
+        adGroupBidUpdates: [{
+          adGroupId: "adgroup-1",
+          defaultBid: 0.45,
+          reason: "Reduce wasted traffic without keyword-level bid data."
+        }]
+      }
+    })).toEqual({
+      tool: "amazon_ads_update_ad_group_bids",
+      mode: "preview",
+      profileId: "profile-1",
+      adGroups: [{
+        adGroupId: "adgroup-1",
+        defaultBid: 0.45,
+        reason: "Reduce wasted traffic without keyword-level bid data."
+      }],
+      applied: false,
+      warning: "Preview payload only. Submit this to amazon_ads_update_ad_group_bids in preview mode, then confirm with the returned token to write."
+    });
+  });
+
+  it("builds the exact negative keyword preview payload from SKU optimizer output", () => {
+    expect(buildAmazonAdsSkuNegativeKeywordsPreviewPayload("profile-1", {
+      bidKeywordPreview: {
+        negativeKeywords: [{
+          campaignId: "campaign-1",
+          adGroupId: "adgroup-1",
+          keywordText: "free crochet pattern",
+          matchType: "NEGATIVE_EXACT",
+          state: "ENABLED",
+          reason: "High clicks or spend with no attributed orders; review before adding as negative exact."
+        }]
+      }
+    })).toEqual({
+      tool: "amazon_ads_create_negative_keywords",
+      mode: "preview",
+      profileId: "profile-1",
+      negativeKeywords: [{
+        campaignId: "campaign-1",
+        adGroupId: "adgroup-1",
+        keywordText: "free crochet pattern",
+        matchType: "NEGATIVE_EXACT",
+        state: "ENABLED",
+        reason: "High clicks or spend with no attributed orders; review before adding as negative exact."
+      }],
+      applied: false,
+      warning: "Preview payload only. Use this as a direct negative-keyword review payload; Amazon write support still requires the gated negative-keyword confirmation flow."
     });
   });
 });

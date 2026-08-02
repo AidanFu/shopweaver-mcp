@@ -7,7 +7,7 @@ import { KeychainCredentialStore } from "./credentials/keychain.js";
 import { ShopWeaverError } from "./errors.js";
 
 export interface AmazonAdsSkuOptimizeArgs extends AmazonAdsSkuOptimizationCycleInput {
-  outputFormat: "json" | "summary" | "budget-preview";
+  outputFormat: "json" | "summary" | "budget-preview" | "keyword-bids-preview" | "ad-group-bids-preview" | "negative-keywords-preview";
 }
 
 export function parseAmazonAdsSkuOptimizeArgs(args: string[]): AmazonAdsSkuOptimizeArgs {
@@ -46,6 +46,9 @@ async function main(): Promise<void> {
 function renderAmazonAdsSkuOptimizationResult(args: AmazonAdsSkuOptimizeArgs, result: Record<string, any>): string {
   if (args.outputFormat === "summary") return renderAmazonAdsSkuOptimizationSummary(result);
   if (args.outputFormat === "budget-preview") return JSON.stringify(buildAmazonAdsSkuBudgetPreviewPayload(args.profileId, result), null, 2);
+  if (args.outputFormat === "keyword-bids-preview") return JSON.stringify(buildAmazonAdsSkuKeywordBidsPreviewPayload(args.profileId, result), null, 2);
+  if (args.outputFormat === "ad-group-bids-preview") return JSON.stringify(buildAmazonAdsSkuAdGroupBidsPreviewPayload(args.profileId, result), null, 2);
+  if (args.outputFormat === "negative-keywords-preview") return JSON.stringify(buildAmazonAdsSkuNegativeKeywordsPreviewPayload(args.profileId, result), null, 2);
   return JSON.stringify(result, null, 2);
 }
 
@@ -57,6 +60,39 @@ export function buildAmazonAdsSkuBudgetPreviewPayload(profileId: string, result:
     campaigns: result.budgetReviewPreview?.campaignBudgetUpdates ?? [],
     applied: false,
     warning: "Preview payload only. Submit this to amazon_ads_update_campaign_budgets in preview mode, then confirm with the returned token to write."
+  };
+}
+
+export function buildAmazonAdsSkuKeywordBidsPreviewPayload(profileId: string, result: Record<string, any>) {
+  return {
+    tool: "amazon_ads_update_keyword_bids",
+    mode: "preview",
+    profileId,
+    keywords: result.bidKeywordPreview?.keywordBidUpdates ?? [],
+    applied: false,
+    warning: "Preview payload only. Submit this to amazon_ads_update_keyword_bids in preview mode, then confirm with the returned token to write."
+  };
+}
+
+export function buildAmazonAdsSkuAdGroupBidsPreviewPayload(profileId: string, result: Record<string, any>) {
+  return {
+    tool: "amazon_ads_update_ad_group_bids",
+    mode: "preview",
+    profileId,
+    adGroups: result.bidKeywordPreview?.adGroupBidUpdates ?? [],
+    applied: false,
+    warning: "Preview payload only. Submit this to amazon_ads_update_ad_group_bids in preview mode, then confirm with the returned token to write."
+  };
+}
+
+export function buildAmazonAdsSkuNegativeKeywordsPreviewPayload(profileId: string, result: Record<string, any>) {
+  return {
+    tool: "amazon_ads_create_negative_keywords",
+    mode: "preview",
+    profileId,
+    negativeKeywords: result.bidKeywordPreview?.negativeKeywords ?? [],
+    applied: false,
+    warning: "Preview payload only. Use this as a direct negative-keyword review payload; Amazon write support still requires the gated negative-keyword confirmation flow."
   };
 }
 
@@ -98,7 +134,7 @@ function splitCsv(value: string): string[] {
 
 function outputFormat(value: string | undefined): AmazonAdsSkuOptimizeArgs["outputFormat"] {
   if (!value) return "json";
-  if (value === "json" || value === "summary" || value === "budget-preview") return value;
+  if (value === "json" || value === "summary" || value === "budget-preview" || value === "keyword-bids-preview" || value === "ad-group-bids-preview" || value === "negative-keywords-preview") return value;
   throw usageError();
 }
 
@@ -123,7 +159,7 @@ function winnerTermLines(values: unknown): string[] {
 }
 
 function usageError() {
-  return new ShopWeaverError("AMAZON_ADS_SKU_OPTIMIZE_ARGS_INVALID", "Usage: npm run amazon:ads:sku -- --profile-id PROFILE --start-date YYYY-MM-DD --end-date YYYY-MM-DD --target-skus SKU1,SKU2 [--target-skus-with-sales SKU1] [--non-target-skus-with-sales SKU3] [--report-id REPORT_ID] [--format json|summary|budget-preview]");
+  return new ShopWeaverError("AMAZON_ADS_SKU_OPTIMIZE_ARGS_INVALID", "Usage: npm run amazon:ads:sku -- --profile-id PROFILE --start-date YYYY-MM-DD --end-date YYYY-MM-DD --target-skus SKU1,SKU2 [--target-skus-with-sales SKU1] [--non-target-skus-with-sales SKU3] [--report-id REPORT_ID] [--format json|summary|budget-preview|keyword-bids-preview|ad-group-bids-preview|negative-keywords-preview]");
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
