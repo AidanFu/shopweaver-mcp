@@ -70,23 +70,45 @@ const allowed = [
   "google_drive_remove_allowed_folder",
   "shopweaver_import_drive_folder",
   "shopweaver_preview_etsy_draft_from_enriched_row",
+  "shopweaver_preview_etsy_variation_draft",
+  "shopweaver_preview_etsy_variation_groups",
   "shopweaver_refresh_amazon_optimization_recommendations",
   "shopweaver_upload_drive_images_to_etsy_draft",
+  "shopweaver_upload_drive_variation_images_to_etsy_draft",
   "shopweaver_write_amazon_listing_workbook",
-  "shopweaver_write_enriched_workbook"
+  "shopweaver_write_enriched_workbook",
+  "shopweaver_write_etsy_variation_workbook"
 ].sort();
 
 const files = ["src/tools/read-tools.ts", "src/tools/write-tools.ts", "src/tools/google-tools.ts", "src/tools/import-tools.ts", "src/tools/drive-image-tools.ts", "src/tools/amazon-tools.ts"];
+const expectedSafeDescriptions = {
+  shopweaver_preview_etsy_variation_groups: /read-only/i,
+  shopweaver_write_etsy_variation_workbook: /preview[\s\S]*confirm|confirm[\s\S]*preview/i,
+  shopweaver_preview_etsy_variation_draft: /read-only/i,
+  shopweaver_upload_drive_variation_images_to_etsy_draft: /preview[\s\S]*confirm|confirm[\s\S]*preview/i
+};
 const found = [];
+const descriptions = new Map();
 for (const file of files) {
   const source = await readFile(new URL(`../${file}`, import.meta.url), "utf8");
-  for (const match of source.matchAll(/registerTool\("([a-z_]+)"/g)) found.push(match[1]);
+  for (const match of source.matchAll(/registerTool\("([a-z_]+)"[\s\S]*?description:\s*"([^"]+)"/g)) {
+    found.push(match[1]);
+    descriptions.set(match[1], match[2]);
+  }
 }
 
 found.sort();
 if (JSON.stringify(found) !== JSON.stringify(allowed)) {
   process.stderr.write(`Unexpected ShopWeaver tool allowlist: ${found.join(", ")}\n`);
   process.exitCode = 1;
-} else {
-  process.stdout.write("ShopWeaver tool allowlist verified.\n");
 }
+
+for (const [toolName, requiredLanguage] of Object.entries(expectedSafeDescriptions)) {
+  const description = descriptions.get(toolName) ?? "";
+  if (!requiredLanguage.test(description)) {
+    process.stderr.write(`Expected safe preview/confirm or read-only description for ${toolName}.\n`);
+    process.exitCode = 1;
+  }
+}
+
+if (!process.exitCode) process.stdout.write("ShopWeaver tool allowlist verified.\n");

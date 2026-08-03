@@ -52,6 +52,21 @@ export interface EnrichedWorkbookRow {
   imageCount?: number;
   validationStatus?: string;
   validationNotes?: string;
+  listingGroup?: string;
+  parentListingTitle?: string;
+  parentListingDescription?: string;
+  isVariant?: string;
+  variation1Name?: string;
+  variation1Value?: string;
+  variation2Name?: string;
+  variation2Value?: string;
+  sku?: string;
+  variantPrice?: string;
+  variantQuantity?: number;
+  variantImageFolder?: string;
+  variantImageCount?: number;
+  variationValidationStatus?: string;
+  variationValidationNotes?: string;
 }
 
 const ENRICHED_HEADERS = [
@@ -73,7 +88,22 @@ const ENRICHED_HEADERS = [
   "Image Folder",
   "Image Count",
   "Validation Status",
-  "Validation Notes"
+  "Validation Notes",
+  "Listing Group",
+  "Parent Listing Title",
+  "Parent Listing Description",
+  "Is Variant",
+  "Variation 1 Name",
+  "Variation 1 Value",
+  "Variation 2 Name",
+  "Variation 2 Value",
+  "SKU",
+  "Variant Price",
+  "Variant Quantity",
+  "Variant Image Folder",
+  "Variant Image Count",
+  "Variation Validation Status",
+  "Variation Validation Notes"
 ];
 
 export function writeEnrichedWorkbook(rows: EnrichedWorkbookRow[]): Uint8Array {
@@ -97,7 +127,22 @@ export function writeEnrichedWorkbook(rows: EnrichedWorkbookRow[]): Uint8Array {
     row.imageFolder ?? "",
     row.imageCount ?? "",
     row.validationStatus ?? "",
-    row.validationNotes ?? ""
+    row.validationNotes ?? "",
+    row.listingGroup ?? "",
+    row.parentListingTitle ?? "",
+    row.parentListingDescription ?? "",
+    row.isVariant ?? "",
+    row.variation1Name ?? "",
+    row.variation1Value ?? "",
+    row.variation2Name ?? "",
+    row.variation2Value ?? "",
+    row.sku ?? "",
+    row.variantPrice ?? "",
+    row.variantQuantity ?? "",
+    row.variantImageFolder ?? "",
+    row.variantImageCount ?? "",
+    row.variationValidationStatus ?? "",
+    row.variationValidationNotes ?? ""
   ]);
   XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([ENRICHED_HEADERS, ...values]), "Etsy Drafts");
   return new Uint8Array(XLSX.write(workbook, { type: "array", bookType: "xlsx" }));

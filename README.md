@@ -110,6 +110,14 @@ npm run google:setup
 
 Google tokens are stored in macOS Keychain. Allowed folder metadata is stored in ignored local config. Use `config.example.json` as the documented shape and keep real folder IDs out of Git.
 
+Before Drive import work, run:
+
+```bash
+npm run google:status
+```
+
+This validates stored Google Drive authorization without printing tokens. If it reports `refreshStatus: "failed"` or `connected: false`, run `npm run google:setup` to reconnect Google Drive.
+
 ## Google Drive folder layout
 
 ```text
@@ -134,6 +142,20 @@ HandMade/
 6. Confirm writing `Product Information - Etsy Draft.xlsx` with `shopweaver_write_enriched_workbook`.
 7. Preview one Etsy draft with `shopweaver_preview_etsy_draft_from_enriched_row`.
 8. Confirm Etsy draft creation and image uploads separately.
+
+### Etsy variation drafts
+
+Use this when several Drive products should become one Etsy draft listing with options such as Color.
+
+1. Run `shopweaver_preview_etsy_variation_groups`.
+2. Run `shopweaver_write_etsy_variation_workbook` in preview mode, then confirm mode.
+3. Review `Product Information - Etsy Draft.xlsx` and correct `Listing Group`, `Variation 1 Name`, `Variation 1 Value`, SKU, price, quantity, and image folder columns.
+4. Run `shopweaver_preview_etsy_variation_draft` for one listing group.
+5. Preview and confirm `etsy_create_draft_listing`.
+6. Preview and confirm `shopweaver_upload_drive_variation_images_to_etsy_draft`.
+7. Preview and confirm `etsy_update_draft_inventory`.
+
+The listing stays in draft. ShopWeaver does not publish, delete, update active listings, manage ads, process refunds, create shipments, send messages, or email buyers.
 
 ## Amazon workbook workflow
 
@@ -230,6 +252,10 @@ The Codex plugin manifest uses `.mcp.json` to run the built server with stdio tr
 - `shopweaver_write_enriched_workbook`
 - `shopweaver_preview_etsy_draft_from_enriched_row`
 - `shopweaver_upload_drive_images_to_etsy_draft`
+- `shopweaver_preview_etsy_variation_groups`
+- `shopweaver_write_etsy_variation_workbook`
+- `shopweaver_preview_etsy_variation_draft`
+- `shopweaver_upload_drive_variation_images_to_etsy_draft`
 - `shopweaver_write_amazon_listing_workbook`
 - `shopweaver_refresh_amazon_optimization_recommendations`
 - `amazon_ads_run_sku_budget_update_preview`

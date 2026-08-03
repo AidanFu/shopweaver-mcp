@@ -5,6 +5,7 @@ import type { AmazonSpApiClient } from "./amazon/sp-api-client.js";
 import type { CredentialStore } from "./credentials/types.js";
 import type { ListingService } from "./etsy/listings.js";
 import type { OrderService } from "./etsy/orders.js";
+import type { GoogleDriveHealthService } from "./google/status.js";
 import type { DriveImageUploadService } from "./import/drive-image-upload.js";
 import type { DriveImportService } from "./import/drive-import.js";
 import { registerAmazonTools, type AmazonAdsWriteService, type AmazonListingWriteService } from "./tools/amazon-tools.js";
@@ -21,6 +22,7 @@ export interface ServerDependencies {
   orders?: OrderService;
   writes?: DraftWriteService;
   googleFolders?: GoogleFolderToolService;
+  googleHealth?: GoogleDriveHealthService;
   driveImports?: DriveImportService;
   driveImageUploads?: DriveImageUploadService;
   amazonAds?: AmazonAdsClient;
@@ -34,7 +36,7 @@ export function createServer(dependencies: ServerDependencies): McpServer {
   const server = new McpServer({ name: "shopweaver-mcp", version: "0.1.0" });
   if (dependencies.store && dependencies.listings) registerReadTools(server, dependencies.store, dependencies.listings, dependencies.orders);
   if (dependencies.writes) registerWriteTools(server, dependencies.writes);
-  if (dependencies.store && dependencies.googleFolders) registerGoogleTools(server, dependencies.store, dependencies.googleFolders);
+  if (dependencies.store && dependencies.googleFolders) registerGoogleTools(server, dependencies.store, dependencies.googleFolders, dependencies.googleHealth);
   if (dependencies.store && dependencies.amazonSpApi) registerAmazonTools(server, dependencies.store, dependencies.amazonSpApi, dependencies.amazonAds, dependencies.amazonListingWrites, dependencies.amazonAdsWrites, dependencies.amazonAdsChangeLog);
   if (dependencies.driveImports) registerImportTools(server, dependencies.driveImports);
   if (dependencies.driveImageUploads) registerDriveImageTools(server, dependencies.driveImageUploads);

@@ -7,6 +7,7 @@ export type WriteAction =
   | "update_draft"
   | "upload_draft_image"
   | "upload_drive_images"
+  | "upload_drive_variation_images"
   | "update_draft_inventory"
   | "amazon_update_listing_copy"
   | "amazon_update_listing_copy_from_workbook"
