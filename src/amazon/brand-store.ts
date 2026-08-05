@@ -1,6 +1,7 @@
 import { isAbsolute } from "node:path";
 import * as XLSX from "xlsx";
 import { ShopWeaverError } from "../errors.js";
+import { normalizeTowelWarmerFinish } from "./finish-normalization.js";
 
 export interface AmazonBrandStoreProduct {
   asin: string;
@@ -178,11 +179,12 @@ function buildSections(category: string): AmazonBrandStoreSection[] {
 
 function productTile(product: AmazonBrandStoreProduct, salesSignal?: AmazonBrandStoreSalesSignal): AmazonBrandStoreProductTile {
   const salesGuidance = salesSignal ? productTileSalesGuidance(salesSignal) : undefined;
+  const finish = product.finish ? normalizeTowelWarmerFinish(product.finish) : undefined;
   return {
     asin: product.asin,
     sku: product.sku ?? "",
     title: product.title,
-    primaryMessage: product.finish ? `${product.finish} finish for a polished bathroom upgrade` : "Designed for clear comparison and confident purchase decisions",
+    primaryMessage: finish ? `${finish} finish for a polished bathroom upgrade` : "Designed for clear comparison and confident purchase decisions",
     callout: salesGuidance?.callout ?? (product.priority === "hero" ? "Feature in the first product row and connect to top converting ad terms." : "Place in comparison rows after the hero product."),
     ...(product.price !== undefined ? { price: product.price } : {}),
     ...(product.imageUrl ? { imageUrl: product.imageUrl } : {}),

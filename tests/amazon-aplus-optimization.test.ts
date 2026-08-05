@@ -55,9 +55,33 @@ describe("analyzeAmazonAplusContent", () => {
         "Benefit strip: save floor space, organize towels, support daily drying, and upgrade bathroom finish.",
         "Installation confidence: plug-in or hardwired options, digital timer, wall-mount fit, and measurement reminder.",
         "Use-case module: bathrooms, laundry rooms, spa spaces, swimsuits, and compact walls.",
-        "Spec/reassurance module: 304 stainless steel, 3-bar vertical layout, 38 inch height, Gold finish, seller support."
+        "Spec/reassurance module: 3-bar vertical layout, 38 inch height, Gold finish, seller support."
       ]
     });
+  });
+
+  it("flags polished chrome finish when A+ text suggests silver, stainless, or nickel", () => {
+    expect(analyzeAmazonAplusContent({
+      asin: "B0CHROME",
+      expectedFinish: "Polished Chrome",
+      expectedHeightInches: 38,
+      contentRecord: {
+        contentMetadata: { name: "silver-content", status: "APPROVED" },
+        contentDocument: {
+          locale: "en-US",
+          contentModuleList: [{
+            contentModuleType: "STANDARD_PRODUCT_DESCRIPTION",
+            standardProductDescription: {
+              body: {
+                textList: [{
+                  value: "This stainless towel warmer has a brushed nickel look and silver finish."
+                }]
+              }
+            }
+          }]
+        }
+      }
+    }).recommendations).toContain("Fix finish mismatch: A+ text mentions Stainless, but this ASIN context expects Polished Chrome.");
   });
 
   it("builds an optimized A+ draft document while preserving existing images", () => {
@@ -98,7 +122,7 @@ describe("analyzeAmazonAplusContent", () => {
           standardProductDescription: {
             body: {
               textList: [{
-                value: "Upgrade daily bathroom comfort with a wall mounted electric towel warmer rack designed to warm and dry towels while saving floor space. The 3-bar vertical design uses 304-grade stainless steel with a polished Gold finish and a 38 inch profile for bathrooms, laundry rooms, spa areas, and compact wall spaces. A digital timer helps manage run time, and plug-in or hardwired installation options give flexibility for different setups."
+                value: "Upgrade daily bathroom comfort with a wall mounted electric towel warmer rack designed to warm and dry towels while saving floor space. The 3-bar vertical design has a Gold finish and a 38 inch profile for bathrooms, laundry rooms, spa areas, and compact wall spaces. A digital timer helps manage run time, and plug-in or hardwired installation options give flexibility for different setups."
               }]
             }
           }

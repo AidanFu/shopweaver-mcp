@@ -99,7 +99,7 @@ describe("buildAmazonExistingListingWorkbookFromClient", () => {
     const workbook = XLSX.read(await readFile(outputPath));
     expect(XLSX.utils.sheet_to_json(workbook.Sheets["Optimized Copy"])[0]).toMatchObject({
       "SKU": "DH-E37S-W6DM",
-      "Optimized Title": "Electric Towel Warmer Rack, Wall Mount 3-Bar Stainless Steel, 38 in, Gold"
+      "Optimized Title": "Electric Towel Warmer Rack, Wall Mount 3-Bar, 38 in, Gold Finish"
     });
     expect(XLSX.utils.sheet_to_json(workbook.Sheets["Sales Signal Actions"])[0]).toMatchObject({
       "SKU": "DH-E37S-W6DM",

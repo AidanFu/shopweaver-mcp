@@ -6,6 +6,7 @@ import {
   type AplusContentDocument,
   type AplusModule
 } from "./aplus-optimization.js";
+import { normalizeTowelWarmerFinish } from "./finish-normalization.js";
 
 export interface AmazonAplusWorkbookItem extends AmazonAplusContentInput {
   sku?: string;
@@ -48,7 +49,7 @@ export async function writeAmazonAplusOptimizationWorkbook(input: AmazonAplusWor
   XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(optimizedItems.map(({ item, recommendation, optimizedDocument, salesSignal }) => ({
     "ASIN": item.asin,
     "SKU": item.sku ?? "",
-    "Finish": item.expectedFinish,
+    "Finish": normalizeTowelWarmerFinish(item.expectedFinish),
     "Height Inches": item.expectedHeightInches,
     "Source Content Reference Key": item.sourceContentReferenceKey,
     "Content Status": recommendation.contentStatus,

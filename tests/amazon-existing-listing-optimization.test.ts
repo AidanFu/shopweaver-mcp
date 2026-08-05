@@ -74,31 +74,70 @@ describe("analyzeAmazonExistingListing", () => {
       sku: "DH-E37S-W6DM",
       status: "needs_listing_optimization",
       priority: "normal",
-      titleRecommendation: "Shorten title to improve scanability while preserving product type, installation type, material, size, and finish.",
+      titleRecommendation: "Shorten title to improve scanability while preserving product type, installation type, size, and accurate finish.",
       bulletRecommendation: "Consolidate bullets to the five strongest benefit-led points: three buyer benefits, one worry reducer, and one post-sale/support point.",
       descriptionRecommendation: "Monitor description performance against search terms, conversion rate, and customer questions.",
       backendSearchRecommendation: "Expand backend search terms with relevant non-duplicative buyer phrases, synonyms, and use cases.",
       imageRecommendation: "Monitor image performance; add scale, use-case, and detail images if conversion weakens.",
       issueRecommendation: "No active listing issues found in the fetched listing item.",
-      optimizedTitle: "Electric Towel Warmer Rack, Wall Mount 3-Bar Stainless Steel, 38 in, Gold",
+      optimizedTitle: "Electric Towel Warmer Rack, Wall Mount 3-Bar, 38 in, Gold Finish",
       optimizedBullets: [
         "Enjoy warm, dry towels after showers while adding a polished bathroom upgrade that feels more comfortable every day.",
         "Wall mounted 3-bar design helps save floor space and keeps towels organized in bathrooms, laundry rooms, or spa areas.",
-        "304-grade stainless steel construction supports daily use, while the 38 inch vertical profile fits narrow wall spaces.",
+        "Gold finish supports a coordinated bathroom look, while the 38 inch vertical profile fits narrow wall spaces.",
         "Digital timer and plug-in or hardwired installation options help address worries about run time, wiring, and setup flexibility.",
         "Backed by seller support; review measurements and installation needs before purchase for the best fit in your bathroom."
       ],
-      optimizedDescription: "Upgrade daily bathroom comfort with a wall mounted electric towel warmer rack designed to warm and dry towels while saving floor space. The 3-bar vertical design uses 304-grade stainless steel with a polished Gold finish and a 38 inch profile for bathrooms, laundry rooms, spa areas, and compact wall spaces. A digital timer helps manage run time, and plug-in or hardwired installation options give flexibility for different setups. Review dimensions and installation requirements before purchase to confirm fit.",
+      optimizedDescription: "Upgrade daily bathroom comfort with a wall mounted electric towel warmer rack designed to warm and dry towels while saving floor space. The 3-bar vertical design has a Gold finish and a 38 inch profile for bathrooms, laundry rooms, spa areas, and compact wall spaces. A digital timer helps manage run time, and plug-in or hardwired installation options give flexibility for different setups. Review dimensions and installation requirements before purchase to confirm fit.",
       optimizedBackendSearchTerms: "heated towel rail bathroom towel dryer wall towel warmer plug in hardwired spa towel rack electric towel holder vertical towel heater",
       sellerApprovalRequired: true
     });
+  });
+
+  it("corrects silver towel warmer copy to polished chrome without stainless or nickel claims", () => {
+    const recommendation = analyzeAmazonExistingListing({
+      sku: "CHROME-SKU",
+      summaries: [{
+        itemName: "Electric Heated Towel Rack, Wall Mounted, Silver, Digital Timer",
+        mainImage: { link: "https://example.com/main.jpg" }
+      }],
+      attributes: {
+        bullet_point: [{ value: "Silver towel warmer." }],
+        product_description: [{ value: "Silver towel warmer made for bathrooms." }],
+        generic_keyword: [{ value: "heated towel rack" }]
+      }
+    });
+
+    expect(recommendation.optimizedTitle).toBe("Electric Towel Warmer Rack, Wall Mount 3-Bar, 38 in, Polished Chrome Finish");
+    expect(recommendation.optimizedBullets?.join(" ")).toContain("Polished Chrome finish");
+    expect(recommendation.optimizedDescription).toContain("Polished Chrome finish");
+    expect(JSON.stringify(recommendation)).not.toMatch(/stainless|nickel|silver finish/i);
+  });
+
+  it("corrects black towel warmer copy to matte black finish language", () => {
+    const recommendation = analyzeAmazonExistingListing({
+      sku: "BLACK-SKU",
+      summaries: [{
+        itemName: "Electric Heated Towel Rack, Wall Mounted, Black, Digital Timer",
+        mainImage: { link: "https://example.com/main.jpg" }
+      }],
+      attributes: {
+        bullet_point: [{ value: "Black towel warmer." }],
+        product_description: [{ value: "Black towel warmer made for bathrooms." }],
+        generic_keyword: [{ value: "heated towel rack" }]
+      }
+    });
+
+    expect(recommendation.optimizedTitle).toBe("Electric Towel Warmer Rack, Wall Mount 3-Bar, 38 in, Matte Black Finish");
+    expect(recommendation.optimizedBullets?.join(" ")).toContain("Matte Black finish");
+    expect(recommendation.optimizedDescription).toContain("Matte Black finish");
   });
 
   it("builds a Listings Items API patch for optimized copy attributes", () => {
     expect(buildAmazonListingCopyPatch({
       marketplaceId: "ATVPDKIKX0DER",
       productType: "TOWEL_HOLDER",
-      title: "Electric Towel Warmer Rack, Wall Mount 3-Bar Stainless Steel, 38 in, Gold",
+      title: "Electric Towel Warmer Rack, Wall Mount 3-Bar, 38 in, Gold Finish",
       bullets: ["Benefit one.", "Benefit two.", "Benefit three.", "Worry reducer.", "Post sale support."],
       description: "Optimized bathroom comfort description.",
       backendSearchTerms: "heated towel rail bathroom towel dryer wall towel warmer"
@@ -108,7 +147,7 @@ describe("analyzeAmazonExistingListing", () => {
         {
           op: "replace",
           path: "/attributes/item_name",
-          value: [{ value: "Electric Towel Warmer Rack, Wall Mount 3-Bar Stainless Steel, 38 in, Gold", marketplace_id: "ATVPDKIKX0DER" }]
+          value: [{ value: "Electric Towel Warmer Rack, Wall Mount 3-Bar, 38 in, Gold Finish", marketplace_id: "ATVPDKIKX0DER" }]
         },
         {
           op: "replace",

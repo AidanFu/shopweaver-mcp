@@ -60,7 +60,7 @@ describe("writeAmazonExistingListingOptimizationWorkbook", () => {
     });
     expect(XLSX.utils.sheet_to_json(workbook.Sheets["Optimized Copy"])[0]).toMatchObject({
       "SKU": "DH-E37S-W6DM",
-      "Optimized Title": "Electric Towel Warmer Rack, Wall Mount 3-Bar Stainless Steel, 38 in, Gold",
+      "Optimized Title": "Electric Towel Warmer Rack, Wall Mount 3-Bar, 38 in, Gold Finish",
       "Bullet Count": 5,
       "Decision": ""
     });
@@ -89,7 +89,7 @@ describe("writeAmazonExistingListingOptimizationWorkbook", () => {
     XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet([
       {
         "SKU": "DH-E37S-W6DM",
-        "Optimized Title": "Electric Towel Warmer Rack, Wall Mount 3-Bar Stainless Steel, 38 in, Gold",
+        "Optimized Title": "Electric Towel Warmer Rack, Wall Mount 3-Bar, 38 in, Gold Finish",
         "Bullet 1": "Benefit one.",
         "Bullet 2": "Benefit two.",
         "Bullet 3": "Benefit three.",
@@ -115,7 +115,7 @@ describe("writeAmazonExistingListingOptimizationWorkbook", () => {
       invalidDecisionCount: 1,
       decisions: [{
         sku: "DH-E37S-W6DM",
-        title: "Electric Towel Warmer Rack, Wall Mount 3-Bar Stainless Steel, 38 in, Gold",
+        title: "Electric Towel Warmer Rack, Wall Mount 3-Bar, 38 in, Gold Finish",
         bullets: ["Benefit one.", "Benefit two.", "Benefit three.", "Worry reducer.", "Post-sale support."],
         description: "Optimized bathroom comfort description.",
         backendSearchTerms: "heated towel rail bathroom towel dryer wall towel warmer",
@@ -138,7 +138,7 @@ describe("writeAmazonExistingListingOptimizationWorkbook", () => {
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet([{
       "SKU": "DH-E37S-W6DM",
-      "Optimized Title": "Electric Towel Warmer Rack, Wall Mount 3-Bar Stainless Steel, 38 in, Gold",
+      "Optimized Title": "Electric Towel Warmer Rack, Wall Mount 3-Bar, 38 in, Gold Finish",
       "Bullet 1": "Benefit one.",
       "Bullet 2": "Benefit two.",
       "Bullet 3": "Benefit three.",
@@ -168,7 +168,7 @@ describe("writeAmazonExistingListingOptimizationWorkbook", () => {
     });
     expect(preview.patches[0]?.patch.patches[0]).toMatchObject({
       path: "/attributes/item_name",
-      value: [{ value: "Electric Towel Warmer Rack, Wall Mount 3-Bar Stainless Steel, 38 in, Gold", marketplace_id: "ATVPDKIKX0DER" }]
+      value: [{ value: "Electric Towel Warmer Rack, Wall Mount 3-Bar, 38 in, Gold Finish", marketplace_id: "ATVPDKIKX0DER" }]
     });
   });
 });

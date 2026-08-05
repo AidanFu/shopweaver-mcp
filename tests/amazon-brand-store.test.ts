@@ -79,6 +79,7 @@ describe("buildAmazonBrandStorePlan", () => {
 
     expect(plan.productTiles).toMatchObject([{
       sku: "5H-2EH1-7H77",
+      primaryMessage: "Polished Chrome finish for a polished bathroom upgrade",
       storeRole: "lead_tile",
       salesSignal: "matched_ads_and_seller_sales",
       callout: "Feature early in the Store because Ads and Seller orders both show recent demand."

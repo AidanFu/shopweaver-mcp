@@ -501,7 +501,7 @@ describe("MCP integration", () => {
     const workbook = XLSX.read(await readFile(outputPath));
     expect(XLSX.utils.sheet_to_json(workbook.Sheets["Optimized Copy"])[0]).toMatchObject({
       "SKU": "DH-E37S-W6DM",
-      "Optimized Title": "Electric Towel Warmer Rack, Wall Mount 3-Bar Stainless Steel, 38 in, Gold"
+      "Optimized Title": "Electric Towel Warmer Rack, Wall Mount 3-Bar, 38 in, Gold Finish"
     });
     await Promise.all([client.close(), server.close()]);
   });
@@ -530,7 +530,7 @@ describe("MCP integration", () => {
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet([{
       "SKU": "DH-E37S-W6DM",
-      "Optimized Title": "Electric Towel Warmer Rack, Wall Mount 3-Bar Stainless Steel, 38 in, Gold",
+      "Optimized Title": "Electric Towel Warmer Rack, Wall Mount 3-Bar, 38 in, Gold Finish",
       "Bullet 1": "Benefit one.",
       "Bullet 2": "Benefit two.",
       "Bullet 3": "Benefit three.",
@@ -602,7 +602,7 @@ describe("MCP integration", () => {
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet([{
       "SKU": "DH-E37S-W6DM",
-      "Optimized Title": "Electric Towel Warmer Rack, Wall Mount 3-Bar Stainless Steel, 38 in, Gold",
+      "Optimized Title": "Electric Towel Warmer Rack, Wall Mount 3-Bar, 38 in, Gold Finish",
       "Bullet 1": "Benefit one.",
       "Bullet 2": "Benefit two.",
       "Bullet 3": "Benefit three.",

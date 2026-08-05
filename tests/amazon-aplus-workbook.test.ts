@@ -58,6 +58,10 @@ describe("writeAmazonAplusOptimizationWorkbook", () => {
       "Empty Overlay Modules": 1,
       "Generic Alt Text": 1
     });
+    expect(XLSX.utils.sheet_to_json(workbook.Sheets.Summary)[1]).toMatchObject({
+      "ASIN": "B0GD89SVK9",
+      "Finish": "Matte Black"
+    });
     expect(XLSX.utils.sheet_to_json(workbook.Sheets["Optimized Overlay Copy"])[0]).toMatchObject({
       "ASIN": "B0GDPKVXSZ",
       "Module Index": 1,
@@ -66,7 +70,7 @@ describe("writeAmazonAplusOptimizationWorkbook", () => {
     });
     expect(XLSX.utils.sheet_to_json(workbook.Sheets["Product Description"])[1]).toMatchObject({
       "ASIN": "B0GD89SVK9",
-      "Description": expect.stringContaining("polished Black finish")
+      "Description": expect.stringContaining("Matte Black finish")
     });
     expect(XLSX.utils.sheet_to_json(workbook.Sheets["Sales Signal Actions"])).toMatchObject([{
       "ASIN": "B0GDPKVXSZ",

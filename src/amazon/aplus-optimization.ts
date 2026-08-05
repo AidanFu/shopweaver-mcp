@@ -1,3 +1,5 @@
+import { displayFinishMention, normalizeTowelWarmerFinish } from "./finish-normalization.js";
+
 export type TextEntry = { value?: string | null; decoratorSet?: string[] };
 export type AplusModule = {
   contentModuleType?: string;
@@ -52,11 +54,12 @@ export function analyzeAmazonAplusContent(input: AmazonAplusContentInput): Amazo
   const emptyOverlayModuleCount = modules.filter(isEmptyOverlayModule).length;
   const genericAltTextCount = modules.filter(hasGenericAltText).length;
   const recommendations: string[] = [];
-  const mentionedFinish = allText.match(/\b(Gold|Black|Silver)\b/i)?.[1];
+  const expectedFinish = input.expectedFinish ? normalizeTowelWarmerFinish(input.expectedFinish) : undefined;
+  const mentionedFinish = mentionedFinishName(allText);
   const mentionedHeight = allText.match(/\b(\d+(?:\.\d+)?)\s*(?:inch|inches|in)\b/i)?.[1];
 
-  if (input.expectedFinish && mentionedFinish && mentionedFinish.toLowerCase() !== input.expectedFinish.toLowerCase()) {
-    recommendations.push(`Fix finish mismatch: A+ text mentions ${capitalize(mentionedFinish)}, but this ASIN context expects ${capitalize(input.expectedFinish)}.`);
+  if (expectedFinish && mentionedFinish && (mentionedFinish.normalized.toLowerCase() !== expectedFinish.toLowerCase() || (expectedFinish === "Polished Chrome" && mentionedFinish.label !== "Polished Chrome"))) {
+    recommendations.push(`Fix finish mismatch: A+ text mentions ${mentionedFinish.label}, but this ASIN context expects ${expectedFinish}.`);
   }
   if (input.expectedHeightInches !== undefined && mentionedHeight && Number(mentionedHeight) !== input.expectedHeightInches) {
     recommendations.push(`Fix dimension mismatch: A+ text mentions ${Number(mentionedHeight)} inches, but this ASIN context expects ${input.expectedHeightInches} inches.`);
@@ -80,18 +83,19 @@ export function analyzeAmazonAplusContent(input: AmazonAplusContentInput): Amazo
       "Benefit strip: save floor space, organize towels, support daily drying, and upgrade bathroom finish.",
       "Installation confidence: plug-in or hardwired options, digital timer, wall-mount fit, and measurement reminder.",
       "Use-case module: bathrooms, laundry rooms, spa spaces, swimsuits, and compact walls.",
-      `Spec/reassurance module: 304 stainless steel, 3-bar vertical layout, ${input.expectedHeightInches ?? 38} inch height, ${capitalize(input.expectedFinish ?? "selected")} finish, seller support.`
+      `Spec/reassurance module: 3-bar vertical layout, ${input.expectedHeightInches ?? 38} inch height, ${expectedFinish ?? "Selected"} finish, seller support.`
     ]
   };
 }
 
 export function buildOptimizedAmazonAplusContentDocument(document: AplusContentDocument, context: OptimizedAmazonAplusContext): AplusContentDocument {
+  const finish = normalizeTowelWarmerFinish(context.finish);
   return {
     ...document,
-    name: `ShopWeaver optimized ${context.asin} ${capitalize(context.finish)}`.slice(0, 100),
+    name: `ShopWeaver optimized ${context.asin} ${finish}`.slice(0, 100),
     contentModuleList: document.contentModuleList.map((module, index) => {
-      if (module.contentModuleType === "STANDARD_PRODUCT_DESCRIPTION") return productDescriptionModule(context);
-      if (module.contentModuleType === "STANDARD_IMAGE_TEXT_OVERLAY") return imageTextOverlayModule(module, context, index);
+      if (module.contentModuleType === "STANDARD_PRODUCT_DESCRIPTION") return productDescriptionModule({ ...context, finish });
+      if (module.contentModuleType === "STANDARD_IMAGE_TEXT_OVERLAY") return imageTextOverlayModule(module, { ...context, finish }, index);
       return module;
     })
   };
@@ -103,7 +107,7 @@ function productDescriptionModule(context: OptimizedAmazonAplusContext): AplusMo
     standardProductDescription: {
       body: {
         textList: [{
-          value: `Upgrade daily bathroom comfort with a wall mounted electric towel warmer rack designed to warm and dry towels while saving floor space. The 3-bar vertical design uses 304-grade stainless steel with a polished ${capitalize(context.finish)} finish and a ${context.heightInches} inch profile for bathrooms, laundry rooms, spa areas, and compact wall spaces. A digital timer helps manage run time, and plug-in or hardwired installation options give flexibility for different setups.`,
+          value: `Upgrade daily bathroom comfort with a wall mounted electric towel warmer rack designed to warm and dry towels while saving floor space. The 3-bar vertical design has a ${context.finish} finish and a ${context.heightInches} inch profile for bathrooms, laundry rooms, spa areas, and compact wall spaces. A digital timer helps manage run time, and plug-in or hardwired installation options give flexibility for different setups.`,
           decoratorSet: []
         }]
       }
@@ -121,7 +125,7 @@ function imageTextOverlayModule(module: AplusModule, context: OptimizedAmazonApl
         ...module.standardImageTextOverlay?.block,
         image: {
           ...module.standardImageTextOverlay?.block?.image,
-          altText: `${capitalize(context.finish)} electric towel warmer shown in a bathroom use case`
+          altText: `${context.finish} electric towel warmer shown in a bathroom use case`
         },
         headline: { value: copy.headline, decoratorSet: [] },
         body: { textList: [{ value: copy.body, decoratorSet: [] }] }
@@ -149,8 +153,8 @@ function overlayCopy(index: number): { headline: string; body: string } {
       body: "Choose the setup that fits your bathroom plan, and review measurements before purchase for the best wall placement."
     },
     {
-      headline: "304 stainless steel for daily bathroom use",
-      body: "A polished finish and 3-bar layout support regular towel warming while adding a clean bathroom upgrade."
+      headline: "Durable 3-bar design for daily bathroom use",
+      body: "The selected finish and 3-bar layout support regular towel warming while adding a clean bathroom upgrade."
     },
     {
       headline: "Useful beyond bath towels",
@@ -178,6 +182,7 @@ function hasGenericAltText(module: AplusModule): boolean {
   return /^(\d+[a-z]?[-_])?round-\d+$/i.test(altText) || /^3v-round-\d+$/i.test(altText);
 }
 
-function capitalize(value: string): string {
-  return value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
+function mentionedFinishName(value: string): { label: string; normalized: string } | undefined {
+  const match = value.match(/\b(Polished Chrome|Matte Black|Gold|Black|Silver|Chrome|Nickel|Stainless)\b/i)?.[1];
+  return match ? { label: displayFinishMention(match), normalized: normalizeTowelWarmerFinish(match) } : undefined;
 }
